@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { V3 } from '../types'
-import { points, project } from './geometry'
+import { depth, points, project, S } from './geometry'
 
 // A box standing at (x, z), from height y up by h. Without `fill` it uses the
 // neutral shades; with `fill` the side faces are darkened for depth. `ghost`
@@ -67,6 +67,79 @@ export function IsoBox({
       <polygon points={points(right)} fill={faces[1]} {...line} />
       {fill && <polygon points={points(right)} fill="#000" opacity={0.36} />}
       <polygon points={points(top)} fill={faces[2]} {...line} />
+    </g>
+  )
+}
+
+// An upright cylinder (the classic database shape) standing at (x, z).
+export function IsoCylinder({
+  x,
+  z,
+  r,
+  h,
+  y = 0,
+  stroke = 'var(--fg)',
+  dim,
+  bands = [0.33, 0.66],
+}: {
+  x: number
+  z: number
+  r: number
+  h: number
+  y?: number
+  stroke?: string
+  dim?: boolean
+  bands?: number[]
+}) {
+  // A floor circle of radius r projects to an axis-aligned ellipse.
+  const rx = Math.SQRT2 * r * Math.cos(Math.PI / 6) * S
+  const ry = (Math.SQRT2 * r * S) / 2
+  const [cx, bottom] = project([x, y, z])
+  const top = bottom - h * S
+  const side = dim ? 'var(--iso-idle)' : 'var(--iso-right)'
+  const lid = dim ? 'var(--iso-idle)' : 'var(--iso-top)'
+  const frontArc = (cy: number) => `M ${cx - rx} ${cy} A ${rx} ${ry} 0 0 0 ${cx + rx} ${cy}`
+  return (
+    <g strokeDasharray={dim ? '4 4' : undefined}>
+      <path
+        d={`M ${cx - rx} ${top} L ${cx - rx} ${bottom} A ${rx} ${ry} 0 0 0 ${cx + rx} ${bottom} L ${cx + rx} ${top} Z`}
+        fill={side}
+        stroke={stroke}
+        strokeWidth={1.2}
+        strokeLinejoin="round"
+      />
+      {bands.map((f) => (
+        <path key={f} d={frontArc(bottom - (bottom - top) * f)} fill="none" stroke="var(--line)" strokeWidth={2} />
+      ))}
+      <ellipse cx={cx} cy={top} rx={rx} ry={ry} fill={lid} stroke={stroke} strokeWidth={1.2} />
+    </g>
+  )
+}
+
+// A crowd of little people on a platform. One more lights up per request per
+// second of traffic.
+export function Crowd({ x, z = 0, active }: { x: number; z?: number; active: number }) {
+  const cols = 4
+  const rows = 3
+  const people = Array.from({ length: cols * rows }, (_, i) => ({
+    i,
+    x: x + ((i % cols) - (cols - 1) / 2) * 0.42,
+    z: z + (Math.floor(i / cols) - (rows - 1) / 2) * 0.45,
+  })).sort((a, b) => depth(a.x, a.z) - depth(b.x, b.z))
+
+  return (
+    <g>
+      <IsoBox x={x} z={z} w={1.9} d={1.6} h={0.06} stroke="var(--line)" />
+      {people.map((p) => {
+        const color = p.i < active ? 'var(--fg)' : 'var(--iso-idle)'
+        const [hx, hy] = project([p.x, 0.58, p.z])
+        return (
+          <g key={p.i}>
+            <IsoBox x={p.x} z={p.z} y={0.06} w={0.17} d={0.17} h={0.38} fill={color} />
+            <circle cx={hx} cy={hy} r={0.1 * S} fill={color} />
+          </g>
+        )
+      })}
     </g>
   )
 }

@@ -104,6 +104,11 @@ export class FlowSim {
     this.links.set(from, list)
   }
 
+  unlink(from: string, to: string) {
+    const list = this.links.get(from)
+    if (list) this.links.set(from, list.filter((l) => l.to !== to))
+  }
+
   // Where a node can send requests, in the order the links were made.
   targets(from: string): FlowNode[] {
     return (this.links.get(from) ?? []).map((l) => this.nodes.get(l.to)).filter((n): n is FlowNode => !!n)

@@ -1,6 +1,6 @@
 import { useRef, type ReactNode } from 'react'
-import { depth, points, project, S } from '../../core/iso/geometry'
-import { FloorPath, FloorSpot, IsoBox, Tag } from '../../core/iso/primitives'
+import { depth, points, project } from '../../core/iso/geometry'
+import { Crowd, FloorPath, FloorSpot, IsoBox, Tag } from '../../core/iso/primitives'
 import Viewport from '../../core/iso/Viewport'
 import type { SceneProps, V3 } from '../../core/types'
 import type { LoadBalancerSim, Server } from './engine'
@@ -109,7 +109,7 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, updat
             })
           }
         }
-        solids.push({ d: depth(USERS_X, 0), node: <Users key="users" rps={st.rps} /> })
+        solids.push({ d: depth(USERS_X, 0), node: <Crowd key="users" x={USERS_X} active={Math.round(st.rps)} /> })
         solids.sort((a, b) => a.d - b.d)
 
         // Labels, drawn last so nothing covers them.
@@ -281,34 +281,6 @@ function LbBox({ z, mode, rise }: { z: number; mode: 'active' | 'standby' | 'dow
           <path d="M-14 6 L0 0 M0 0 L14 -10 M0 0 L16 0 M0 0 L10 10" />
         </g>
       )}
-    </g>
-  )
-}
-
-const COLS = 4
-const ROWS = 3
-
-function Users({ rps }: { rps: number }) {
-  const active = Math.round(rps)
-  const people = Array.from({ length: COLS * ROWS }, (_, i) => ({
-    i,
-    x: USERS_X + ((i % COLS) - (COLS - 1) / 2) * 0.42,
-    z: (Math.floor(i / COLS) - (ROWS - 1) / 2) * 0.45,
-  })).sort((a, b) => depth(a.x, a.z) - depth(b.x, b.z))
-
-  return (
-    <g>
-      <IsoBox x={USERS_X} z={0} w={1.9} d={1.6} h={0.06} stroke="var(--line)" />
-      {people.map((p) => {
-        const color = p.i < active ? 'var(--fg)' : 'var(--iso-idle)'
-        const [hx, hy] = project([p.x, 0.58, p.z])
-        return (
-          <g key={p.i}>
-            <IsoBox x={p.x} z={p.z} y={0.06} w={0.17} d={0.17} h={0.38} fill={color} />
-            <circle cx={hx} cy={hy} r={0.1 * S} fill={color} />
-          </g>
-        )
-      })}
     </g>
   )
 }

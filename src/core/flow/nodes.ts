@@ -10,6 +10,8 @@ export class Source implements FlowNode {
   rate = 0 // requests per tick
   minWork = 10
   maxWork = 40
+  // What each request asks for (e.g. which item), if the system cares.
+  keyOf?: (rng: () => number) => number
   private carry = 0
   readonly key: string
 
@@ -27,7 +29,7 @@ export class Source implements FlowNode {
     while (this.carry >= 1) {
       this.carry -= 1
       const work = this.minWork + Math.floor(sim.rng() * (this.maxWork - this.minWork + 1))
-      const job = sim.newJob(work)
+      const job = sim.newJob(work, this.keyOf?.(sim.rng))
       const to = sim.targets(this.key)[0]
       if (to) sim.forward(job, this.key, to.key)
       else sim.drop(job, this.key)
@@ -106,6 +108,11 @@ export class Worker implements FlowNode {
   slots: number
   queueLimit: number
   workPerRequest?: number
+  // Work for a particular request, when some cost more than others (e.g. an
+  // expensive query). Takes priority over workPerRequest.
+  workOf?: (job: Job) => number
+  // Called as each request finishes here, e.g. a database filling a cache.
+  onFinish?: (job: Job, sim: FlowSim) => void
   readonly key: string
 
   constructor(key: string, { speed = 1, slots = 4, queueLimit = 8, workPerRequest = undefined as number | undefined } = {}) {
@@ -118,7 +125,7 @@ export class Worker implements FlowNode {
 
   receive(job: Job, sim: FlowSim) {
     if (!this.alive || this.queue.length >= this.queueLimit) return sim.drop(job, this.key)
-    job.remaining = this.workPerRequest ?? job.work
+    job.remaining = this.workOf?.(job) ?? this.workPerRequest ?? job.work
     this.queue.push(job)
   }
 
@@ -134,6 +141,7 @@ export class Worker implements FlowNode {
         continue
       }
       this.served++
+      this.onFinish?.(job, sim)
       const next = sim.targets(this.key)[0]
       if (next) sim.forward(job, this.key, next.key)
       else sim.complete(job)
