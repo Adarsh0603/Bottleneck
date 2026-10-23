@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import BuildPlayer from './build/BuildPlayer'
-import { shotAt, stateAt, stateBefore } from './chapters'
+import { shotAt, stateAt } from './chapters'
 import { TopBar } from './chrome'
 import { play } from './sound'
 import { COMPACT, SHORT, useMedia } from './useMedia'
-import type { BaseBeat, Predict, Reference, TopicSpec } from './types'
+import type { BaseBeat, Marker, Reference, TopicSpec } from './types'
 
 interface PlayerProps<S, Sim, M, B extends BaseBeat<S, Sim, M>> {
   topic: TopicSpec<S, Sim, M, B>
@@ -57,11 +57,11 @@ function LessonPlayer<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
   const first = Math.min(Math.max(0, startStep), chapter.beats.length - 1)
   const firstAsks = !!chapter.beats[first].predict
   const [beatIdx, setBeatIdx] = useState(first)
-  // A beat with a prediction first waits on the previous moment, frozen,
-  // until the learner answers; then it plays.
+  // A beat with a prediction shows its setup frozen until the learner taps
+  // an answer in the scene (or skips); then it plays.
   const [asking, setAsking] = useState(firstAsks)
   const [guess, setGuess] = useState<number | null>(null)
-  const [st, setSt] = useState(() => (firstAsks ? stateBefore(chapter, first) : stateAt(chapter, first)))
+  const [st, setSt] = useState(() => stateAt(chapter, first))
   const [ramping, setRamping] = useState(!firstAsks && !!chapter.beats[first].ramp)
   const [shake, setShake] = useState(0)
   const [solvedBeat, setSolvedBeat] = useState(-1)
@@ -91,16 +91,15 @@ function LessonPlayer<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
     setBeatIdx(i)
     setAsking(asks)
     setGuess(null)
-    setSt(asks ? stateBefore(chapter, i) : stateAt(chapter, i))
+    setSt(stateAt(chapter, i))
     setRamping(!asks && !!chapter.beats[i].ramp)
     holdStart.current = null
   }
 
-  // The learner picked an answer: play the beat.
-  const answer = (choice: number) => {
+  // The learner tapped an answer, or skipped (null): play the beat.
+  const answer = (choice: number | null) => {
     setGuess(choice)
     setAsking(false)
-    setSt(stateAt(chapter, beatIdx))
     setRamping(!!beat.ramp)
   }
 
@@ -175,10 +174,16 @@ function LessonPlayer<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
       ? Math.min(1, (performance.now() - holdStart.current) / (challenge.holdSeconds * 1000))
       : 0
 
-  // While a question is open, the scene keeps showing the previous moment:
-  // its camera and labels, not the ones of the beat about to play.
-  const sceneIdx = asking ? Math.max(beatIdx - 1, 0) : beatIdx
-  const sceneBeat = chapter.beats[sceneIdx]
+  // A question's options are tap targets in the scene. Once answered, the
+  // right one stays marked for the rest of the beat.
+  const predict = beat.predict
+  const markers: Marker[] = !predict
+    ? []
+    : asking
+      ? predict.options.map((o, i) => ({ at: o.at, label: o.label, tone: 'ask' as const, onPick: () => answer(i) }))
+      : guess !== null
+        ? [{ at: predict.options[predict.answer].at, label: guess === predict.answer ? '✓ Called it' : '✓ This one', tone: 'answer' as const }]
+        : []
 
   const update = (change: (p: S) => Partial<S>) => setSt((p) => ({ ...p, ...change(p) }))
   const panel = { st, sim, m: metrics, beat, update, stopRamp: () => setRamping(false) }
@@ -191,10 +196,12 @@ function LessonPlayer<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
           simRef={runtime.simRef}
           lastTickAt={runtime.lastTickAt}
           st={st}
-          beat={sceneBeat}
-          shot={shotAt(chapter, sceneIdx)}
+          beat={beat}
+          shot={shotAt(chapter, beatIdx)}
           shake={shake}
           update={update}
+          quiet={asking}
+          markers={markers}
         />
       </div>
 
@@ -227,11 +234,19 @@ function LessonPlayer<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
       >
         <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-5">
           <div key={`${index}-${beatIdx}-${asking}`} className="caption-in pointer-events-auto min-w-0">
-            {asking && beat.predict ? (
-              <PredictCard predict={beat.predict} short={short} onAnswer={answer} />
+            {asking && predict ? (
+              <>
+                <div className="font-mono text-[10px] uppercase tracking-widest text-muted">Paused · tap your guess</div>
+                <h2 className={`mt-1 font-semibold tracking-tight ${short ? 'text-lg' : 'text-xl sm:text-3xl'}`}>{predict.question}</h2>
+                <button
+                  onClick={() => answer(null)}
+                  className="mt-2 font-mono text-xs text-muted underline-offset-4 transition hover:text-fg hover:underline"
+                >
+                  Skip
+                </button>
+              </>
             ) : (
               <>
-                {guess !== null && beat.predict && <PredictResult predict={beat.predict} guess={guess} short={short} />}
                 {challenge && (
                   <div
                     className={`max-w-md rounded-xl border transition ${short ? 'mb-2 px-3 py-2' : 'mb-3 p-3 sm:mb-4'} ${
@@ -270,7 +285,7 @@ function LessonPlayer<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
                 disabled
                 className="h-10 flex-1 rounded-full border border-line bg-bg/80 px-6 text-sm text-muted backdrop-blur sm:flex-none"
               >
-                Pick an answer
+                Tap your guess
               </button>
             ) : lastBeat && lastChapter ? (
               <button
@@ -295,38 +310,6 @@ function LessonPlayer<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
           </div>
         </div>
       </div>
-    </div>
-  )
-}
-
-// "What happens next?" — the scene is frozen behind this until an answer is picked.
-function PredictCard({ predict, short, onAnswer }: { predict: Predict; short: boolean; onAnswer: (choice: number) => void }) {
-  return (
-    <div className="max-w-2xl">
-      <div className="font-mono text-[10px] uppercase tracking-widest text-muted">Paused · What happens next?</div>
-      <h2 className={`mt-1 font-semibold tracking-tight ${short ? 'text-lg' : 'text-xl sm:text-2xl'}`}>{predict.question}</h2>
-      <div className={`grid gap-2 sm:flex sm:flex-wrap ${short ? 'mt-2' : 'mt-3'}`}>
-        {predict.options.map((option, i) => (
-          <button
-            key={option}
-            onClick={() => onAnswer(i)}
-            className="rounded-xl border border-line bg-bg/90 px-4 py-2.5 text-left text-sm backdrop-blur transition hover:border-fg"
-          >
-            {option}
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// Shown once the beat plays: whether the guess was right, and why.
-function PredictResult({ predict, guess, short }: { predict: Predict; guess: number; short: boolean }) {
-  const right = guess === predict.answer
-  return (
-    <div className={`max-w-xl rounded-xl border bg-bg/80 px-3 py-2 text-sm backdrop-blur ${short ? 'mb-2' : 'mb-3'} ${right ? 'border-fg' : 'border-line'}`}>
-      <span className="font-medium">{right ? '✓ You called it.' : `Not quite: ${predict.options[predict.answer].toLowerCase()}`}</span>{' '}
-      <span className="text-muted">{predict.explain}</span>
     </div>
   )
 }

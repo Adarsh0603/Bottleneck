@@ -3,7 +3,7 @@ import type { BuildTask } from '../../core/build/types'
 import { FlowSim } from '../../core/flow/engine'
 import { Router, Source, Worker } from '../../core/flow/nodes'
 
-// Build it: users send 10 req/s. One pad in front, five behind.
+// Build it: Black Friday, users send 10 req/s. One pad in front, five behind.
 //   - A server in front takes everything alone; the back pads never see
 //     traffic (users only know one address).
 //   - A load balancer in front spreads requests across the back servers.
@@ -13,8 +13,8 @@ const RPS = 10
 const BACK_Z = [-3.6, -1.8, 0, 1.8, 3.6]
 const TRIP_TICKS = 8
 
-export const LAUNCH_DAY: BuildTask = {
-  title: 'Build it: survive launch day.',
+export const BLACK_FRIDAY: BuildTask = {
+  title: 'Build it: the Black Friday rush.',
   sub: 'Drag pieces from the toolbox onto the pads.',
   goal: 'Handle 10 req/s with under 1% errors.',
   win: 'A load balancer in front, enough servers behind it.',

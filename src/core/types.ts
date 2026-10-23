@@ -31,13 +31,21 @@ export interface Ramp<S> {
   next: (st: S) => S | null
 }
 
-// A "what happens next?" question asked before a beat plays. The scene stays
-// frozen on the previous moment until the learner picks an answer.
+// A "what happens next?" question asked before a beat plays. The beat's setup
+// is shown, frozen, and the learner answers by tapping a thing in the scene.
 export interface Predict {
   question: string
-  options: string[]
+  options: { label: string; at: V3 }[] // tap targets, pinned in the world
   answer: number // index into options
-  explain: string // shown after answering, right or wrong
+}
+
+// A tappable label pinned in the scene: a question's options, or the answer
+// once it's been given.
+export interface Marker {
+  at: V3
+  label: string
+  tone: 'ask' | 'answer'
+  onPick?: () => void
 }
 
 // What every beat has. Topics extend this with their own fields (labels,
@@ -82,6 +90,10 @@ export interface SceneProps<S, Sim, B> {
   shot: Shot
   shake: number
   update: Update<S>
+  // While a question is open: hide labels that would give the answer away,
+  // and show these tap targets instead.
+  quiet: boolean
+  markers: Marker[]
 }
 
 export interface PanelProps<S, Sim, M, B> {

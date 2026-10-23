@@ -4,19 +4,19 @@ import { CHAPTERS as LOAD_BALANCING } from './load-balancing/chapters'
 
 const topics = { 'load balancing': LOAD_BALANCING, caching: CACHING }
 
-describe.each(Object.entries(topics))('%s predictions', (_, chapters) => {
-  const predictions = chapters.flatMap((c) => c.beats.flatMap((b) => (b.predict ? [{ chapter: c.title, ...b.predict }] : [])))
+describe.each(Object.entries(topics))('%s questions', (_, chapters) => {
+  const questions = chapters.flatMap((c) => c.beats.flatMap((b) => (b.predict ? [b.predict] : [])))
 
-  it('asks at least one question in every chapter with something to predict', () => {
-    // Every chapter except the reference-only ones ends up with a question.
-    expect(predictions.length).toBeGreaterThanOrEqual(chapters.length - 1)
+  it('asks only a few, at the surprising moments', () => {
+    expect(questions.length).toBeGreaterThanOrEqual(2)
+    expect(questions.length).toBeLessThanOrEqual(3)
   })
 
-  it.each(predictions.map((p) => [p.question, p] as const))('is well formed: %s', (_q, p) => {
-    expect(p.options.length).toBeGreaterThanOrEqual(2)
-    expect(new Set(p.options).size).toBe(p.options.length)
-    expect(p.answer).toBeGreaterThanOrEqual(0)
-    expect(p.answer).toBeLessThan(p.options.length)
-    expect(p.explain.length).toBeGreaterThan(10)
+  it.each(questions.map((q) => [q.question, q] as const))('is answerable by tapping the scene: %s', (_q, q) => {
+    expect(q.options.length).toBeGreaterThanOrEqual(2)
+    expect(new Set(q.options.map((o) => o.label)).size).toBe(q.options.length)
+    expect(q.answer).toBeGreaterThanOrEqual(0)
+    expect(q.answer).toBeLessThan(q.options.length)
+    for (const o of q.options) expect(o.at).toHaveLength(3)
   })
 })

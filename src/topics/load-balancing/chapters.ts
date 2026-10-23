@@ -1,9 +1,9 @@
-import type { Ramp, Shot } from '../../core/types'
-import { LAUNCH_DAY } from './build'
+import type { Ramp, Shot, V3 } from '../../core/types'
+import { BLACK_FRIDAY } from './build'
 import type { LoadBalancerSim, Server } from './engine'
 import type { CourseState, LbChapter } from './types'
 import { TICKS_PER_SECOND } from './useSim'
-import { LB_X, SERVER_X, serverZ, STANDBY_Z } from './world'
+import { BASE, LB_X, scaleOf, SERVER_X, serverZ, STANDBY_Z } from './world'
 
 const BASE_STATE: CourseState = {
   rps: 0,
@@ -25,6 +25,13 @@ const FLEET: Shot = { target: [-0.5, 0.6, 0], zoom: 0.95, fit: true }
 const LB: Shot = { target: [LB_X, 0.5, 0], zoom: 1.8 }
 const LB_PAIR: Shot = { target: [LB_X, 0.5, STANDBY_Z / 2], zoom: 1.6 }
 const onServer = (index: number, count: number): Shot => ({ target: [SERVER_X, 1, serverZ(index, count)], zoom: 1.7 })
+
+// Tap targets above each server's roof, for in-scene questions.
+const serverTargets = (speeds: number[]) =>
+  speeds.map((speed, i) => ({
+    label: `Server ${'ABCDEF'[i]}`,
+    at: [SERVER_X, BASE.h * scaleOf(speed) + 0.4, serverZ(i, speeds.length)] as V3,
+  }))
 
 // Traffic climbs by 1 req/s every `everyMs` until it reaches `to`.
 const trafficRamp = (to: number, everyMs: number): Ramp<CourseState> => ({
@@ -89,12 +96,6 @@ export const CHAPTERS: LbChapter[] = [
       },
       {
         caption: 'All busy? Requests wait in line.',
-        predict: {
-          question: 'Traffic is about to pass what 4 workers can handle. What happens to new requests?',
-          options: ['They get handled faster', 'They wait in a line', 'The server grows more workers'],
-          answer: 1,
-          explain: 'With every worker busy, new requests queue up, and each one waits longer.',
-        },
         sub: 'That line is the queue. Waiting makes your app slow.',
         set: { rps: 3.5 },
         shot: QUEUE,
@@ -117,12 +118,6 @@ export const CHAPTERS: LbChapter[] = [
       },
       {
         caption: 'Line full? Users get errors.',
-        predict: {
-          question: 'Traffic keeps climbing and the line fills up. Then what?',
-          options: ['Requests wait as long as it takes', 'New requests get turned away', 'The server speeds up'],
-          answer: 1,
-          explain: 'A full queue can’t take any more, so new requests are dropped. Users see errors.',
-        },
         sub: 'Red cubes are requests turned away.',
         set: { rps: 3 },
         ramp: trafficRamp(12, 900),
@@ -160,12 +155,6 @@ export const CHAPTERS: LbChapter[] = [
       },
       {
         caption: 'But there’s a ceiling.',
-        predict: {
-          question: 'Traffic jumps to 16 req/s, more than even the XL machine handles. Can you just buy a bigger one?',
-          options: ['Yes, keep upgrading', 'No, there’s a biggest machine'],
-          answer: 1,
-          explain: 'There’s always a largest server on sale, and the price climbs steeply near the top.',
-        },
         sub: 'You can’t buy a bigger box than the biggest one.',
         set: { servers: [4], rps: 16 },
         ghost: true,
@@ -192,10 +181,9 @@ export const CHAPTERS: LbChapter[] = [
       {
         caption: 'Fix #2: add more servers.',
         predict: {
-          question: 'You add two more servers next to the first. Where does the traffic go?',
-          options: ['Spread across all three', 'Still all to the first server', 'Users pick one at random'],
-          answer: 1,
-          explain: 'Users only know one address. Without something to spread the traffic, the new servers sit idle.',
+          question: 'Two new servers. Which one will get the traffic?',
+          options: serverTargets([1, 1, 1]),
+          answer: 0,
         },
         sub: 'This is horizontal scaling.',
         set: { servers: [1, 1, 1] },
@@ -241,10 +229,9 @@ export const CHAPTERS: LbChapter[] = [
       {
         caption: 'Who gets the next request?',
         predict: {
-          question: 'Server D is half as fast as the others. Round robin gives every server the same share. What happens?',
-          options: ['Everything stays fine', 'Server D falls behind and drops requests', 'Round robin notices and skips D'],
-          answer: 1,
-          explain: 'Round robin only takes turns. It never checks how busy a server is.',
+          question: 'Round robin gives everyone turns. Which server falls behind?',
+          options: serverTargets([1, 1, 1, 0.5]),
+          answer: 3,
         },
         sub: 'Round robin: everyone takes turns.',
         shot: FLEET,
@@ -297,12 +284,6 @@ export const CHAPTERS: LbChapter[] = [
       },
       {
         caption: 'No reply? Out of rotation.',
-        predict: {
-          question: 'Server B crashes with requests waiting in its queue. What happens to them?',
-          options: ['They move to the other servers', 'They’re lost', 'They wait for B to come back'],
-          answer: 1,
-          explain: 'Work on a crashed server is gone, so clients must retry. New requests are routed around it.',
-        },
         sub: 'Its requests are lost. The others take over.',
         set: { down: [1] },
         pulses: true,
@@ -350,12 +331,6 @@ export const CHAPTERS: LbChapter[] = [
       },
       {
         caption: 'Active fails. Standby takes over.',
-        predict: {
-          question: 'The active load balancer dies, with a standby ready beside it. What do users notice?',
-          options: ['A full outage', 'Almost nothing'],
-          answer: 1,
-          explain: 'The standby takes over the same address, so traffic keeps flowing.',
-        },
         sub: 'Users never notice.',
         set: { failover: true },
         shot: LB_PAIR,
@@ -375,7 +350,7 @@ export const CHAPTERS: LbChapter[] = [
     title: 'Build it',
     level: 'Intermediate',
     initial: BASE_STATE,
-    beats: [{ caption: LAUNCH_DAY.title }],
-    build: LAUNCH_DAY,
+    beats: [{ caption: BLACK_FRIDAY.title }],
+    build: BLACK_FRIDAY,
   },
 ]

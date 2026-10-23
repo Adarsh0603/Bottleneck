@@ -1,18 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import { Running, TICKS_PER_SECOND } from '../../core/build/run'
 import type { Placement } from '../../core/build/types'
-import { LAUNCH_DAY } from './build'
+import { BLACK_FRIDAY } from './build'
 
 // Runs a build for up to a minute and reports whether the goal would be
 // reached, exactly as the builder checks it.
 function wins(placed: Placement, seed: number) {
   let x = seed
-  const run = new Running(LAUNCH_DAY.assemble(placed, () => (x = (x * 16807) % 2147483647) / 2147483647))
+  const run = new Running(BLACK_FRIDAY.assemble(placed, () => (x = (x * 16807) % 2147483647) / 2147483647))
   let streak = 0
   for (let t = 0; t < TICKS_PER_SECOND * 60; t++) {
     run.step()
-    streak = LAUNCH_DAY.check(run.metrics(), placed) ? streak + 1 : 0
-    if (streak >= LAUNCH_DAY.holdSeconds * TICKS_PER_SECOND) return true
+    streak = BLACK_FRIDAY.check(run.metrics(), placed) ? streak + 1 : 0
+    if (streak >= BLACK_FRIDAY.holdSeconds * TICKS_PER_SECOND) return true
   }
   return false
 }
@@ -22,7 +22,7 @@ const always = (p: Placement) => seeds.every((s) => wins(p, s))
 const never = (p: Placement) => seeds.every((s) => !wins(p, s))
 const servers = (n: number): Placement => Object.fromEntries(Array.from({ length: n }, (_, i) => [`back-${i}`, 'server']))
 
-describe('launch day build', () => {
+describe('Black Friday build', () => {
   it('nothing built: everything is dropped', () => {
     expect(never({})).toBe(true)
   })

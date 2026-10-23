@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import type { V3 } from '../types'
+import type { Marker, V3 } from '../types'
 import { depth, points, project, S } from './geometry'
 
 // A box standing at (x, z), from height y up by h. Without `fill` it uses the
@@ -205,6 +205,41 @@ export function IsoGrid() {
       </defs>
       <g mask="url(#iso-grid-mask)" fill="none">
         {lines}
+      </g>
+    </g>
+  )
+}
+
+// A question's tap target (pulsing ring, outlined pill), or its answer once
+// given (solid pill). Stops presses from starting a camera pan.
+export function MarkerPin({ marker }: { marker: Marker }) {
+  const [sx, sy] = project(marker.at)
+  const ask = marker.tone === 'ask'
+  const text = marker.label.toUpperCase()
+  const w = text.length * 7.6 + 28
+  return (
+    <g transform={`translate(${sx} ${sy})`}>
+      <g
+        role={ask ? 'button' : undefined}
+        aria-label={ask ? marker.label : undefined}
+        className={ask ? 'cursor-pointer' : 'pointer-events-none'}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation()
+          marker.onPick?.()
+        }}
+      >
+        {/* A generous invisible hit area, for fingers. */}
+        {ask && <rect x={-w / 2 - 8} y={-50} width={w + 16} height={62} fill="transparent" />}
+        {ask && <circle r={9} className="marker-pulse" fill="none" stroke="var(--fg)" strokeWidth={1.5} />}
+        <circle r={4} fill="var(--fg)" />
+        <line y1={-4} y2={-16} stroke="var(--fg)" strokeWidth={1.5} />
+        <g className="tag-in">
+          <rect x={-w / 2} y={-44} width={w} height={28} rx={14} fill={ask ? 'var(--bg)' : 'var(--fg)'} stroke="var(--fg)" strokeWidth={1.5} />
+          <text y={-25} textAnchor="middle" className="font-mono" fontSize={12} letterSpacing={1} fill={ask ? 'var(--fg)' : 'var(--bg)'}>
+            {text}
+          </text>
+        </g>
       </g>
     </g>
   )

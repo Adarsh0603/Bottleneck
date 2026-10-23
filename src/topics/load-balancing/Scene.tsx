@@ -31,7 +31,17 @@ import {
 
 const RISE_MS = 900
 
-export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, update }: SceneProps<CourseState, LoadBalancerSim, Beat>) {
+export default function Scene({
+  simRef,
+  lastTickAt,
+  st,
+  beat,
+  shot,
+  shake,
+  update,
+  quiet,
+  markers,
+}: SceneProps<CourseState, LoadBalancerSim, Beat>) {
   // When each object first appeared (for rising), and its current size.
   const born = useRef(new Map<string, number>())
   const sizes = useRef(new Map<number, number>())
@@ -48,7 +58,7 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, updat
     update((p) => ({ down: p.down.includes(i) ? p.down.filter((d) => d !== i) : [...p.down, i] }))
 
   return (
-    <Viewport target={shot.target} zoom={zoom} shake={shake} panKey={shot} label="Isometric view of the system.">
+    <Viewport target={shot.target} zoom={zoom} shake={shake} panKey={shot} label="Isometric view of the system." markers={markers}>
       {({ now, dt }) => {
         const ease = (speed: number) => 1 - Math.exp(-dt * speed)
         const riseOf = (key: string) => {
@@ -198,7 +208,8 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, updat
               )
             })}
 
-            {labels}
+            {/* Labels could give a question's answer away, so they wait. */}
+            {!quiet && labels}
           </>
         )
       }}

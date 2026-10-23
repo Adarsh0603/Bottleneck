@@ -25,13 +25,20 @@ import {
 const RISE_MS = 900
 const SLOT = 0.3
 
-export default function Scene({ simRef, lastTickAt, st, beat, shot, shake }: SceneProps<CachingState, CachingSim, Beat>) {
+export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet, markers }: SceneProps<CachingState, CachingSim, Beat>) {
   const born = useRef(new Map<string, number>())
   const sim = simRef.current
   if (!sim) return null
 
   return (
-    <Viewport target={shot.target} zoom={shot.zoom} shake={shake} panKey={shot} label="Isometric view of an app, its cache and its database.">
+    <Viewport
+      target={shot.target}
+      zoom={shot.zoom}
+      shake={shake}
+      panKey={shot}
+      label="Isometric view of an app, its cache and its database."
+      markers={markers}
+    >
       {({ now }) => {
         const riseOf = (key: string) => {
           if (!born.current.has(key)) born.current.set(key, now)
@@ -160,7 +167,8 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake }: Sce
               )
             })}
 
-            {labels}
+            {/* Labels could give a question's answer away, so they wait. */}
+            {!quiet && labels}
           </>
         )
       }}

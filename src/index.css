@@ -72,6 +72,24 @@ body {
   display: none;
 }
 
+/* A soft ring pulsing out from a tap target in the scene. */
+.marker-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: marker-pulse 1.6s ease-out infinite;
+}
+
+@keyframes marker-pulse {
+  from {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
 /* Captions and scene labels ease in. */
 .caption-in {
   animation: fade-up 0.45s ease-out;
@@ -90,7 +108,8 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .caption-in,
-  .tag-in {
+  .tag-in,
+  .marker-pulse {
     animation: none;
   }
 }

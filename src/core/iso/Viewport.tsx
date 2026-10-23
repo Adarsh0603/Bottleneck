@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
-import type { V3 } from '../types'
+import type { Marker, V3 } from '../types'
 import { frameScale, project, VIEW_H, VIEW_W } from './geometry'
-import { IsoGrid } from './primitives'
+import { IsoGrid, MarkerPin } from './primitives'
 
 const MIN_ZOOM = 0.5
 const MAX_ZOOM = 3
@@ -23,6 +23,7 @@ export default function Viewport({
   panKey,
   label,
   controlsSide = 'right',
+  markers = [],
   children,
 }: {
   target: V3
@@ -31,6 +32,7 @@ export default function Viewport({
   panKey: unknown
   label: string
   controlsSide?: 'left' | 'right'
+  markers?: Marker[]
   children: (frame: Frame) => ReactNode
 }) {
   const [now, setNow] = useState(() => performance.now())
@@ -219,6 +221,9 @@ export default function Viewport({
       >
         <IsoGrid />
         {children({ now, dt })}
+        {markers.map((m) => (
+          <MarkerPin key={m.label} marker={m} />
+        ))}
       </svg>
     </div>
   )
