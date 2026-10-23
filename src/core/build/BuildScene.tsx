@@ -41,8 +41,10 @@ export default function BuildScene({
   // Where every node stands, by key: fixed pieces and filled pads.
   const spots = new Map<string, { kind: PieceKind; x: number; z: number }>()
   for (const f of task.fixed) spots.set(f.id, f)
+  // Servers the system added itself stand on empty pads.
+  const spawned = (padId: string) => !placed[padId] && !!run.flow.node(padId)
   for (const pad of task.pads) {
-    const kind = placed[pad.id]
+    const kind = placed[pad.id] ?? (spawned(pad.id) ? pad.accepts[0] : undefined)
     if (kind) spots.set(pad.id, { kind, x: pad.x, z: pad.z })
   }
 
@@ -58,7 +60,7 @@ export default function BuildScene({
         }
         for (const key of born.current.keys()) {
           const [padId, kind] = key.split(':')
-          if (placed[padId] !== kind) born.current.delete(key)
+          if (placed[padId] !== kind && !(kind === 'spawned' && spawned(padId))) born.current.delete(key)
         }
 
         const exit = (key: string): V3 => {
@@ -95,8 +97,16 @@ export default function BuildScene({
         }
         for (const pad of task.pads) {
           const kind = placed[pad.id]
-          if (!kind) continue
           const node = flow.node(pad.id)
+          if (!kind && node && spawned(pad.id)) {
+            // Not the learner's to drag; it rises as it boots.
+            const key = `${pad.id}:spawned`
+            solids.push({
+              d: depth(pad.x, pad.z),
+              node: <Piece key={key} kind={pad.accepts[0]} x={pad.x} z={pad.z} node={node} rise={riseOf(key)} />,
+            })
+          }
+          if (!kind) continue
           solids.push({
             d: depth(pad.x, pad.z),
             node: (

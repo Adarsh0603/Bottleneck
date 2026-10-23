@@ -4,7 +4,7 @@ import type { Shot } from '../types'
 // "Build it": the learner drags pieces onto pads on the floor, and traffic
 // flows through whatever they've assembled.
 
-export type PieceKind = 'users' | 'balancer' | 'server' | 'app' | 'cache' | 'database'
+export type PieceKind = 'users' | 'balancer' | 'server' | 'app' | 'cache' | 'database' | 'autoscaler'
 
 export const PIECE_NAMES: Record<PieceKind, string> = {
   users: 'Users',
@@ -13,6 +13,7 @@ export const PIECE_NAMES: Record<PieceKind, string> = {
   app: 'App server',
   cache: 'Cache',
   database: 'Database',
+  autoscaler: 'Autoscaler',
 }
 
 // Half the footprint of each piece: where requests leave and arrive.
@@ -23,6 +24,7 @@ export const HALF: Record<PieceKind, number> = {
   app: 0.75,
   cache: 0.95,
   database: 0.85,
+  autoscaler: 0.6,
 }
 
 // A spot on the floor where pieces can be dropped.
@@ -85,7 +87,10 @@ export interface BuildTask {
   settings?: BuildSetting[]
   watch?: Watch[]
   // Turn a placement into a running system. Node keys are the fixed pieces'
-  // and pads' ids, so the scene knows where to draw each node.
+  // and pads' ids, so the scene knows where to draw each node. A node the
+  // system adds on an empty pad by itself (an autoscaler's server) is drawn
+  // as the first piece that pad accepts.
   assemble: (placed: Placement, settings: Settings, rng?: () => number) => FlowSim
-  check: (m: BuildMetrics, placed: Placement, settings: Settings) => boolean
+  // `flow` is the running system, for goals the numbers alone can't judge.
+  check: (m: BuildMetrics, placed: Placement, settings: Settings, flow?: FlowSim) => boolean
 }

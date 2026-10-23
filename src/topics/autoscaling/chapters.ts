@@ -1,4 +1,5 @@
 import type { Shot, V3 } from '../../core/types'
+import { FLASH_SALE } from './build'
 import type { AutoscaleChapter, AutoscaleState } from './types'
 import { SERVER, SERVER_X, slotZ } from './world'
 
@@ -129,5 +130,12 @@ export const CHAPTERS: AutoscaleChapter[] = [
       },
       { caption: 'Ready for the interview.', sub: 'The autoscaling details that come up most.', sheet: true, shot: WIDE },
     ],
+  },
+  {
+    title: 'Build it',
+    level: 'Intermediate',
+    initial: BASE,
+    beats: [{ caption: FLASH_SALE.title }],
+    build: FLASH_SALE,
   },
 ]

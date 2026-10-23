@@ -8,7 +8,8 @@ import { COMPACT, SHORT, useMedia } from '../useMedia'
 import BuildScene from './BuildScene'
 import { PieceIcon } from './pieces'
 import { canDrop, drop, lift, remaining } from './placement'
-import { MS_PER_TICK, Running } from './run'
+import { Source } from '../flow/nodes'
+import { MS_PER_TICK, Running, TICKS_PER_SECOND } from './run'
 import { PIECE_NAMES, type BuildTask, type PieceKind, type Placement, type Settings } from './types'
 
 interface Drag {
@@ -111,7 +112,7 @@ export default function BuildPlayer({
   useEffect(() => {
     if (solved || tick === 0) return
     const now = performance.now()
-    if (task.check(m, placed, settings)) {
+    if (task.check(m, placed, settings, run.flow)) {
       holdStart.current ??= now
       if (now - holdStart.current >= task.holdSeconds * 1000) {
         setSolved(true)
@@ -122,7 +123,9 @@ export default function BuildPlayer({
     } else {
       holdStart.current = null
     }
-  }, [solved, tick, task, m, placed, settings])
+  }, [solved, tick, task, m, placed, settings, run])
+  // Traffic right now: it can rise and fall during a build.
+  const rps = run.flow.all().reduce((sum, n) => sum + (n instanceof Source ? n.rate * TICKS_PER_SECOND : 0), 0)
   const holdProgress = holdStart.current === null ? 0 : Math.min(1, (performance.now() - holdStart.current) / (task.holdSeconds * 1000))
 
   // Dragging: from the toolbox or off a pad. A press that doesn't move is a
@@ -201,7 +204,7 @@ export default function BuildPlayer({
       <div className={`pointer-events-none absolute inset-x-0 top-0 ${short ? 'space-y-1.5 p-2' : 'space-y-2 p-3 sm:space-y-3 sm:p-4'}`}>
         <TopBar chapters={chapters} index={index} doneChapters={doneChapters} onChapter={onChapter} />
         <div className={`flex gap-2 ${compact ? 'no-scrollbar pointer-events-auto -mx-3 overflow-x-auto px-3' : 'flex-wrap'}`}>
-          <Chip icon={<ArrowIcon />} title="Traffic" value={`${task.rps} req/s`} />
+          <Chip icon={<ArrowIcon />} title="Traffic" value={`${Math.round(rps)} req/s`} />
           <Chip icon={<CrossIcon />} title="Errors" value={`${m.dropRate.toFixed(0)}%`} bad={m.dropRate > 1} />
           {(task.watch ?? [{ kind: 'busy', key: '', label: 'Busiest server' } as const]).map((w) => {
             if (w.kind === 'latency') {
