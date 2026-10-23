@@ -1,6 +1,7 @@
-import type { LoadBalancerSim, Server } from '../simulators/loadBalancer/engine'
-import { TICKS_PER_SECOND } from '../simulators/loadBalancer/useSim'
-import type { Chapter, CourseState, Shot } from './types'
+import type { Ramp, Shot } from '../../core/types'
+import type { LoadBalancerSim, Server } from './engine'
+import type { CourseState, LbChapter } from './types'
+import { TICKS_PER_SECOND } from './useSim'
 import { LB_X, SERVER_X, serverZ, STANDBY_Z } from './world'
 
 const BASE_STATE: CourseState = {
@@ -23,6 +24,12 @@ const FLEET: Shot = { target: [-0.5, 0.6, 0], zoom: 0.95, fit: true }
 const LB: Shot = { target: [LB_X, 0.5, 0], zoom: 1.8 }
 const LB_PAIR: Shot = { target: [LB_X, 0.5, STANDBY_Z / 2], zoom: 1.6 }
 const onServer = (index: number, count: number): Shot => ({ target: [SERVER_X, 1, serverZ(index, count)], zoom: 1.7 })
+
+// Traffic climbs by 1 req/s every `everyMs` until it reaches `to`.
+const trafficRamp = (to: number, everyMs: number): Ramp<CourseState> => ({
+  everyMs,
+  next: (st) => (st.rps >= to ? null : { ...st, rps: Math.floor(st.rps) + 1 }),
+})
 
 // Can this setup keep up with the traffic indefinitely, with 10% to spare?
 // An overloaded system looks fine until its queues fill, so challenges check
@@ -56,7 +63,7 @@ export function monthlyCost(st: CourseState) {
   return st.servers.reduce((sum, speed) => sum + (SIZES.find((s) => s.value === speed)?.cost ?? 50), 0)
 }
 
-export const CHAPTERS: Chapter[] = [
+export const CHAPTERS: LbChapter[] = [
   {
     title: 'One server',
     level: 'Beginner',
@@ -105,7 +112,7 @@ export const CHAPTERS: Chapter[] = [
         caption: 'Line full? Users get errors.',
         sub: 'Red cubes are requests turned away.',
         set: { rps: 3 },
-        ramp: { to: 12, everyMs: 900 },
+        ramp: trafficRamp(12, 900),
         shot: QUEUE,
         tags: ['queue', 'dropped'],
         hud: ['traffic', 'latency', 'queue', 'dropped'],
@@ -322,17 +329,3 @@ export const CHAPTERS: Chapter[] = [
     ],
   },
 ]
-
-// The state at a beat is the chapter's starting state plus every beat's
-// changes up to and including it, so jumping to any beat is consistent.
-export function stateAt(chapter: Chapter, index: number): CourseState {
-  return chapter.beats.slice(0, index + 1).reduce<CourseState>((st, b) => ({ ...st, ...b.set }), chapter.initial)
-}
-
-export function shotAt(chapter: Chapter, index: number): Shot {
-  for (let i = index; i >= 0; i--) {
-    const shot = chapter.beats[i].shot
-    if (shot) return shot
-  }
-  return WIDE
-}

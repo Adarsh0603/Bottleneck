@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { LoadBalancerSim } from '../simulators/loadBalancer/engine'
-import { TICKS_PER_SECOND } from '../simulators/loadBalancer/useSim'
-import { CHAPTERS, stateAt } from './chapters'
+import { LoadBalancerSim } from './engine'
+import { TICKS_PER_SECOND } from './useSim'
+import { stateAt } from '../../core/chapters'
+import { CHAPTERS } from './chapters'
 import { syncSim } from './sync'
 import type { CourseState } from './types'
 

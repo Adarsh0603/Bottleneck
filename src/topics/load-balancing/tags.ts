@@ -1,4 +1,4 @@
-import type { LoadBalancerSim } from '../simulators/loadBalancer/engine'
+import type { LoadBalancerSim } from './engine'
 import type { Beat } from './types'
 import { isIdle, isOverloaded } from './world'
 

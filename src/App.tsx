@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import Player from './course/Player'
+import { TOPICS } from './topics/registry'
 
 function useTheme() {
   const [dark, setDark] = useState(() => document.documentElement.classList.contains('dark'))
@@ -16,8 +16,13 @@ function useTheme() {
   return { dark, toggle }
 }
 
+// Until navigation arrives (part 2), the app opens straight into the first topic.
+const topic = TOPICS[0]
+
 export default function App() {
   const { dark, toggle } = useTheme()
+  const [chapter, setChapter] = useState(0)
+  const Play = topic.Play
 
   return (
     <div className="min-h-screen">
@@ -27,7 +32,7 @@ export default function App() {
             <img src="/favicon.svg" alt="" className="h-6 w-6" />
             <span className="font-semibold tracking-tight">Bottleneck</span>
             <span className="hidden text-line sm:inline">/</span>
-            <span className="hidden text-sm text-muted sm:inline">Load Balancing</span>
+            <span className="hidden text-sm text-muted sm:inline">{topic.title}</span>
           </div>
           <button
             onClick={toggle}
@@ -38,7 +43,7 @@ export default function App() {
           </button>
         </div>
       </header>
-      <Player />
+      {Play && <Play chapter={chapter} onChapter={setChapter} />}
     </div>
   )
 }

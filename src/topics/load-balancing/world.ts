@@ -3,9 +3,8 @@
 //
 // x runs users → load balancer → servers, y is up, z spreads servers apart.
 
-import type { LoadBalancerSim, Server, Transit } from '../simulators/loadBalancer/engine'
-
-export type V3 = [number, number, number]
+import type { V3 } from '../../core/types'
+import type { LoadBalancerSim, Server, Transit } from './engine'
 
 export const USERS_X = -6.5
 export const LB_X = -2

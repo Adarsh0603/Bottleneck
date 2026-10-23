@@ -1,5 +1,5 @@
-import type { LoadBalancerSim } from '../simulators/loadBalancer/engine'
-import { TICKS_PER_SECOND } from '../simulators/loadBalancer/useSim'
+import type { LoadBalancerSim } from './engine'
+import { TICKS_PER_SECOND } from './useSim'
 import type { CourseState } from './types'
 
 // Make the simulation match the state the current beat and controls describe.
