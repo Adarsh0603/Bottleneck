@@ -36,12 +36,10 @@ export default function Player<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
   const [solvedBeat, setSolvedBeat] = useState(-1)
   const [sound, setSound] = useState(isSoundOn)
   const [menuOpen, setMenuOpen] = useState(false)
-  // Small screens can fold the caption area down to just the headline. Short
-  // screens (a phone on its side) start folded, since there's so little room.
+  // Small screens get a sideways-scrolling stats row; short ones (a phone on
+  // its side) also get tighter spacing and smaller text.
   const compact = useMedia(COMPACT)
   const short = useMedia(SHORT)
-  const [foldedPref, setFolded] = useState(() => window.matchMedia(SHORT).matches)
-  const folded = compact && foldedPref
 
   const stRef = useRef(st)
   stRef.current = st
@@ -225,7 +223,7 @@ export default function Player<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
       {beat.sheet && topic.reference && <ReferenceSheet reference={topic.reference} />}
 
       {/* Bottom: challenge, caption, controls and navigation. */}
-      {/* Phones can fold this down to just the caption, to see more of the scene. */}
+      {/* Bottom: challenge, caption, controls and navigation. */}
       <div
         className={`pointer-events-none absolute inset-x-0 bottom-0 bg-linear-to-t from-bg via-bg/90 to-transparent ${
           short ? 'px-3 pb-2 pt-6' : 'px-3 pb-4 pt-10 sm:px-4 sm:pb-6 sm:pt-16'
@@ -235,11 +233,11 @@ export default function Player<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
           <div key={`${index}-${beatIdx}`} className="caption-in pointer-events-auto min-w-0">
             {challenge && (
               <div
-                className={`mb-3 max-w-md rounded-xl border p-3 transition sm:mb-4 ${
+                className={`max-w-md rounded-xl border transition ${short ? 'mb-2 px-3 py-2' : 'mb-3 p-3 sm:mb-4'} ${
                   solved ? 'border-fg bg-fg text-bg' : 'border-line bg-bg/80 backdrop-blur'
-                } ${folded ? 'hidden' : ''}`}
+                }`}
               >
-                <div className="font-mono text-[10px] uppercase tracking-widest opacity-70">
+                <div className={`font-mono text-[10px] uppercase tracking-widest opacity-70 ${short ? 'hidden' : ''}`}>
                   {solved ? '✓ Solved' : 'Challenge'}
                 </div>
                 <div className="mt-1 text-sm font-medium">{solved ? challenge.win : challenge.goal}</div>
@@ -251,10 +249,8 @@ export default function Player<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
               </div>
             )}
             <h2 className={`font-semibold tracking-tight ${short ? 'text-lg' : 'text-xl sm:text-3xl'}`}>{beat.caption}</h2>
-            <div className={folded ? 'hidden' : ''}>
-              {beat.sub && <p className="mt-1 text-sm text-muted sm:text-base">{beat.sub}</p>}
-              <Controls {...panel} />
-            </div>
+            {beat.sub && <p className="mt-1 text-sm text-muted sm:text-base">{beat.sub}</p>}
+            <Controls {...panel} />
           </div>
 
           <div className="pointer-events-auto flex shrink-0 items-center gap-2">
@@ -266,16 +262,6 @@ export default function Player<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
             >
               ←
             </button>
-            {compact && (
-              <button
-                onClick={() => setFolded(!folded)}
-                className="h-10 w-10 shrink-0 rounded-full border border-line bg-bg/80 text-muted backdrop-blur transition hover:text-fg"
-                aria-label={folded ? 'Show details' : 'Hide details'}
-                aria-expanded={!folded}
-              >
-                {folded ? '▴' : '▾'}
-              </button>
-            )}
             {lastBeat && lastChapter ? (
               <button
                 onClick={onFinish}
