@@ -51,6 +51,14 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* Rows that scroll sideways on phones, without a visible scrollbar. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Captions and scene labels ease in. */
 .caption-in {
   animation: fade-up 0.45s ease-out;

@@ -11,6 +11,7 @@ import { actionLabel, nextTopic, openTopic, solvedCount, statusOf, topicNumber, 
 
 const OVERVIEW = { target: [0, 0.8, 0] as V3, zoom: 1.05 }
 const FOCUS_ZOOM = 2.1
+const PHONE_ZOOM = 1.6
 
 function useWide() {
   const query = '(min-width: 768px)'
@@ -39,18 +40,23 @@ export default function HomeMap({ onView }: { onView: (view: HomeView) => void }
   }, [])
 
   // Frame the chosen building beside the card: to the left of it on wide
-  // screens, above it when the card is a sheet at the bottom.
+  // screens, above it when the card is a sheet at the bottom. With nothing
+  // chosen, wide screens see the whole city; phones start zoomed in on the
+  // district of the next topic (the whole city would be too small to read).
+  const home = DISTRICTS[(next ?? LOTS[0].topic).track]
   const target: V3 = lot
     ? wide
       ? [lot.x + 1, lot.h * 0.5, lot.z + 1]
       : [lot.x - 0.9, lot.h * 0.5, lot.z + 0.9]
-    : OVERVIEW.target
-  const zoom = lot ? FOCUS_ZOOM : OVERVIEW.zoom
+    : wide
+      ? OVERVIEW.target
+      : [home.x - 0.6, 1, home.z + 0.6]
+  const zoom = lot ? FOCUS_ZOOM : wide ? OVERVIEW.zoom : PHONE_ZOOM
 
   const select = (id: string) => setSelected((s) => (s === id ? null : id))
 
   return (
-    <div className="relative h-[calc(100svh-57px)] min-h-[560px] w-full overflow-hidden">
+    <div className="relative h-[calc(100svh-57px)] min-h-[260px] w-full overflow-hidden">
       <div className="absolute inset-0">
         <Viewport
           target={target}
@@ -62,6 +68,7 @@ export default function HomeMap({ onView }: { onView: (view: HomeView) => void }
         >
           {() => (
             <City
+              showDistricts={wide}
               progress={progress}
               selected={selected}
               hovered={hovered}
@@ -74,19 +81,24 @@ export default function HomeMap({ onView }: { onView: (view: HomeView) => void }
         </Viewport>
       </div>
 
-      {/* Intro and continue, top-left. */}
-      <div className="pointer-events-none absolute left-4 top-4 max-w-sm space-y-3">
-        <div className="rounded-2xl border border-line bg-bg/80 p-4 backdrop-blur">
-          <div className="font-mono text-[10px] uppercase tracking-widest text-muted">System design, visually</div>
-          <h1 className="mt-1 text-lg font-semibold tracking-tight">Learn system design by breaking things.</h1>
-          <p className="mt-1 text-sm text-muted">Pick a building to start.</p>
+      {/* Intro and continue: top-left on larger screens; at the bottom on
+          phones, out of the way of the buildings (hidden while a card is open). */}
+      <div
+        className={`pointer-events-none absolute inset-x-3 bottom-3 max-w-sm space-y-2 sm:inset-x-auto sm:bottom-auto sm:left-4 sm:top-4 sm:space-y-3 ${
+          lot ? 'hidden sm:block' : ''
+        }`}
+      >
+        <div className="rounded-2xl border border-line bg-bg/80 p-3 backdrop-blur sm:p-4">
+          <div className="hidden font-mono text-[10px] uppercase tracking-widest text-muted sm:block">System design, visually</div>
+          <h1 className="text-base font-semibold tracking-tight sm:mt-1 sm:text-lg">Learn system design by breaking things.</h1>
+          <p className="mt-1 text-sm text-muted">Tap a building to start. Pinch or drag to look around.</p>
         </div>
         <div className="pointer-events-auto">
           <ContinueButton />
         </div>
       </div>
 
-      <div className="absolute right-4 top-4 z-30">
+      <div className="absolute right-3 top-3 z-30 sm:right-4 sm:top-4">
         <ViewToggle view="map" onChange={onView} />
       </div>
 
@@ -98,6 +110,7 @@ export default function HomeMap({ onView }: { onView: (view: HomeView) => void }
 }
 
 function City({
+  showDistricts,
   progress,
   selected,
   hovered,
@@ -106,6 +119,7 @@ function City({
   onHover,
   onClear,
 }: {
+  showDistricts: boolean
   progress: ReturnType<typeof useProgress>
   selected: string | null
   hovered: string | null
@@ -157,8 +171,9 @@ function City({
         />
       ))}
 
-      {/* District names float above each district's back corner. */}
-      {TRACKS.map((track) => {
+      {/* District names float above each district's back corner. Phones are
+          zoomed into one district, where they'd only cover buildings. */}
+      {showDistricts && TRACKS.map((track) => {
         const d = DISTRICTS[track.id]
         const tallest = Math.max(...LOTS.filter((l) => l.topic.track === track.id).map((l) => l.h))
         return <Tag key={track.id} at={[d.x + DISTRICT_HALF, tallest + 0.6, d.z - DISTRICT_HALF]} label={track.title} />

@@ -5,15 +5,15 @@ export function Chip({ icon, title, value, bad }: { icon: ReactNode; title: stri
   return (
     <div
       aria-label={`${title}: ${value}`}
-      className={`min-w-28 rounded-xl border bg-bg/80 px-3 py-2 backdrop-blur transition-colors ${
+      className={`min-w-24 shrink-0 rounded-xl border bg-bg/80 px-2.5 py-1.5 backdrop-blur transition-colors sm:min-w-28 sm:px-3 sm:py-2 ${
         bad ? 'border-danger' : 'border-line'
       }`}
     >
-      <div className={`flex items-center gap-1.5 text-[11px] font-medium ${bad ? 'text-danger' : 'text-muted'}`}>
+      <div className={`chip-title flex items-center gap-1.5 whitespace-nowrap text-[11px] font-medium ${bad ? 'text-danger' : 'text-muted'}`}>
         {icon}
         {title}
       </div>
-      <div className={`mt-0.5 font-mono text-base tabular-nums ${bad ? 'text-danger' : ''}`}>{value}</div>
+      <div className={`mt-0.5 whitespace-nowrap font-mono text-sm tabular-nums sm:text-base ${bad ? 'text-danger' : ''}`}>{value}</div>
     </div>
   )
 }

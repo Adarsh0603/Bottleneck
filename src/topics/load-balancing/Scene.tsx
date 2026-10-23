@@ -128,7 +128,7 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, updat
               t.at === 'queue'
                 ? [queueSpot(server.speed, i, count, (limit - 1) / 2)[0], 0.7, z]
                 : t.at === 'end'
-                  ? [queueSpot(server.speed, i, count, limit)[0] - 0.4, 1.2, z]
+                  ? [queueSpot(server.speed, i, count, limit)[0] - 0.5, 0.3, z + 1]
                   : [SERVER_X, top + n * 0.6, z]
             labels.push(<Tag key={`${server.id}-${t.label}`} at={at} label={t.label} danger={t.danger} />)
           })

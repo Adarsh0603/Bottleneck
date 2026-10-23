@@ -94,7 +94,8 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake }: Sce
         if (tags.has('hit') && cacheUp) tag('hit', [(APP.x + CACHE.x) / 2, 1.3, 0], 'Hit · answered from memory')
         if (tags.has('miss') && cacheUp) tag('miss', [(CACHE.x + DB.x) / 2 - 0.4, 1.3, 0], 'Miss · ask the database')
         if (tags.has('queue')) tag('queue', [dbQueueSpot((limit - 1) / 2)[0], 0.75, 0], `Queue · ${sim.db.queue.length}/${limit}`, overloaded)
-        if (tags.has('dropped') && overloaded) tag('dropped', [dbQueueSpot(limit)[0] - 0.3, 1.25, 0], 'Dropped', true)
+        // In front of the queue's end, where the red cubes fall, clear of the queue label.
+        if (tags.has('dropped') && overloaded) tag('dropped', [dbQueueSpot(limit)[0] - 0.5, 0.3, 1], 'Dropped', true)
         if (tags.has('lru') && cacheUp && sim.cache.entries.size > 0) tag('lru', cellSpot(0), 'Evicted next')
         if (tags.has('waiting') && waiting > 0) tag('waiting', [WAIT_SPOT[0], waiting * 0.26 + 0.4, WAIT_SPOT[2]], `Waiting · ${waiting}`)
 
