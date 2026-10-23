@@ -51,6 +51,19 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* The isometric floor grid used in the scenes, as a page background: fine
+   lines every cell, stronger ones every fifth, fading out down the page. */
+.iso-backdrop {
+  --cell: 28px;
+  background-image:
+    repeating-linear-gradient(30deg, color-mix(in srgb, var(--muted) 30%, transparent) 0 1px, transparent 1px calc(var(--cell) * 5)),
+    repeating-linear-gradient(150deg, color-mix(in srgb, var(--muted) 30%, transparent) 0 1px, transparent 1px calc(var(--cell) * 5)),
+    repeating-linear-gradient(30deg, var(--line) 0 1px, transparent 1px var(--cell)),
+    repeating-linear-gradient(150deg, var(--line) 0 1px, transparent 1px var(--cell));
+  -webkit-mask-image: linear-gradient(to bottom, #000, rgb(0 0 0 / 0.5) 40%, transparent 85%);
+  mask-image: linear-gradient(to bottom, #000, rgb(0 0 0 / 0.5) 40%, transparent 85%);
+}
+
 /* Rows that scroll sideways on phones, without a visible scrollbar. */
 .no-scrollbar {
   scrollbar-width: none;
