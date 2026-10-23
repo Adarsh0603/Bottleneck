@@ -11,6 +11,7 @@
 import { Cache } from '../../core/flow/cache'
 import { FlowSim } from '../../core/flow/engine'
 import { Source, Worker } from '../../core/flow/nodes'
+import { pick, zipfTable } from '../../core/flow/popularity'
 import type { CachingState } from './types'
 
 export const TICKS_PER_SECOND = 20
@@ -28,21 +29,8 @@ const DB_LOOKUP = 15 // ticks per lookup per slot: 4 slots ≈ 5.3 lookups/s
 const VIRAL_LOOKUP = 45 // the viral item is expensive to build, e.g. a home feed
 const WINDOW = TICKS_PER_SECOND * 3
 
-// Popularity follows a Zipf curve: item k is asked for ~1/(k+1) as often as
-// the most popular one. Precomputed as a cumulative table.
-function zipfTable(n: number) {
-  const weights = Array.from({ length: n }, (_, k) => 1 / (k + 1))
-  const total = weights.reduce((a, b) => a + b, 0)
-  let sum = 0
-  return weights.map((w) => (sum += w / total))
-}
 const ZIPF = zipfTable(ITEMS)
 const ZIPF_REST = zipfTable(ITEMS - 1)
-
-const pick = (table: number[], r: number) => {
-  const i = table.findIndex((c) => r < c)
-  return i < 0 ? table.length - 1 : i
-}
 
 // Which item a request asks for, following the popularity curve.
 export const popularItem = (rng: () => number) => pick(ZIPF, rng())

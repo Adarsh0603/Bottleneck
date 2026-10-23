@@ -2,6 +2,8 @@ import type { ComponentType } from 'react'
 import type { Level } from '../core/types'
 import { CHAPTERS as CACHING_CHAPTERS } from './caching/chapters'
 import CachingPlay from './caching/Play'
+import { CHAPTERS as CDN_CHAPTERS } from './cdn/chapters'
+import CdnPlay from './cdn/Play'
 import { CHAPTERS as LOAD_BALANCING_CHAPTERS } from './load-balancing/chapters'
 import LoadBalancingPlay from './load-balancing/Play'
 
@@ -61,7 +63,15 @@ export const TOPICS: TopicEntry[] = [
     challenges: challengeIds(CACHING_CHAPTERS),
     Play: CachingPlay,
   },
-  { id: 'cdn', title: 'CDN', track: 'scaling', pitch: 'Serve users from a box near them, not across the world.' },
+  {
+    id: 'cdn',
+    title: 'CDN',
+    track: 'scaling',
+    pitch: 'Serve users from a box near them, not across the world.',
+    chapters: CDN_CHAPTERS.map((c) => c.title),
+    challenges: challengeIds(CDN_CHAPTERS),
+    Play: CdnPlay,
+  },
   { id: 'autoscaling', title: 'Autoscaling', track: 'scaling', pitch: 'Add and remove servers as traffic rises and falls.' },
 
   { id: 'replication', title: 'Database replication', track: 'data', pitch: 'Copy data to replicas for reads, and live with lag.' },

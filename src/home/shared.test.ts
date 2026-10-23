@@ -32,6 +32,8 @@ describe('completion helpers', () => {
   it('suggests the next unfinished topic after the one just completed', () => {
     const p = finish({}, lb)
     expect(nextAfter(p, lb)?.id).toBe(builtTopics[1].id)
-    expect(nextAfter(finish(p, caching), caching)).toBeUndefined()
+    expect(nextAfter(finish(p, caching), caching)?.id).toBe(builtTopics[2].id)
+    const everything = builtTopics.reduce((acc, t) => finish(acc, t), {} as Progress)
+    expect(nextAfter(everything, caching)).toBeUndefined()
   })
 })
