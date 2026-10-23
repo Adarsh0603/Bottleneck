@@ -1,5 +1,5 @@
 import { useEffect, useState, type KeyboardEvent } from 'react'
-import { depth, points, project } from '../core/iso/geometry'
+import { depth, points, project, S } from '../core/iso/geometry'
 import { FloorPath, IsoBox, Tag } from '../core/iso/primitives'
 import Viewport from '../core/iso/Viewport'
 import { topicProgress, useProgress } from '../core/progress'
@@ -173,12 +173,20 @@ function City({
         />
       ))}
 
-      {/* District names float above each district's back corner. Phones are
-          zoomed into one district, where they'd only cover buildings. */}
+      {/* District names float just outside each district's outer corner (the
+          left or right one on screen; downtown's is the back one, above its
+          towers), clear of the buildings. Phones are zoomed into one
+          district, where they'd only get in the way. */}
       {showDistricts && TRACKS.map((track) => {
         const d = DISTRICTS[track.id]
-        const tallest = Math.max(...LOTS.filter((l) => l.topic.track === track.id).map((l) => l.h))
-        return <Tag key={track.id} at={[d.x + DISTRICT_HALF, tallest + 0.6, d.z - DISTRICT_HALF]} label={track.title} />
+        const r = DISTRICT_HALF
+        const side = Math.sign(d.x + d.z)
+        if (side === 0) {
+          const tallest = Math.max(...LOTS.filter((l) => l.topic.track === track.id).map((l) => l.h))
+          return <Tag key={track.id} at={[d.x + r, tallest + 0.6, d.z - r]} label={track.title} />
+        }
+        const out = r + 0.9
+        return <Tag key={track.id} at={[d.x + side * out, 0.3, d.z + side * out]} label={track.title} />
       })}
 
       {/* One label per building at most: chosen or hovered names it; otherwise "Next". */}
@@ -195,6 +203,40 @@ function City({
         )
       })}
     </>
+  )
+}
+
+// Splits a name into lines of at most `max` characters, at spaces.
+function wrap(text: string, max: number) {
+  const lines: string[] = []
+  for (const word of text.split(' ')) {
+    const last = lines.length - 1
+    if (last >= 0 && lines[last].length + 1 + word.length <= max) lines[last] += ` ${word}`
+    else lines.push(word)
+  }
+  return lines
+}
+
+// A topic's name, painted like a sign at the top of its building's front
+// wall. Up to 7px, smaller when a long word wouldn't fit across the wall.
+function WallSign({ lot, color }: { lot: Lot; color: string }) {
+  const { x, z, size, h, topic } = lot
+  const [sx, sy] = project([x - size / 2, h, z + size / 2])
+  const pad = 3.5
+  const room = size * S - pad * 2
+  const name = (topic.short ?? topic.title).toUpperCase()
+  const longest = Math.max(...name.split(' ').map((w) => w.length))
+  const advance = 0.62 // em, the monospace character width, with a little slack
+  const font = Math.min(7, room / (longest * advance))
+  const lines = wrap(name, Math.floor(room / (font * advance)))
+  return (
+    <text transform={`matrix(0.866 -0.5 0 1 ${sx} ${sy})`} className="pointer-events-none font-mono" fontSize={font} fill={color}>
+      {lines.map((line, i) => (
+        <tspan key={line} x={pad} y={pad + 7 + i * 8.5}>
+          {line}
+        </tspan>
+      ))}
+    </text>
   )
 }
 
@@ -271,6 +313,7 @@ function Building({
       ) : (
         <IsoBox x={x} z={z} w={size} d={size} h={h} />
       )}
+      <WallSign lot={lot} color={status === 'done' ? 'var(--bg)' : status === 'soon' ? 'var(--muted)' : 'var(--fg)'} />
       {/* Topic number on the roof, matching the list view. */}
       <text
         x={rx}

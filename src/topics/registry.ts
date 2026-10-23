@@ -35,6 +35,7 @@ export interface PlayProps {
 export interface TopicEntry {
   id: string
   title: string
+  short?: string // a shorter name for tight spots, like the map
   track: TrackId
   pitch: string
   chapters?: string[]
@@ -84,18 +85,18 @@ export const TOPICS: TopicEntry[] = [
     Play: AutoscalingPlay,
   },
 
-  { id: 'replication', title: 'Database replication', track: 'data', pitch: 'Copy data to replicas for reads, and live with lag.' },
+  { id: 'replication', title: 'Database replication', short: 'Replication', track: 'data', pitch: 'Copy data to replicas for reads, and live with lag.' },
   { id: 'sharding', title: 'Sharding', track: 'data', pitch: 'Split one database into many by key.' },
   { id: 'consistent-hashing', title: 'Consistent hashing', track: 'data', pitch: 'Add a node without reshuffling every key.' },
   { id: 'cap', title: 'CAP & consistency', track: 'data', pitch: 'When the network splits, choose: correct or available.' },
 
   { id: 'queues', title: 'Message queues', track: 'async', pitch: 'Absorb bursts and do slow work in the background.' },
-  { id: 'pubsub', title: 'Pub/sub & streams', track: 'async', pitch: 'One event, many listeners, in order.' },
+  { id: 'pubsub', title: 'Pub/sub & streams', short: 'Pub/sub', track: 'async', pitch: 'One event, many listeners, in order.' },
   { id: 'rate-limiting', title: 'Rate limiting', track: 'async', pitch: 'Protect everyone from one noisy client.' },
-  { id: 'circuit-breakers', title: 'Timeouts, retries & circuit breakers', track: 'async', pitch: 'Stop one slow dependency taking the site down.' },
+  { id: 'circuit-breakers', title: 'Timeouts, retries & circuit breakers', short: 'Circuit breakers', track: 'async', pitch: 'Stop one slow dependency taking the site down.' },
 
-  { id: 'consensus', title: 'Leader election & consensus', track: 'distributed', pitch: 'Agree on one leader, even when nodes die.' },
-  { id: 'idempotency', title: 'Idempotency & exactly-once', track: 'distributed', pitch: 'Retry safely without charging twice.' },
+  { id: 'consensus', title: 'Leader election & consensus', short: 'Consensus', track: 'distributed', pitch: 'Agree on one leader, even when nodes die.' },
+  { id: 'idempotency', title: 'Idempotency & exactly-once', short: 'Idempotency', track: 'distributed', pitch: 'Retry safely without charging twice.' },
   { id: 'sagas', title: 'Distributed transactions', track: 'distributed', pitch: 'Finish or cleanly undo work across services.' },
   { id: 'bloom-filters', title: 'Bloom filters', track: 'distributed', pitch: 'Answer “have I seen this?” in a few bits.' },
 
