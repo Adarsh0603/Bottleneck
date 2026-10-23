@@ -47,6 +47,14 @@ export interface Stats {
   latencies: number[]
 }
 
+// A request that was turned away. serverId is missing when no server could
+// take it at all. Kept briefly so views can animate the failure.
+export interface Drop {
+  jobId: number
+  serverId?: number
+  tick: number
+}
+
 export const DEFAULT_CONFIG: SimConfig = {
   requestsPerTick: 0.5,
   minWork: 10,
@@ -56,6 +64,7 @@ export const DEFAULT_CONFIG: SimConfig = {
 }
 
 const LATENCY_WINDOW = 200
+const DROP_MEMORY_TICKS = 40
 const SERVER_NAMES = 'ABCDEFGHIJKLMNOP'
 
 export class LoadBalancerSim {
@@ -65,6 +74,7 @@ export class LoadBalancerSim {
   servers: Server[] = []
   inTransit: Transit[] = []
   stats: Stats = { completed: 0, dropped: 0, latencies: [] }
+  recentDrops: Drop[] = []
 
   private rng: () => number
   private rrIndex = 0
@@ -142,6 +152,7 @@ export class LoadBalancerSim {
 
   step() {
     this.tick++
+    this.recentDrops = this.recentDrops.filter((d) => this.tick - d.tick <= DROP_MEMORY_TICKS)
     this.spawnArrivals()
     this.advanceTransit()
     for (const server of this.servers) {
@@ -170,7 +181,7 @@ export class LoadBalancerSim {
       const job: Job = { id: this.nextJobId++, work, remaining: work, createdAt: this.tick }
       const server = this.pickServer()
       if (!server) {
-        this.stats.dropped++
+        this.drop(job.id)
         continue
       }
       this.inTransit.push({ job, serverId: server.id, progress: 0 })
@@ -187,7 +198,7 @@ export class LoadBalancerSim {
       }
       const server = this.servers.find((s) => s.id === t.serverId)
       if (!server || !server.alive || server.queue.length >= this.config.queueLimit) {
-        this.stats.dropped++
+        this.drop(t.job.id, t.serverId)
       } else {
         server.queue.push(t.job)
       }
@@ -214,12 +225,18 @@ export class LoadBalancerSim {
     server.active = stillWorking
   }
 
+  private drop(jobId: number, serverId?: number) {
+    this.stats.dropped++
+    this.recentDrops.push({ jobId, serverId, tick: this.tick })
+  }
+
   private failServer(server: Server) {
-    const lost =
-      server.active.length +
-      server.queue.length +
-      this.inTransit.filter((t) => t.serverId === server.id).length
-    this.stats.dropped += lost
+    const lost = [
+      ...server.active,
+      ...server.queue,
+      ...this.inTransit.filter((t) => t.serverId === server.id).map((t) => t.job),
+    ]
+    for (const job of lost) this.drop(job.id, server.id)
     server.active = []
     server.queue = []
     this.inTransit = this.inTransit.filter((t) => t.serverId !== server.id)

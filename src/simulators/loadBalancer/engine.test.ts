@@ -89,6 +89,17 @@ describe('failures', () => {
     expect(s.stats.dropped).toBe(5)
   })
 
+  it('remembers recent drops briefly, then forgets them', () => {
+    const s = new LoadBalancerSim({ requestsPerTick: 1, queueLimit: 0, transitTicks: 1 }, () => 0)
+    s.addServer(1)
+    s.step()
+    expect(s.recentDrops).toEqual([{ jobId: 0, serverId: 0, tick: 1 }])
+    s.config.requestsPerTick = 0
+    for (let i = 0; i < 50; i++) s.step()
+    expect(s.recentDrops).toHaveLength(0)
+    expect(s.stats.dropped).toBe(1)
+  })
+
   it('drops requests when the queue is full', () => {
     const s = new LoadBalancerSim({ requestsPerTick: 5, queueLimit: 2, transitTicks: 1 }, () => 0)
     s.addServer(1, 1)

@@ -30,6 +30,8 @@ export function useSim(setup: (sim: LoadBalancerSim) => void, initialRps: number
   const rpsRef = useRef(rps)
   const simRef = useRef<LoadBalancerSim | null>(null)
   const history = useRef<{ completed: number; dropped: number }[]>([])
+  // When the last tick ran, so 3D views can interpolate between ticks.
+  const lastTickAt = useRef(0)
 
   const build = () => {
     const sim = new LoadBalancerSim({ requestsPerTick: rpsRef.current / TICKS_PER_SECOND })
@@ -43,6 +45,7 @@ export function useSim(setup: (sim: LoadBalancerSim) => void, initialRps: number
     const id = setInterval(() => {
       const sim = simRef.current!
       sim.step()
+      lastTickAt.current = performance.now()
       history.current.push({ completed: sim.stats.completed, dropped: sim.stats.dropped })
       if (history.current.length > WINDOW_TICKS + 1) history.current.shift()
       setFrame((f) => f + 1)
@@ -74,6 +77,8 @@ export function useSim(setup: (sim: LoadBalancerSim) => void, initialRps: number
 
   return {
     sim,
+    simRef,
+    lastTickAt,
     rps,
     setRps,
     running,

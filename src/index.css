@@ -92,8 +92,26 @@ body {
   }
 }
 
+/* 3D prototype: captions and scene tags ease in. */
+.caption-in {
+  animation: fade-up 0.45s ease-out;
+}
+
+.tag-in {
+  animation: fade-up 0.35s ease-out;
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .grid-floor::before {
+  .grid-floor::before,
+  .caption-in,
+  .tag-in {
     animation: none;
   }
 }
