@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { shotAt, stateAt } from './chapters'
+import { shotAt, stateAt, stateBefore } from './chapters'
 import { isSoundOn, play, setSoundOn } from './sound'
 import { COMPACT, SHORT, useMedia } from './useMedia'
-import type { BaseBeat, Reference, TopicSpec } from './types'
+import type { BaseBeat, Predict, Reference, TopicSpec } from './types'
 
 // Plays one chapter of any topic: the scene, captions, live stats, controls,
 // practice challenges, sound and navigation. Remounted per chapter (keyed by
@@ -29,9 +29,14 @@ export default function Player<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
   const chapters = topic.chapters
   const chapter = chapters[index]
   const first = Math.min(Math.max(0, startStep), chapter.beats.length - 1)
+  const firstAsks = !!chapter.beats[first].predict
   const [beatIdx, setBeatIdx] = useState(first)
-  const [st, setSt] = useState(() => stateAt(chapter, first))
-  const [ramping, setRamping] = useState(!!chapter.beats[first].ramp)
+  // A beat with a prediction first waits on the previous moment, frozen,
+  // until the learner answers; then it plays.
+  const [asking, setAsking] = useState(firstAsks)
+  const [guess, setGuess] = useState<number | null>(null)
+  const [st, setSt] = useState(() => (firstAsks ? stateBefore(chapter, first) : stateAt(chapter, first)))
+  const [ramping, setRamping] = useState(!firstAsks && !!chapter.beats[first].ramp)
   const [shake, setShake] = useState(0)
   const [solvedBeat, setSolvedBeat] = useState(-1)
   const [sound, setSound] = useState(isSoundOn)
@@ -43,7 +48,7 @@ export default function Player<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
 
   const stRef = useRef(st)
   stRef.current = st
-  const runtime = topic.useRuntime(stRef)
+  const runtime = topic.useRuntime(stRef, asking)
   const { sim, metrics, tick } = runtime
   const { sync, feedback, dropCount } = topic
 
@@ -58,10 +63,21 @@ export default function Player<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
   const go = (i: number) => {
     if (i >= chapter.beats.length) return onChapter(Math.min(index + 1, chapters.length - 1))
     if (i < 0) return onChapter(Math.max(index - 1, 0))
+    const asks = !!chapter.beats[i].predict
     setBeatIdx(i)
-    setSt(stateAt(chapter, i))
-    setRamping(!!chapter.beats[i].ramp)
+    setAsking(asks)
+    setGuess(null)
+    setSt(asks ? stateBefore(chapter, i) : stateAt(chapter, i))
+    setRamping(!asks && !!chapter.beats[i].ramp)
     holdStart.current = null
+  }
+
+  // The learner picked an answer: play the beat.
+  const answer = (choice: number) => {
+    setGuess(choice)
+    setAsking(false)
+    setSt(stateAt(chapter, beatIdx))
+    setRamping(!!beat.ramp)
   }
 
   useEffect(() => {
@@ -117,7 +133,7 @@ export default function Player<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
     }
     lastDrops.current = drops
 
-    if (!challenge || solved || tick === 0) return
+    if (!challenge || solved || asking || tick === 0) return
     if (challenge.check({ m: metrics, st, sim })) {
       holdStart.current ??= now
       if (now - holdStart.current >= challenge.holdSeconds * 1000) {
@@ -128,12 +144,17 @@ export default function Player<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
     } else {
       holdStart.current = null
     }
-  }, [dropCount, sim, tick, challenge, solved, st, beatIdx, metrics])
+  }, [dropCount, sim, tick, challenge, solved, asking, st, beatIdx, metrics])
 
   const holdProgress =
     challenge && holdStart.current !== null
       ? Math.min(1, (performance.now() - holdStart.current) / (challenge.holdSeconds * 1000))
       : 0
+
+  // While a question is open, the scene keeps showing the previous moment:
+  // its camera and labels, not the ones of the beat about to play.
+  const sceneIdx = asking ? Math.max(beatIdx - 1, 0) : beatIdx
+  const sceneBeat = chapter.beats[sceneIdx]
 
   const update = (change: (p: S) => Partial<S>) => setSt((p) => ({ ...p, ...change(p) }))
   const panel = { st, sim, m: metrics, beat, update, stopRamp: () => setRamping(false) }
@@ -146,8 +167,8 @@ export default function Player<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
           simRef={runtime.simRef}
           lastTickAt={runtime.lastTickAt}
           st={st}
-          beat={beat}
-          shot={shotAt(chapter, beatIdx)}
+          beat={sceneBeat}
+          shot={shotAt(chapter, sceneIdx)}
           shake={shake}
           update={update}
         />
@@ -222,35 +243,41 @@ export default function Player<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
 
       {beat.sheet && topic.reference && <ReferenceSheet reference={topic.reference} />}
 
-      {/* Bottom: challenge, caption, controls and navigation. */}
-      {/* Bottom: challenge, caption, controls and navigation. */}
+      {/* Bottom: question or challenge, caption, controls and navigation. */}
       <div
         className={`pointer-events-none absolute inset-x-0 bottom-0 bg-linear-to-t from-bg via-bg/90 to-transparent ${
           short ? 'px-3 pb-2 pt-6' : 'px-3 pb-4 pt-10 sm:px-4 sm:pb-6 sm:pt-16'
         }`}
       >
         <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-5">
-          <div key={`${index}-${beatIdx}`} className="caption-in pointer-events-auto min-w-0">
-            {challenge && (
-              <div
-                className={`max-w-md rounded-xl border transition ${short ? 'mb-2 px-3 py-2' : 'mb-3 p-3 sm:mb-4'} ${
-                  solved ? 'border-fg bg-fg text-bg' : 'border-line bg-bg/80 backdrop-blur'
-                }`}
-              >
-                <div className={`font-mono text-[10px] uppercase tracking-widest opacity-70 ${short ? 'hidden' : ''}`}>
-                  {solved ? '✓ Solved' : 'Challenge'}
-                </div>
-                <div className="mt-1 text-sm font-medium">{solved ? challenge.win : challenge.goal}</div>
-                {!solved && (
-                  <div className="mt-2 h-1 overflow-hidden rounded-full bg-line">
-                    <div className="h-full rounded-full bg-fg transition-[width]" style={{ width: `${holdProgress * 100}%` }} />
+          <div key={`${index}-${beatIdx}-${asking}`} className="caption-in pointer-events-auto min-w-0">
+            {asking && beat.predict ? (
+              <PredictCard predict={beat.predict} short={short} onAnswer={answer} />
+            ) : (
+              <>
+                {guess !== null && beat.predict && <PredictResult predict={beat.predict} guess={guess} short={short} />}
+                {challenge && (
+                  <div
+                    className={`max-w-md rounded-xl border transition ${short ? 'mb-2 px-3 py-2' : 'mb-3 p-3 sm:mb-4'} ${
+                      solved ? 'border-fg bg-fg text-bg' : 'border-line bg-bg/80 backdrop-blur'
+                    }`}
+                  >
+                    <div className={`font-mono text-[10px] uppercase tracking-widest opacity-70 ${short ? 'hidden' : ''}`}>
+                      {solved ? '✓ Solved' : 'Challenge'}
+                    </div>
+                    <div className="mt-1 text-sm font-medium">{solved ? challenge.win : challenge.goal}</div>
+                    {!solved && (
+                      <div className="mt-2 h-1 overflow-hidden rounded-full bg-line">
+                        <div className="h-full rounded-full bg-fg transition-[width]" style={{ width: `${holdProgress * 100}%` }} />
+                      </div>
+                    )}
                   </div>
                 )}
-              </div>
+                <h2 className={`font-semibold tracking-tight ${short ? 'text-lg' : 'text-xl sm:text-3xl'}`}>{beat.caption}</h2>
+                {beat.sub && <p className="mt-1 text-sm text-muted sm:text-base">{beat.sub}</p>}
+                <Controls {...panel} />
+              </>
             )}
-            <h2 className={`font-semibold tracking-tight ${short ? 'text-lg' : 'text-xl sm:text-3xl'}`}>{beat.caption}</h2>
-            {beat.sub && <p className="mt-1 text-sm text-muted sm:text-base">{beat.sub}</p>}
-            <Controls {...panel} />
           </div>
 
           <div className="pointer-events-auto flex shrink-0 items-center gap-2">
@@ -262,7 +289,14 @@ export default function Player<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
             >
               ←
             </button>
-            {lastBeat && lastChapter ? (
+            {asking ? (
+              <button
+                disabled
+                className="h-10 flex-1 rounded-full border border-line bg-bg/80 px-6 text-sm text-muted backdrop-blur sm:flex-none"
+              >
+                Pick an answer
+              </button>
+            ) : lastBeat && lastChapter ? (
               <button
                 onClick={onFinish}
                 disabled={!onFinish}
@@ -285,6 +319,38 @@ export default function Player<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+// "What happens next?" — the scene is frozen behind this until an answer is picked.
+function PredictCard({ predict, short, onAnswer }: { predict: Predict; short: boolean; onAnswer: (choice: number) => void }) {
+  return (
+    <div className="max-w-2xl">
+      <div className="font-mono text-[10px] uppercase tracking-widest text-muted">Paused · What happens next?</div>
+      <h2 className={`mt-1 font-semibold tracking-tight ${short ? 'text-lg' : 'text-xl sm:text-2xl'}`}>{predict.question}</h2>
+      <div className={`grid gap-2 sm:flex sm:flex-wrap ${short ? 'mt-2' : 'mt-3'}`}>
+        {predict.options.map((option, i) => (
+          <button
+            key={option}
+            onClick={() => onAnswer(i)}
+            className="rounded-xl border border-line bg-bg/90 px-4 py-2.5 text-left text-sm backdrop-blur transition hover:border-fg"
+          >
+            {option}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// Shown once the beat plays: whether the guess was right, and why.
+function PredictResult({ predict, guess, short }: { predict: Predict; guess: number; short: boolean }) {
+  const right = guess === predict.answer
+  return (
+    <div className={`max-w-xl rounded-xl border bg-bg/80 px-3 py-2 text-sm backdrop-blur ${short ? 'mb-2' : 'mb-3'} ${right ? 'border-fg' : 'border-line'}`}>
+      <span className="font-medium">{right ? '✓ You called it.' : `Not quite: ${predict.options[predict.answer].toLowerCase()}`}</span>{' '}
+      <span className="text-muted">{predict.explain}</span>
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { shotAt, stateAt } from './chapters'
+import { shotAt, stateAt, stateBefore } from './chapters'
 import type { Chapter, Shot } from './types'
 
 interface St {
@@ -27,6 +27,13 @@ describe('stateAt', () => {
   it('does not modify the chapter’s starting state', () => {
     stateAt(chapter, 3)
     expect(chapter.initial).toEqual({ a: 0, b: 'start' })
+  })
+})
+
+describe('stateBefore', () => {
+  it('is the previous beat’s state, or the starting state for the first beat', () => {
+    expect(stateBefore(chapter, 0)).toEqual({ a: 0, b: 'start' })
+    expect(stateBefore(chapter, 3)).toEqual({ a: 1, b: 'changed' })
   })
 })
 

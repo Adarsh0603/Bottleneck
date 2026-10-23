@@ -56,6 +56,12 @@ export const CHAPTERS: CachingChapter[] = [
       },
       {
         caption: 'Traffic grows. The database drowns.',
+        predict: {
+          question: 'Traffic climbs to 10 req/s. The app servers can easily cope. What breaks?',
+          options: ['The app servers', 'The database', 'Nothing'],
+          answer: 1,
+          explain: 'Every request still needs a slow database lookup, and the database only has a few workers.',
+        },
         sub: 'Your app servers are fine. The database is the bottleneck now.',
         ramp: trafficRamp(10, 900),
         shot: ON_DB,
@@ -78,6 +84,12 @@ export const CHAPTERS: CachingChapter[] = [
     beats: [
       {
         caption: 'A cache remembers answers.',
+        predict: {
+          question: 'You put an empty cache between the app and the database. The first request arrives. What happens?',
+          options: ['The cache answers it', 'The cache asks the database', 'The request fails'],
+          answer: 1,
+          explain: 'An empty cache has nothing to give, so it’s a miss. It fetches from the database, then keeps the answer.',
+        },
         sub: 'Fast memory between your app and the database. It starts empty.',
         set: { cache: true, capacity: 20 },
         shot: ON_CACHE,
@@ -129,6 +141,12 @@ export const CHAPTERS: CachingChapter[] = [
       },
       {
         caption: 'Full? Evict the least recently used.',
+        predict: {
+          question: 'The cache is full and a new item needs room. Which item leaves?',
+          options: ['A random one', 'The one stored longest ago', 'The one asked for least recently'],
+          answer: 2,
+          explain: 'LRU evicts whatever nobody has asked for in the longest time, even if it was stored recently.',
+        },
         sub: 'The item nobody has asked for in the longest time makes room.',
         shot: CACHE_LID,
         tags: ['lru'],
@@ -165,6 +183,12 @@ export const CHAPTERS: CachingChapter[] = [
       },
       {
         caption: 'Short TTL: fresh data, busy database.',
+        predict: {
+          question: 'You cut the TTL from 10 seconds to 2. What happens to the database?',
+          options: ['It gets less busy', 'It gets busier', 'No change'],
+          answer: 1,
+          explain: 'Items expire 5× as often, so far more requests miss and go to the database.',
+        },
         sub: 'Expire every 2 seconds and the cache barely helps.',
         set: { ttl: 2 },
         shot: WIDE,
@@ -188,6 +212,12 @@ export const CHAPTERS: CachingChapter[] = [
     beats: [
       {
         caption: 'The cache crashes.',
+        predict: {
+          question: 'The cache crashes. Where do all those requests go?',
+          options: ['They’re dropped', 'Straight to the database', 'They wait for the cache'],
+          answer: 1,
+          explain: 'The app falls back to the database for everything, far more than it can handle.',
+        },
         sub: 'Every request falls through to the database at once.',
         set: { cacheDown: true },
         shot: WIDE,
@@ -212,6 +242,12 @@ export const CHAPTERS: CachingChapter[] = [
       },
       {
         caption: 'It expires. Everyone misses at once.',
+        predict: {
+          question: 'The viral item expires while hundreds of people want it. What reaches the database?',
+          options: ['One query', 'A burst of identical queries'],
+          answer: 1,
+          explain: 'Every request misses at the same moment, and each one queries the database itself.',
+        },
         sub: 'A cache stampede: a burst of identical, expensive queries.',
         shot: STAMPEDE,
         tags: ['queue', 'dropped'],

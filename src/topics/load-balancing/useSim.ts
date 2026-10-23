@@ -20,7 +20,7 @@ export function capacity(sim: LoadBalancerSim) {
 
 // Owns one running simulation for a chapter. `setup` is re-run on reset, and
 // always sees the chapter's latest state (algorithm, server size, ...).
-export function useSim(setup: (sim: LoadBalancerSim) => void, initialRps: number) {
+export function useSim(setup: (sim: LoadBalancerSim) => void, initialRps: number, paused = false) {
   const [rps, setRpsState] = useState(initialRps)
   const [running, setRunning] = useState(true)
   const [, setFrame] = useState(0)
@@ -41,7 +41,7 @@ export function useSim(setup: (sim: LoadBalancerSim) => void, initialRps: number
   if (!simRef.current) simRef.current = build()
 
   useEffect(() => {
-    if (!running) return
+    if (!running || paused) return
     const id = setInterval(() => {
       const sim = simRef.current!
       sim.step()
@@ -51,7 +51,7 @@ export function useSim(setup: (sim: LoadBalancerSim) => void, initialRps: number
       setFrame((f) => f + 1)
     }, MS_PER_TICK)
     return () => clearInterval(id)
-  }, [running])
+  }, [running, paused])
 
   const rerender = useCallback(() => setFrame((f) => f + 1), [])
 

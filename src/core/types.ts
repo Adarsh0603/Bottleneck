@@ -30,6 +30,15 @@ export interface Ramp<S> {
   next: (st: S) => S | null
 }
 
+// A "what happens next?" question asked before a beat plays. The scene stays
+// frozen on the previous moment until the learner picks an answer.
+export interface Predict {
+  question: string
+  options: string[]
+  answer: number // index into options
+  explain: string // shown after answering, right or wrong
+}
+
 // What every beat has. Topics extend this with their own fields (labels,
 // which stats and controls to show, ...).
 export interface BaseBeat<S, Sim, M> {
@@ -39,6 +48,7 @@ export interface BaseBeat<S, Sim, M> {
   ramp?: Ramp<S>
   shot?: Shot
   challenge?: Challenge<S, Sim, M>
+  predict?: Predict
   sheet?: boolean
 }
 
@@ -88,7 +98,8 @@ export interface Reference {
 export interface TopicSpec<S, Sim, M, B extends BaseBeat<S, Sim, M>> {
   chapters: Chapter<S, B>[]
   // A hook: owns the running simulation. Reads the latest state through stRef.
-  useRuntime: (stRef: { current: S }) => Runtime<Sim, M>
+  // While `paused`, the simulation doesn't advance.
+  useRuntime: (stRef: { current: S }, paused: boolean) => Runtime<Sim, M>
   // Make the simulation match the state.
   sync: (sim: Sim, st: S) => void
   Scene: ComponentType<SceneProps<S, Sim, B>>

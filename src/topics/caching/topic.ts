@@ -8,12 +8,16 @@ import Scene from './Scene'
 import Stats from './Stats'
 import type { Beat, CachingState } from './types'
 
-function useRuntime(stRef: { current: CachingState }): Runtime<CachingSim, CachingMetrics> {
-  const { sim, simRef, lastTickAt } = useTicker(() => {
-    const s = new CachingSim()
-    s.apply(stRef.current)
-    return s
-  }, TICKS_PER_SECOND)
+function useRuntime(stRef: { current: CachingState }, paused: boolean): Runtime<CachingSim, CachingMetrics> {
+  const { sim, simRef, lastTickAt } = useTicker(
+    () => {
+      const s = new CachingSim()
+      s.apply(stRef.current)
+      return s
+    },
+    TICKS_PER_SECOND,
+    paused,
+  )
   return { sim, simRef, lastTickAt, metrics: sim.metrics, tick: sim.tick }
 }
 

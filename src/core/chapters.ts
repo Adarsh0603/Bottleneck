@@ -8,6 +8,12 @@ export function stateAt<S, B extends { set?: Partial<S> }>(chapter: Chapter<S, B
   return chapter.beats.slice(0, index + 1).reduce<S>((st, b) => ({ ...st, ...b.set }), chapter.initial)
 }
 
+// The state just before a beat plays: what's on screen while a prediction
+// question for that beat is being asked.
+export function stateBefore<S, B extends { set?: Partial<S> }>(chapter: Chapter<S, B>, index: number): S {
+  return index > 0 ? stateAt(chapter, index - 1) : chapter.initial
+}
+
 // A beat without its own shot keeps the camera where the last one put it.
 export function shotAt<S, B extends { shot?: Shot }>(chapter: Chapter<S, B>, index: number, fallback = DEFAULT_SHOT): Shot {
   for (let i = index; i >= 0; i--) {

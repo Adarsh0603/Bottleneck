@@ -10,8 +10,8 @@ import { syncSim } from './sync'
 import type { Beat, CourseState, Metrics } from './types'
 import { useSim } from './useSim'
 
-function useRuntime(stRef: { current: CourseState }): Runtime<LoadBalancerSim, Metrics> {
-  const s = useSim((sim) => syncSim(sim, stRef.current), stRef.current.rps)
+function useRuntime(stRef: { current: CourseState }, paused: boolean): Runtime<LoadBalancerSim, Metrics> {
+  const s = useSim((sim) => syncSim(sim, stRef.current), stRef.current.rps, paused)
   const { dropRate, avgMs, p95Ms, throughput } = s
   const metrics = useMemo(() => ({ dropRate, avgMs, p95Ms, throughput }), [dropRate, avgMs, p95Ms, throughput])
   return { sim: s.sim, simRef: s.simRef, lastTickAt: s.lastTickAt, metrics, tick: s.sim.tick }
