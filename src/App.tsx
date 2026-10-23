@@ -31,8 +31,17 @@ export default function App() {
     document.title = topic ? `${topic.title} · Bottleneck` : 'Bottleneck · Learn system design by breaking things'
   }, [topic])
 
+  // Open every page at the top, not at the scroll position of the page before
+  // (like a long topic list scrolled halfway down).
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [topic?.id])
+
   return (
-    <div className="min-h-screen">
+    // svh, not vh: on phones vh is the height with the address bar hidden,
+    // which made full-screen pages a little taller than the screen and let
+    // them scroll the chapter menu under the header.
+    <div className="min-h-svh">
       <header className="sticky top-0 z-30 h-[57px] border-b border-line bg-bg/70 backdrop-blur-md">
         <div className="flex h-full items-center justify-between gap-3 px-4">
           <div className="flex min-w-0 items-center gap-3">
@@ -69,7 +78,11 @@ function TopicView({ topic, chapter, step }: { topic: TopicEntry; chapter: numbe
   const Play = topic.Play!
   const ch = Math.min(chapter, (topic.chapters?.length ?? 1) - 1)
   const progress = useProgress()
-  const [finished, setFinished] = useState(false)
+  // Where "Finish" was pressed. The completion card shows only while we're
+  // still there, so going on to the next topic (or back to a chapter) closes it.
+  const here = `${topic.id}/${ch}/${step}`
+  const [finishedAt, setFinishedAt] = useState<string | null>(null)
+  const finished = finishedAt === here
 
   return (
     <>
@@ -84,9 +97,9 @@ function TopicView({ topic, chapter, step }: { topic: TopicEntry; chapter: numbe
           replaceRoute({ page: 'topic', topic: topic.id, chapter: ch, step: s })
         }}
         onSolved={(s) => recordSolved(topic.id, ch, s)}
-        onFinish={() => setFinished(true)}
+        onFinish={() => setFinishedAt(here)}
       />
-      {finished && <TopicComplete topic={topic} onClose={() => setFinished(false)} />}
+      {finished && <TopicComplete topic={topic} onClose={() => setFinishedAt(null)} />}
     </>
   )
 }
