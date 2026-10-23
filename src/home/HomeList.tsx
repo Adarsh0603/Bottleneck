@@ -1,10 +1,10 @@
-import { resetProgress, topicProgress, useProgress } from '../core/progress'
+import { resetProgress, useProgress } from '../core/progress'
 import { TOPICS, TRACKS, type TopicEntry } from '../topics/registry'
 import { useState } from 'react'
 import HeroScene from './HeroScene'
 import TopicThumb from './TopicThumb'
 import { ContinueButton, Credit, ViewToggle, type HomeView } from './parts'
-import { actionLabel, nextTopic, openTopic, solvedCount, statusOf, topicNumber } from './shared'
+import { actionLabel, nextTopic, openTopic, statusOf, topicNumber } from './shared'
 
 export default function HomeList({ onView }: { onView: (view: HomeView) => void }) {
   const progress = useProgress()
@@ -47,7 +47,7 @@ export default function HomeList({ onView }: { onView: (view: HomeView) => void 
               </div>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 {topics.map((t) => (
-                  <TopicCard key={t.id} topic={t} isNext={t === next} onOpen={() => openTopic(progress, t)} />
+                  <TopicCard key={t.id} topic={t} isNext={t === next} onOpen={() => openTopic(t)} />
                 ))}
               </div>
             </section>
@@ -97,9 +97,6 @@ function TopicCard({ topic, isNext, onOpen }: { topic: TopicEntry; isNext: boole
     )
   }
 
-  const p = topicProgress(progress, topic.id)
-  const total = topic.chapters.length
-
   // Rows inside a <button> don't stretch to its width on their own, so each
   // row is made full width explicitly.
   return (
@@ -129,19 +126,6 @@ function TopicCard({ topic, isNext, onOpen }: { topic: TopicEntry; isNext: boole
       <h3 className="mt-3 font-medium">{topic.title}</h3>
       <p className="mt-1 flex-1 text-sm leading-6 text-muted">{topic.pitch}</p>
 
-      <div className="mt-4 flex w-full gap-1" aria-label={`${p.done.length} of ${total} chapters done`}>
-        {topic.chapters.map((title, i) => (
-          <span key={title} title={title} className={`h-1 flex-1 rounded-full ${p.done.includes(i) ? 'bg-fg' : 'bg-line'}`} />
-        ))}
-      </div>
-      <div className="mt-2 flex w-full justify-between font-mono text-[11px] text-muted">
-        <span>
-          {p.done.length} / {total} chapters
-        </span>
-        <span>
-          {solvedCount(progress, topic)} / {topic.challenges?.length ?? 0} challenges
-        </span>
-      </div>
       <div className="mt-3 w-full text-right font-mono text-[11px] text-muted transition group-hover:text-fg">{actionLabel(status)} →</div>
     </button>
   )

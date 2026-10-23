@@ -28,16 +28,10 @@ export function nextAfter(progress: Progress, topic: TopicEntry) {
   return later.find((t) => statusOf(progress, t) !== 'done') ?? builtTopics.find((t) => t !== topic && statusOf(progress, t) !== 'done')
 }
 
-export function solvedCount(progress: Progress, topic: TopicEntry) {
-  const solved = topicProgress(progress, topic.id).solved
-  return (topic.challenges ?? []).filter((id) => solved.includes(id)).length
-}
-
-// Pick up where the learner left off; a finished topic starts over for review.
-export function openTopic(progress: Progress, topic: TopicEntry, chapter?: number) {
-  if (chapter !== undefined) return navigate({ page: 'topic', topic: topic.id, chapter, step: 0 })
-  const last = statusOf(progress, topic) === 'done' ? undefined : topicProgress(progress, topic.id).last
-  navigate({ page: 'topic', topic: topic.id, chapter: last?.chapter ?? 0, step: last?.step ?? 0 })
+// A topic always opens at its first chapter, even when continuing; finished
+// chapters are ticked in the chapter menu, so the learner can jump ahead.
+export function openTopic(topic: TopicEntry, chapter = 0) {
+  navigate({ page: 'topic', topic: topic.id, chapter, step: 0 })
 }
 
 export const topicNumber = (topic: TopicEntry) => String(TOPICS.indexOf(topic) + 1).padStart(2, '0')

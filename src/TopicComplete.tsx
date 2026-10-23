@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { topicProgress, useProgress } from './core/progress'
 import { navigate } from './core/router'
 import { play } from './core/sound'
-import { nextAfter, openTopic, solvedCount, statusOf } from './home/shared'
+import { nextAfter, openTopic, statusOf } from './home/shared'
 import type { TopicEntry } from './topics/registry'
 
 // Shown after "Finish" on a topic's last step: a clear "you completed this"
@@ -13,8 +13,6 @@ export default function TopicComplete({ topic, onClose }: { topic: TopicEntry; o
   const chapters = topic.chapters ?? []
   const complete = statusOf(progress, topic) === 'done'
   const missing = chapters.map((title, i) => ({ title, i })).filter((c) => !p.done.includes(c.i))
-  const solved = solvedCount(progress, topic)
-  const totalChallenges = topic.challenges?.length ?? 0
   const next = complete ? nextAfter(progress, topic) : undefined
 
   useEffect(() => {
@@ -36,16 +34,11 @@ export default function TopicComplete({ topic, onClose }: { topic: TopicEntry; o
           }`}
           aria-hidden
         >
-          {complete ? '✓' : `${p.done.length}/${chapters.length}`}
+          {complete ? '✓' : '…'}
         </div>
 
         <div className="mt-5 font-mono text-[11px] uppercase tracking-widest text-muted">{complete ? 'Topic complete' : 'Almost there'}</div>
         <h2 className="mt-1 text-2xl font-semibold tracking-tight">{topic.title}</h2>
-
-        <div className="mt-5 grid grid-cols-2 gap-3">
-          <Count label="Chapters" value={p.done.length} total={chapters.length} />
-          <Count label="Challenges solved" value={solved} total={totalChallenges} />
-        </div>
 
         {!complete && (
           <div className="mt-5 text-left">
@@ -54,7 +47,7 @@ export default function TopicComplete({ topic, onClose }: { topic: TopicEntry; o
               {missing.map((c) => (
                 <li key={c.i}>
                   <button
-                    onClick={() => openTopic(progress, topic, c.i)}
+                    onClick={() => openTopic(topic, c.i)}
                     className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left text-sm transition hover:bg-subtle"
                   >
                     <span className="font-mono text-xs text-muted">{String(c.i + 1).padStart(2, '0')}</span>
@@ -76,7 +69,7 @@ export default function TopicComplete({ topic, onClose }: { topic: TopicEntry; o
           </button>
           {complete && next && (
             <button
-              onClick={() => openTopic(progress, next)}
+              onClick={() => openTopic(next)}
               className="rounded-full bg-fg px-5 py-2.5 text-sm font-medium text-bg transition hover:opacity-85"
             >
               Next: {next.title} →
@@ -86,19 +79,6 @@ export default function TopicComplete({ topic, onClose }: { topic: TopicEntry; o
             <span className="self-center px-2 text-sm text-muted">More topics are on the way.</span>
           )}
         </div>
-      </div>
-    </div>
-  )
-}
-
-function Count({ label, value, total }: { label: string; value: number; total: number }) {
-  const full = total > 0 && value >= total
-  return (
-    <div className={`rounded-xl border p-3 ${full ? 'border-fg' : 'border-line'}`}>
-      <div className="text-[11px] font-medium text-muted">{label}</div>
-      <div className="mt-0.5 font-mono text-lg tabular-nums">
-        {value} / {total}
-        {full && <span className="ml-1.5">✓</span>}
       </div>
     </div>
   )

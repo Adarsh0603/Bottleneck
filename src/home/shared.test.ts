@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { withSolved, withStep, type Progress } from '../core/progress'
+import { withStep, type Progress } from '../core/progress'
 import { TOPICS } from '../topics/registry'
-import { builtTopics, nextAfter, solvedCount, statusOf } from './shared'
+import { builtTopics, nextAfter, statusOf } from './shared'
 
 const lb = TOPICS.find((t) => t.id === 'load-balancing')!
 const caching = TOPICS.find((t) => t.id === 'caching')!
@@ -21,12 +21,6 @@ describe('completion helpers', () => {
     expect(statusOf(p, lb)).toBe('done')
     p = withStep({}, lb.id, 0, 0, true, 1)
     expect(statusOf(p, lb)).toBe('started')
-  })
-
-  it('counts only this topic’s real challenges as solved', () => {
-    let p = withSolved({}, lb.id, 2, 0, 1)
-    p = withSolved(p, lb.id, 9, 9, 2) // not a challenge
-    expect(solvedCount(p, lb)).toBe(1)
   })
 
   it('suggests the next unfinished topic after the one just completed', () => {

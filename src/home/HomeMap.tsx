@@ -7,7 +7,7 @@ import type { V3 } from '../core/types'
 import { TRACKS, type TopicEntry } from '../topics/registry'
 import { DISTRICT_HALF, DISTRICTS, LOTS, STREETS, type Lot } from './cityLayout'
 import { ContinueButton, Credit, ViewToggle, type HomeView } from './parts'
-import { actionLabel, nextTopic, openTopic, solvedCount, statusOf, topicNumber, trackOf, type TopicStatus } from './shared'
+import { actionLabel, nextTopic, openTopic, statusOf, topicNumber, trackOf, type TopicStatus } from './shared'
 
 const OVERVIEW = { target: [0, 0.8, 0] as V3, zoom: 1.05 }
 const FOCUS_ZOOM = 2.1
@@ -407,24 +407,11 @@ function TopicPanel({ topic, status, onClose }: { topic: TopicEntry; status: Top
           <div className="mt-4">
             <StatusPill status={status} />
           </div>
-          <div className="mt-4 flex gap-1" aria-hidden>
-            {topic.chapters.map((title, i) => (
-              <span key={title} className={`h-1 flex-1 rounded-full ${p.done.includes(i) ? 'bg-fg' : 'bg-line'}`} />
-            ))}
-          </div>
-          <div className="mt-2 flex justify-between font-mono text-[11px] text-muted">
-            <span>
-              {p.done.length} / {topic.chapters.length} chapters
-            </span>
-            <span>
-              {solvedCount(progress, topic)} / {topic.challenges?.length ?? 0} challenges
-            </span>
-          </div>
-          <ol className="mt-2 space-y-1">
+          <ol className="mt-4 space-y-1">
             {topic.chapters.map((title, i) => (
               <li key={title}>
                 <button
-                  onClick={() => openTopic(progress, topic, i)}
+                  onClick={() => openTopic(topic, i)}
                   className="flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left text-sm transition hover:bg-subtle"
                 >
                   <span className="font-mono text-xs text-muted">{String(i + 1).padStart(2, '0')}</span>
@@ -435,7 +422,7 @@ function TopicPanel({ topic, status, onClose }: { topic: TopicEntry; status: Top
             ))}
           </ol>
           <button
-            onClick={() => openTopic(progress, topic)}
+            onClick={() => openTopic(topic)}
             className="mt-4 w-full rounded-full bg-fg px-5 py-2.5 text-sm font-medium text-bg transition hover:opacity-85"
           >
             {actionLabel(status)} →
