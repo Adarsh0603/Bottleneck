@@ -68,6 +68,7 @@ export default function HomeMap({ onView }: { onView: (view: HomeView) => void }
         >
           {() => (
             <City
+              showDistricts={wide}
               progress={progress}
               selected={selected}
               hovered={hovered}
@@ -111,6 +112,7 @@ export default function HomeMap({ onView }: { onView: (view: HomeView) => void }
 }
 
 function City({
+  showDistricts,
   progress,
   selected,
   hovered,
@@ -119,6 +121,7 @@ function City({
   onHover,
   onClear,
 }: {
+  showDistricts: boolean
   progress: ReturnType<typeof useProgress>
   selected: string | null
   hovered: string | null
@@ -141,35 +144,20 @@ function City({
       {TRACKS.map((track) => {
         const d = DISTRICTS[track.id]
         const r = DISTRICT_HALF
-        // The district's name, painted on the ground along its front edge,
-        // where no building can cover it.
-        const [lx, ly] = project([d.x - r + 0.15, 0, d.z + r + 0.38])
         return (
-          <g key={track.id} pointerEvents="none">
-            <polygon
-              points={points([
-                [d.x - r, 0, d.z - r],
-                [d.x - r, 0, d.z + r],
-                [d.x + r, 0, d.z + r],
-                [d.x + r, 0, d.z - r],
-              ])}
-              fill="var(--subtle)"
-              fillOpacity={0.7}
-              stroke="var(--line)"
-            />
-            <text
-              transform={`matrix(0.866 -0.5 0.866 0.5 ${lx} ${ly})`}
-              className="font-mono"
-              fontSize={10}
-              letterSpacing={1}
-              fill="var(--muted)"
-              stroke="var(--bg)"
-              strokeWidth={3}
-              paintOrder="stroke"
-            >
-              {track.title.toUpperCase()}
-            </text>
-          </g>
+          <polygon
+            key={track.id}
+            points={points([
+              [d.x - r, 0, d.z - r],
+              [d.x - r, 0, d.z + r],
+              [d.x + r, 0, d.z + r],
+              [d.x + r, 0, d.z - r],
+            ])}
+            fill="var(--subtle)"
+            fillOpacity={0.7}
+            stroke="var(--line)"
+            pointerEvents="none"
+          />
         )
       })}
 
@@ -184,6 +172,14 @@ function City({
           onHover={(on) => onHover(on ? l.topic.id : null)}
         />
       ))}
+
+      {/* District names float above each district's back corner. Phones are
+          zoomed into one district, where they'd only cover buildings. */}
+      {showDistricts && TRACKS.map((track) => {
+        const d = DISTRICTS[track.id]
+        const tallest = Math.max(...LOTS.filter((l) => l.topic.track === track.id).map((l) => l.h))
+        return <Tag key={track.id} at={[d.x + DISTRICT_HALF, tallest + 0.6, d.z - DISTRICT_HALF]} label={track.title} />
+      })}
 
       {/* One label per building at most: chosen or hovered names it; otherwise "Next". */}
       {LOTS.map((l) => {
