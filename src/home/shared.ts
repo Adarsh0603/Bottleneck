@@ -21,13 +21,6 @@ export function nextTopic(progress: Progress) {
   return builtTopics.find((t) => statusOf(progress, t) !== 'done')
 }
 
-// What to suggest after finishing `topic`: the next unfinished topic after it
-// in the recommended order, else any unfinished one.
-export function nextAfter(progress: Progress, topic: TopicEntry) {
-  const later = builtTopics.slice(builtTopics.indexOf(topic) + 1)
-  return later.find((t) => statusOf(progress, t) !== 'done') ?? builtTopics.find((t) => t !== topic && statusOf(progress, t) !== 'done')
-}
-
 // A topic always opens at its first chapter, even when continuing; finished
 // chapters are ticked in the chapter menu, so the learner can jump ahead.
 export function openTopic(topic: TopicEntry, chapter = 0) {

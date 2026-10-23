@@ -1,4 +1,5 @@
 import type { Shot, V3 } from '../../core/types'
+import { CELEBRITY_LAUNCH } from './build'
 import type { ShardingChapter, ShardingState } from './types'
 import { aboveShard, DB_X } from './world'
 
@@ -169,5 +170,12 @@ export const CHAPTERS: ShardingChapter[] = [
       },
       { caption: 'Ready for the interview.', sub: 'The sharding details that come up most.', sheet: true, shot: ALL_SHARDS },
     ],
+  },
+  {
+    title: 'Build it',
+    level: 'Advanced',
+    initial: BASE,
+    beats: [{ caption: CELEBRITY_LAUNCH.title }],
+    build: CELEBRITY_LAUNCH,
   },
 ]

@@ -37,6 +37,8 @@ export function Piece({
       return <CachePiece x={x} z={z} rise={rise} cache={node instanceof Cache ? node : undefined} />
     case 'database':
       return <IsoCylinder x={x} z={z} r={0.85} h={1.7 * rise} />
+    case 'replica':
+      return <IsoCylinder x={x} z={z} r={0.65} h={1.2 * rise} bands={[0.5]} />
     case 'autoscaler':
       return <Autoscaler x={x} z={z} rise={rise} />
   }
@@ -163,7 +165,7 @@ function CachePiece({ x, z, rise, cache }: { x: number; z: number; rise: number;
 
 // A small picture of a piece, for the toolbox and the piece being dragged.
 export function PieceIcon({ kind, size = 40 }: { kind: PieceKind; size?: number }) {
-  const box = kind === 'users' ? '-70 -60 140 110' : kind === 'database' || kind === 'cache' ? '-55 -80 110 110' : '-45 -80 90 100'
+  const box = kind === 'users' ? '-70 -60 140 110' : kind === 'database' || kind === 'replica' || kind === 'cache' ? '-55 -80 110 110' : '-45 -80 90 100'
   return (
     <svg viewBox={box} width={size} height={size} aria-hidden className="shrink-0">
       <Piece kind={kind} x={0} z={0} active={6} />

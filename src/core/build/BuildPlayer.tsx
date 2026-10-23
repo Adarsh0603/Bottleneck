@@ -158,6 +158,9 @@ export default function BuildPlayer({
         if (d.fromPad === undefined) {
           if (selectedRef.current !== d.kind) play('pickup')
           setSelected((s) => (s === d.kind ? null : d.kind))
+        } else {
+          // Tapping a placed piece with another one picked swaps it in.
+          tapPadRef.current(d.fromPad)
         }
         return
       }
@@ -187,6 +190,8 @@ export default function BuildPlayer({
     rebuild(next)
     if ((remaining(task, next)[selected] ?? 0) <= 0) setSelected(null)
   }
+  const tapPadRef = useRef(tapPad)
+  tapPadRef.current = tapPad
 
   const left = remaining(task, placed)
   const activeKind = drag?.moved ? drag.kind : selected

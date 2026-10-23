@@ -29,9 +29,7 @@ export function ContinueButton({ className = "" }: { className?: string }) {
         <span className="block font-mono text-[10px] uppercase tracking-widest opacity-70">
           Continue
         </span>
-        <span className="mt-0.5 block font-medium">
-          {topic.title}
-        </span>
+        <span className="mt-0.5 block font-medium">{topic.title}</span>
       </span>
       <span aria-hidden>→</span>
     </button>
@@ -52,7 +50,6 @@ export function Credit({ className = "" }: { className?: string }) {
       >
         Adarsh Verma
       </a>
-      (except the code😉)
       <span className="mx-1.5" aria-hidden>
         ·
       </span> */}

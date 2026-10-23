@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { withStep, type Progress } from '../core/progress'
 import { TOPICS } from '../topics/registry'
-import { builtTopics, nextAfter, statusOf } from './shared'
+import { statusOf } from './shared'
 
 const lb = TOPICS.find((t) => t.id === 'load-balancing')!
 const caching = TOPICS.find((t) => t.id === 'caching')!
@@ -21,13 +21,5 @@ describe('completion helpers', () => {
     expect(statusOf(p, lb)).toBe('done')
     p = withStep({}, lb.id, 0, 0, true, 1)
     expect(statusOf(p, lb)).toBe('started')
-  })
-
-  it('suggests the next unfinished topic after the one just completed', () => {
-    const p = finish({}, lb)
-    expect(nextAfter(p, lb)?.id).toBe(builtTopics[1].id)
-    expect(nextAfter(finish(p, caching), caching)?.id).toBe(builtTopics[2].id)
-    const everything = builtTopics.reduce((acc, t) => finish(acc, t), {} as Progress)
-    expect(nextAfter(everything, caching)).toBeUndefined()
   })
 })

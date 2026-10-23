@@ -112,6 +112,7 @@ export default function BuildScene({
             node: (
               <g
                 key={`${pad.id}:${kind}`}
+                data-pad={pad.id} // dropping onto a placed piece swaps it out
                 className="cursor-grab active:cursor-grabbing"
                 onPointerDown={(e) => {
                   e.stopPropagation()
