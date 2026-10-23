@@ -1,28 +1,18 @@
-import { continueTarget, resetProgress, topicProgress, useProgress } from './core/progress'
-import { navigate } from './core/router'
-import { TOPICS, TRACKS, type TopicEntry } from './topics/registry'
+import { resetProgress, topicProgress, useProgress } from '../core/progress'
+import { TOPICS, TRACKS, type TopicEntry } from '../topics/registry'
+import { ContinueButton, ViewToggle, type HomeView } from './parts'
+import { actionLabel, nextTopic, openTopic, statusOf, topicNumber } from './shared'
 
-const built = TOPICS.filter((t) => t.Play && t.chapters)
-const chapterCounts = Object.fromEntries(built.map((t) => [t.id, t.chapters!.length]))
-
-export default function Home() {
+export default function HomeList({ onView }: { onView: (view: HomeView) => void }) {
   const progress = useProgress()
-  const resume = continueTarget(progress, chapterCounts)
-  const resumeTopic = resume && TOPICS.find((t) => t.id === resume.topic)
-
-  // The first built topic, in recommended order, that isn't finished yet.
-  const next = built.find((t) => topicProgress(progress, t.id).done.length < t.chapters!.length)
-
-  // Pick up where the learner left off; a finished topic starts over for review.
-  const open = (t: TopicEntry) => {
-    const p = topicProgress(progress, t.id)
-    const finished = p.done.length >= t.chapters!.length
-    const last = finished ? undefined : p.last
-    navigate({ page: 'topic', topic: t.id, chapter: last?.chapter ?? 0, step: last?.step ?? 0 })
-  }
+  const next = nextTopic(progress)
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-10 sm:py-14">
+      <div className="mb-8 flex justify-end">
+        <ViewToggle view="list" onChange={onView} />
+      </div>
+
       <section className="max-w-2xl">
         <div className="font-mono text-[11px] uppercase tracking-widest text-muted">System design, visually</div>
         <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Learn system design by breaking things.</h1>
@@ -30,21 +20,7 @@ export default function Home() {
           Watch systems overload, fail and recover, then fix them yourself. From your first server to distributed
           consensus.
         </p>
-
-        {resume && resumeTopic && (
-          <button
-            onClick={() => navigate({ page: 'topic', topic: resume.topic, chapter: resume.chapter, step: resume.step })}
-            className="mt-6 flex w-full max-w-md items-center justify-between gap-4 rounded-2xl bg-fg px-5 py-4 text-left text-bg transition hover:opacity-90"
-          >
-            <span>
-              <span className="block font-mono text-[10px] uppercase tracking-widest opacity-70">Continue</span>
-              <span className="mt-0.5 block font-medium">
-                {resumeTopic.title} · {resumeTopic.chapters?.[resume.chapter]}
-              </span>
-            </span>
-            <span aria-hidden>→</span>
-          </button>
-        )}
+        <ContinueButton className="mt-6" />
       </section>
 
       {TRACKS.map((track) => {
@@ -59,7 +35,7 @@ export default function Home() {
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {topics.map((t) => (
-                <TopicCard key={t.id} topic={t} number={TOPICS.indexOf(t) + 1} isNext={t === next} onOpen={() => open(t)} />
+                <TopicCard key={t.id} topic={t} isNext={t === next} onOpen={() => openTopic(progress, t)} />
               ))}
             </div>
           </section>
@@ -83,11 +59,12 @@ export default function Home() {
   )
 }
 
-function TopicCard({ topic, number, isNext, onOpen }: { topic: TopicEntry; number: number; isNext: boolean; onOpen: () => void }) {
+function TopicCard({ topic, isNext, onOpen }: { topic: TopicEntry; isNext: boolean; onOpen: () => void }) {
   const progress = useProgress()
-  const label = String(number).padStart(2, '0')
+  const status = statusOf(progress, topic)
+  const label = topicNumber(topic)
 
-  if (!topic.Play || !topic.chapters) {
+  if (status === 'soon' || !topic.chapters) {
     return (
       <div className="rounded-2xl border border-dashed border-line p-4">
         <div className="flex items-center justify-between font-mono text-xs text-muted">
@@ -102,8 +79,6 @@ function TopicCard({ topic, number, isNext, onOpen }: { topic: TopicEntry; numbe
 
   const p = topicProgress(progress, topic.id)
   const total = topic.chapters.length
-  const done = p.done.length
-  const finished = done >= total
 
   return (
     <button
@@ -114,7 +89,7 @@ function TopicCard({ topic, number, isNext, onOpen }: { topic: TopicEntry; numbe
     >
       <div className="flex items-center justify-between font-mono text-xs text-muted">
         <span>{label}</span>
-        {finished ? (
+        {status === 'done' ? (
           <span className="rounded-full border border-fg px-2 py-0.5 text-[10px] uppercase tracking-widest text-fg">✓ Done</span>
         ) : isNext ? (
           <span className="rounded-full bg-fg px-2 py-0.5 text-[10px] uppercase tracking-widest text-bg">Next</span>
@@ -123,20 +98,16 @@ function TopicCard({ topic, number, isNext, onOpen }: { topic: TopicEntry; numbe
       <h3 className="mt-3 font-medium">{topic.title}</h3>
       <p className="mt-1 flex-1 text-sm leading-6 text-muted">{topic.pitch}</p>
 
-      <div className="mt-4 flex gap-1" aria-label={`${done} of ${total} chapters done`}>
+      <div className="mt-4 flex gap-1" aria-label={`${p.done.length} of ${total} chapters done`}>
         {topic.chapters.map((title, i) => (
-          <span
-            key={title}
-            title={title}
-            className={`h-1 flex-1 rounded-full ${p.done.includes(i) ? 'bg-fg' : 'bg-line'}`}
-          />
+          <span key={title} title={title} className={`h-1 flex-1 rounded-full ${p.done.includes(i) ? 'bg-fg' : 'bg-line'}`} />
         ))}
       </div>
       <div className="mt-2 flex justify-between font-mono text-[11px] text-muted">
         <span>
-          {done} / {total} chapters
+          {p.done.length} / {total} chapters
         </span>
-        <span className="transition group-hover:text-fg">{done === 0 && !p.last ? 'Start →' : finished ? 'Review →' : 'Continue →'}</span>
+        <span className="transition group-hover:text-fg">{actionLabel(status)} →</span>
       </div>
     </button>
   )

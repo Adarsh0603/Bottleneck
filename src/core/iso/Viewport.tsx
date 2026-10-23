@@ -24,6 +24,7 @@ export default function Viewport({
   shake,
   panKey,
   label,
+  controlsSide = 'right',
   children,
 }: {
   target: V3
@@ -31,6 +32,7 @@ export default function Viewport({
   shake: number
   panKey: unknown
   label: string
+  controlsSide?: 'left' | 'right'
   children: (frame: Frame) => ReactNode
 }) {
   const [now, setNow] = useState(() => performance.now())
@@ -119,7 +121,11 @@ export default function Viewport({
 
   return (
     <div className="relative h-full w-full">
-      <div className="absolute right-4 top-1/2 z-10 flex -translate-y-1/2 flex-col gap-1 rounded-xl border border-line bg-bg/80 p-1 backdrop-blur">
+      <div
+        className={`absolute top-1/2 z-10 flex -translate-y-1/2 flex-col gap-1 rounded-xl border border-line bg-bg/80 p-1 backdrop-blur ${
+          controlsSide === 'left' ? 'left-4' : 'right-4'
+        }`}
+      >
         <button
           className={zoomBtn}
           onClick={() => setUserZoom((z) => clampZoom(z * ZOOM_STEP))}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { recordSolved, recordStep } from './core/progress'
 import { navigate, replaceRoute, useRoute } from './core/router'
-import Home from './Home'
+import Home from './home/Home'
 import { TOPICS, type TopicEntry } from './topics/registry'
 
 function useTheme() {
