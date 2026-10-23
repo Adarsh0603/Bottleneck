@@ -1,31 +1,23 @@
-// Tick-based load balancer simulation. Pure TypeScript, no React.
+// The load-balancing system, built on the shared flow engine:
 //
-// Model: requests arrive at a steady rate, travel through the load balancer
-// to a server, wait in that server's queue, then occupy one of its worker
-// slots until their work is done. Slow servers burn through work more slowly,
-// so a routing algorithm that ignores load will pile requests up on them.
+//   users ──▶ load balancer ──▶ server A
+//                         ├──▶ server B
+//                         └──▶ ...
+//
+// Requests arrive at a steady rate, the balancer picks a server for each one
+// the moment it arrives, and the request travels there, waits in that
+// server's queue, then takes a worker slot until its work is done. Slow
+// servers burn through work more slowly, so an algorithm that ignores load
+// piles requests up on them.
+//
+// This class keeps the load-balancing view of things (servers by number,
+// requests in flight to a server, drops by server) on top of the general
+// node-and-link simulation in core/flow.
 
-// 'direct' means there is no load balancer: clients only know the address of
-// the first server, so every request goes there.
-export type Algorithm = 'direct' | 'round-robin' | 'random' | 'least-connections' | 'power-of-two'
+import { FlowSim, type Job, type Stats } from '../../core/flow/engine'
+import { Router, Source, Worker, type Algorithm } from '../../core/flow/nodes'
 
-export interface Job {
-  id: number
-  work: number
-  remaining: number
-  createdAt: number
-}
-
-export interface Server {
-  id: number
-  name: string
-  speed: number
-  slots: number
-  alive: boolean
-  active: Job[]
-  queue: Job[]
-  served: number
-}
+export type { Algorithm, Job, Stats }
 
 export interface Transit {
   job: Job
@@ -39,12 +31,6 @@ export interface SimConfig {
   maxWork: number
   queueLimit: number
   transitTicks: number
-}
-
-export interface Stats {
-  completed: number
-  dropped: number
-  latencies: number[]
 }
 
 // A request that was turned away. serverId is missing when no server could
@@ -63,50 +49,86 @@ export const DEFAULT_CONFIG: SimConfig = {
   transitTicks: 10,
 }
 
-const LATENCY_WINDOW = 200
-const DROP_MEMORY_TICKS = 40
 const SERVER_NAMES = 'ABCDEFGHIJKLMNOP'
+const USERS = 'users'
+const BALANCER = 'balancer'
+
+export class Server extends Worker {
+  readonly id: number
+  readonly name: string
+
+  constructor(id: number, speed: number, slots: number) {
+    super(`server-${id}`, { speed, slots })
+    this.id = id
+    this.name = `Server ${SERVER_NAMES[id % SERVER_NAMES.length]}`
+  }
+}
 
 export class LoadBalancerSim {
-  tick = 0
-  algorithm: Algorithm = 'round-robin'
   config: SimConfig
   servers: Server[] = []
-  inTransit: Transit[] = []
-  stats: Stats = { completed: 0, dropped: 0, latencies: [] }
-  recentDrops: Drop[] = []
+  readonly flow: FlowSim
 
-  private rng: () => number
-  private rrIndex = 0
-  private nextJobId = 0
+  private users: Source
+  private balancer: Router
+  private byKey = new Map<string, Server>()
+  // Server number for every node that was ever a server, so drops still name
+  // their server after it's been removed.
+  private serverIds = new Map<string, number>()
   private nextServerId = 0
-  private arrivalCarry = 0
 
   constructor(config: Partial<SimConfig> = {}, rng: () => number = Math.random) {
     this.config = { ...DEFAULT_CONFIG, ...config }
-    this.rng = rng
+    this.flow = new FlowSim(rng)
+    this.users = this.flow.add(new Source(USERS))
+    this.balancer = this.flow.add(new Router(BALANCER))
+    this.flow.link(USERS, BALANCER, 0)
+  }
+
+  get tick() {
+    return this.flow.tick
+  }
+
+  get stats() {
+    return this.flow.stats
+  }
+
+  get algorithm(): Algorithm {
+    return this.balancer.algorithm
+  }
+
+  set algorithm(algorithm: Algorithm) {
+    this.balancer.algorithm = algorithm
+  }
+
+  // Requests on their way to a server.
+  get inTransit(): Transit[] {
+    return this.flow.inTransit.flatMap((t) => {
+      const server = this.byKey.get(t.to)
+      return server ? [{ job: t.job, serverId: server.id, progress: t.progress }] : []
+    })
+  }
+
+  get recentDrops(): Drop[] {
+    return this.flow.recentDrops.map((d) => ({ jobId: d.jobId, serverId: this.serverIds.get(d.node), tick: d.tick }))
   }
 
   addServer(speed = 1, slots = 4): Server {
-    const id = this.nextServerId++
-    const server: Server = {
-      id,
-      name: `Server ${SERVER_NAMES[id % SERVER_NAMES.length]}`,
-      speed,
-      slots,
-      alive: true,
-      active: [],
-      queue: [],
-      served: 0,
-    }
+    const server = new Server(this.nextServerId++, speed, slots)
+    server.queueLimit = this.config.queueLimit
     this.servers.push(server)
+    this.byKey.set(server.key, server)
+    this.serverIds.set(server.key, server.id)
+    this.flow.add(server)
+    this.flow.link(BALANCER, server.key, this.config.transitTicks)
     return server
   }
 
   removeServer(id: number) {
     const server = this.servers.find((s) => s.id === id)
     if (!server) return
-    this.failServer(server)
+    this.flow.remove(server.key)
+    this.byKey.delete(server.key)
     this.servers = this.servers.filter((s) => s.id !== id)
   }
 
@@ -115,139 +137,38 @@ export class LoadBalancerSim {
   setAlive(id: number, alive: boolean) {
     const server = this.servers.find((s) => s.id === id)
     if (!server || server.alive === alive) return
-    if (!alive) this.failServer(server)
+    if (!alive) this.flow.fail(server.key)
     server.alive = alive
   }
 
   load(server: Server): number {
-    return server.active.length + server.queue.length
+    return server.load()
   }
 
   pickServer(): Server | undefined {
-    if (this.algorithm === 'direct') {
-      const first = this.servers[0]
-      return first?.alive ? first : undefined
-    }
-
-    const alive = this.servers.filter((s) => s.alive)
-    if (alive.length === 0) return undefined
-
-    switch (this.algorithm) {
-      case 'round-robin': {
-        const server = alive[this.rrIndex % alive.length]
-        this.rrIndex = (this.rrIndex + 1) % alive.length
-        return server
-      }
-      case 'random':
-        return alive[Math.floor(this.rng() * alive.length)]
-      case 'least-connections':
-        return alive.reduce((best, s) => (this.pending(s) < this.pending(best) ? s : best))
-      case 'power-of-two': {
-        // Sample two different servers and keep the less busy one.
-        if (alive.length === 1) return alive[0]
-        const i = Math.floor(this.rng() * alive.length)
-        let j = Math.floor(this.rng() * (alive.length - 1))
-        if (j >= i) j++
-        return this.pending(alive[j]) < this.pending(alive[i]) ? alive[j] : alive[i]
-      }
-    }
-  }
-
-  // Count requests already on their way too, otherwise a burst all lands on
-  // the same "empty" server before any of it arrives.
-  private pending(server: Server): number {
-    return this.load(server) + this.inTransit.filter((t) => t.serverId === server.id).length
+    const target = this.balancer.pick(this.flow)
+    return target ? this.byKey.get(target.key) : undefined
   }
 
   step() {
-    this.tick++
-    this.recentDrops = this.recentDrops.filter((d) => this.tick - d.tick <= DROP_MEMORY_TICKS)
-    this.spawnArrivals()
-    this.advanceTransit()
+    // Settings can change between ticks (sliders, tests), so apply them first.
+    this.users.rate = this.config.requestsPerTick
+    this.users.minWork = this.config.minWork
+    this.users.maxWork = this.config.maxWork
     for (const server of this.servers) {
-      if (server.alive) this.process(server)
+      server.queueLimit = this.config.queueLimit
+      this.flow.link(BALANCER, server.key, this.config.transitTicks)
     }
+    // A new travel time applies to requests already on their way, too.
+    for (const t of this.flow.inTransit) t.ticks = this.config.transitTicks
+    this.flow.step()
   }
 
   avgLatency(): number {
-    const l = this.stats.latencies
-    return l.length === 0 ? 0 : l.reduce((a, b) => a + b, 0) / l.length
+    return this.flow.avgLatency()
   }
 
   percentileLatency(p: number): number {
-    const sorted = [...this.stats.latencies].sort((a, b) => a - b)
-    if (sorted.length === 0) return 0
-    const idx = Math.min(sorted.length - 1, Math.ceil((p / 100) * sorted.length) - 1)
-    return sorted[Math.max(0, idx)]
-  }
-
-  private spawnArrivals() {
-    this.arrivalCarry += this.config.requestsPerTick
-    while (this.arrivalCarry >= 1) {
-      this.arrivalCarry -= 1
-      const { minWork, maxWork } = this.config
-      const work = minWork + Math.floor(this.rng() * (maxWork - minWork + 1))
-      const job: Job = { id: this.nextJobId++, work, remaining: work, createdAt: this.tick }
-      const server = this.pickServer()
-      if (!server) {
-        this.drop(job.id)
-        continue
-      }
-      this.inTransit.push({ job, serverId: server.id, progress: 0 })
-    }
-  }
-
-  private advanceTransit() {
-    const stillMoving: Transit[] = []
-    for (const t of this.inTransit) {
-      t.progress += 1 / this.config.transitTicks
-      if (t.progress < 1) {
-        stillMoving.push(t)
-        continue
-      }
-      const server = this.servers.find((s) => s.id === t.serverId)
-      if (!server || !server.alive || server.queue.length >= this.config.queueLimit) {
-        this.drop(t.job.id, t.serverId)
-      } else {
-        server.queue.push(t.job)
-      }
-    }
-    this.inTransit = stillMoving
-  }
-
-  private process(server: Server) {
-    while (server.active.length < server.slots && server.queue.length > 0) {
-      server.active.push(server.queue.shift()!)
-    }
-    const stillWorking: Job[] = []
-    for (const job of server.active) {
-      job.remaining -= server.speed
-      if (job.remaining > 0) {
-        stillWorking.push(job)
-        continue
-      }
-      server.served++
-      this.stats.completed++
-      this.stats.latencies.push(this.tick - job.createdAt)
-      if (this.stats.latencies.length > LATENCY_WINDOW) this.stats.latencies.shift()
-    }
-    server.active = stillWorking
-  }
-
-  private drop(jobId: number, serverId?: number) {
-    this.stats.dropped++
-    this.recentDrops.push({ jobId, serverId, tick: this.tick })
-  }
-
-  private failServer(server: Server) {
-    const lost = [
-      ...server.active,
-      ...server.queue,
-      ...this.inTransit.filter((t) => t.serverId === server.id).map((t) => t.job),
-    ]
-    for (const job of lost) this.drop(job.id, server.id)
-    server.active = []
-    server.queue = []
-    this.inTransit = this.inTransit.filter((t) => t.serverId !== server.id)
+    return this.flow.percentileLatency(p)
   }
 }
