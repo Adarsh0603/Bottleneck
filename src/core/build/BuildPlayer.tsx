@@ -48,6 +48,8 @@ export default function BuildPlayer({
 }) {
   const [placed, setPlaced] = useState<Placement>({})
   const [selected, setSelected] = useState<PieceKind | null>(null)
+  const selectedRef = useRef(selected)
+  selectedRef.current = selected
   const [drag, setDrag] = useState<Drag | null>(null)
   const [hoverPad, setHoverPad] = useState<string | null>(null)
   const [solved, setSolved] = useState(false)
@@ -82,7 +84,7 @@ export default function BuildPlayer({
   const rebuild = (next: Placement) => {
     const current = placedRef.current
     if (next === current) return
-    if (Object.keys(next).length >= Object.keys(current).length) play('rise')
+    play(Object.keys(next).length < Object.keys(current).length ? 'remove' : 'place')
     placedRef.current = next
     setPlaced(next)
     runRef.current = new Running(task.assemble(next, settingsRef.current))
@@ -143,6 +145,7 @@ export default function BuildPlayer({
       const d = dragRef.current
       if (!d) return
       const moved = d.moved || Math.hypot(e.clientX - d.startX, e.clientY - d.startY) > 6
+      if (moved && !d.moved) play('pickup')
       setDrag({ ...d, x: e.clientX, y: e.clientY, moved })
       setHoverPad(moved ? padAt(e.clientX, e.clientY) : null)
     }
@@ -152,7 +155,10 @@ export default function BuildPlayer({
       setHoverPad(null)
       if (!d) return
       if (!d.moved) {
-        if (d.fromPad === undefined) setSelected((s) => (s === d.kind ? null : d.kind))
+        if (d.fromPad === undefined) {
+          if (selectedRef.current !== d.kind) play('pickup')
+          setSelected((s) => (s === d.kind ? null : d.kind))
+        }
         return
       }
       const pad = padAt(e.clientX, e.clientY)

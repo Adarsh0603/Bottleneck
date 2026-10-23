@@ -1,6 +1,15 @@
 // Tiny synthesized sound effects. Off by default; the choice is remembered.
 
-export type Sound = 'crash' | 'success' | 'drop' | 'rise'
+export type Sound =
+  | 'crash'
+  | 'success'
+  | 'drop'
+  | 'rise'
+  | 'right' // a question answered right
+  | 'wrong'
+  | 'pickup' // building: a piece picked up
+  | 'place'
+  | 'remove'
 
 let ctx: AudioContext | null = null
 let enabled = readSaved()
@@ -64,5 +73,23 @@ export function play(sound: Sound) {
     case 'rise':
       tone(220, 0, 0.3, 'sine', 0.05, 440)
       break
+    case 'right':
+      tone(784, 0, 0.1, 'sine', 0.06)
+      tone(1175, 0.08, 0.18, 'sine', 0.06)
+      break
+    case 'wrong':
+      tone(240, 0, 0.18, 'sine', 0.05, 200)
+      break
+    case 'pickup':
+      tone(600, 0, 0.05, 'triangle', 0.035, 760)
+      break
+    case 'place':
+      tone(180, 0, 0.12, 'sine', 0.08, 110)
+      tone(1400, 0, 0.03, 'triangle', 0.02)
+      break
+    case 'remove':
+      tone(520, 0, 0.16, 'triangle', 0.035, 260)
+      break
   }
 }
+
