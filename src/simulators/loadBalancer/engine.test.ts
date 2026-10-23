@@ -71,6 +71,30 @@ describe('least-connections', () => {
   })
 })
 
+describe('power-of-two', () => {
+  it('samples two different servers and picks the less busy one', () => {
+    // rng 0.0 -> first sample is server 0; rng 0.0 -> second sample index 0,
+    // bumped past the first, so server 1.
+    const s = new LoadBalancerSim({}, () => 0)
+    s.addServer(1)
+    s.addServer(1)
+    s.addServer(1)
+    s.algorithm = 'power-of-two'
+    s.servers[0].queue.push({ id: 99, work: 10, remaining: 10, createdAt: 0 })
+    expect(s.pickServer()!.name).toBe('Server B')
+  })
+
+  it('keeps the first sample when the second is busier', () => {
+    const s = new LoadBalancerSim({}, () => 0.99)
+    s.addServer(1)
+    s.addServer(1)
+    s.algorithm = 'power-of-two'
+    s.servers[1].queue.push({ id: 99, work: 10, remaining: 10, createdAt: 0 })
+    // rng 0.99 -> first sample is B, second is A; B is busier, so A wins.
+    expect(s.pickServer()!.name).toBe('Server A')
+  })
+})
+
 describe('failures', () => {
   it('drops everything a server held when it dies', () => {
     const s = sim([1])

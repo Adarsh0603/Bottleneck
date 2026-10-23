@@ -7,7 +7,7 @@
 
 // 'direct' means there is no load balancer: clients only know the address of
 // the first server, so every request goes there.
-export type Algorithm = 'direct' | 'round-robin' | 'random' | 'least-connections'
+export type Algorithm = 'direct' | 'round-robin' | 'random' | 'least-connections' | 'power-of-two'
 
 export interface Job {
   id: number
@@ -140,14 +140,23 @@ export class LoadBalancerSim {
       }
       case 'random':
         return alive[Math.floor(this.rng() * alive.length)]
-      case 'least-connections': {
-        // Count requests already on their way too, otherwise a burst all
-        // lands on the same "empty" server before any of it arrives.
-        const pending = (s: Server) =>
-          this.load(s) + this.inTransit.filter((t) => t.serverId === s.id).length
-        return alive.reduce((best, s) => (pending(s) < pending(best) ? s : best))
+      case 'least-connections':
+        return alive.reduce((best, s) => (this.pending(s) < this.pending(best) ? s : best))
+      case 'power-of-two': {
+        // Sample two different servers and keep the less busy one.
+        if (alive.length === 1) return alive[0]
+        const i = Math.floor(this.rng() * alive.length)
+        let j = Math.floor(this.rng() * (alive.length - 1))
+        if (j >= i) j++
+        return this.pending(alive[j]) < this.pending(alive[i]) ? alive[j] : alive[i]
       }
     }
+  }
+
+  // Count requests already on their way too, otherwise a burst all lands on
+  // the same "empty" server before any of it arrives.
+  private pending(server: Server): number {
+    return this.load(server) + this.inTransit.filter((t) => t.serverId === server.id).length
   }
 
   step() {

@@ -9,7 +9,6 @@
   --line: #e0e0e0;
   --subtle: #efefef;
   --card: rgb(255 255 255 / 0.78);
-  --grid: rgb(0 0 0 / 0.09);
   --danger: #d92d20;
   --iso-top: #ffffff;
   --iso-left: #f0f0f0;
@@ -25,7 +24,6 @@
   --line: #2a2a2a;
   --subtle: #1c1c1c;
   --card: rgb(16 16 16 / 0.78);
-  --grid: rgb(255 255 255 / 0.09);
   --danger: #ff6b5e;
   --iso-top: #2a2a2a;
   --iso-left: #1c1c1c;
@@ -53,54 +51,7 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* 3D grid floor: a flat grid tilted away from the viewer, fading into the horizon. */
-.grid-floor {
-  position: fixed;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-  perspective: 420px;
-}
-
-.grid-floor::before {
-  content: "";
-  position: absolute;
-  left: -100%;
-  right: -100%;
-  top: 45%;
-  height: 160%;
-  background-image:
-    linear-gradient(to right, var(--grid) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--grid) 1px, transparent 1px);
-  background-size: 56px 56px;
-  transform: rotateX(72deg);
-  transform-origin: top center;
-  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 35%);
-  mask-image: linear-gradient(to bottom, transparent, #000 35%);
-  animation: grid-move 4s linear infinite;
-}
-
-/* A faint flat grid across the top half so the page never feels empty. */
-.grid-floor::after {
-  content: "";
-  position: absolute;
-  inset: 0 0 50% 0;
-  background-image:
-    linear-gradient(to right, var(--grid) 1px, transparent 1px),
-    linear-gradient(to bottom, var(--grid) 1px, transparent 1px);
-  background-size: 56px 56px;
-  -webkit-mask-image: radial-gradient(ellipse at 50% 0%, #000 0%, transparent 70%);
-  mask-image: radial-gradient(ellipse at 50% 0%, #000 0%, transparent 70%);
-  opacity: 0.6;
-}
-
-@keyframes grid-move {
-  to {
-    background-position: 0 56px;
-  }
-}
-
-/* 3D prototype: captions and scene tags ease in. */
+/* Captions and scene labels ease in. */
 .caption-in {
   animation: fade-up 0.45s ease-out;
 }
@@ -117,7 +68,6 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .grid-floor::before,
   .caption-in,
   .tag-in {
     animation: none;

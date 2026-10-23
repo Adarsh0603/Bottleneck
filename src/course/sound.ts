@@ -1,0 +1,68 @@
+// Tiny synthesized sound effects. Off by default; the choice is remembered.
+
+export type Sound = 'crash' | 'success' | 'drop' | 'rise'
+
+let ctx: AudioContext | null = null
+let enabled = readSaved()
+
+function readSaved() {
+  try {
+    return localStorage.getItem('sound') === 'on'
+  } catch {
+    return false
+  }
+}
+
+export function isSoundOn() {
+  return enabled
+}
+
+export function setSoundOn(on: boolean) {
+  enabled = on
+  try {
+    localStorage.setItem('sound', on ? 'on' : 'off')
+  } catch {
+    // Not remembered, but still works for this visit.
+  }
+}
+
+export function play(sound: Sound) {
+  if (!enabled) return
+  try {
+    ctx ??= new AudioContext()
+  } catch {
+    return
+  }
+  const audio = ctx
+  const t = audio.currentTime
+
+  const tone = (freq: number, start: number, dur: number, type: OscillatorType, gain: number, endFreq?: number) => {
+    const osc = audio.createOscillator()
+    const amp = audio.createGain()
+    osc.type = type
+    osc.frequency.setValueAtTime(freq, t + start)
+    if (endFreq) osc.frequency.exponentialRampToValueAtTime(endFreq, t + start + dur)
+    amp.gain.setValueAtTime(gain, t + start)
+    amp.gain.exponentialRampToValueAtTime(0.0001, t + start + dur)
+    osc.connect(amp).connect(audio.destination)
+    osc.start(t + start)
+    osc.stop(t + start + dur)
+  }
+
+  switch (sound) {
+    case 'crash':
+      tone(160, 0, 0.4, 'sawtooth', 0.05, 45)
+      break
+    case 'success':
+      tone(660, 0, 0.12, 'sine', 0.07)
+      tone(880, 0.1, 0.12, 'sine', 0.07)
+      tone(1320, 0.2, 0.3, 'sine', 0.06)
+      break
+    case 'drop':
+      tone(320, 0, 0.08, 'triangle', 0.025, 160)
+      break
+    case 'rise':
+      tone(220, 0, 0.3, 'sine', 0.05, 440)
+      break
+  }
+}
