@@ -7,11 +7,11 @@ import { BLACK_FRIDAY } from './build'
 // reached, exactly as the builder checks it.
 function wins(placed: Placement, seed: number) {
   let x = seed
-  const run = new Running(BLACK_FRIDAY.assemble(placed, () => (x = (x * 16807) % 2147483647) / 2147483647))
+  const run = new Running(BLACK_FRIDAY.assemble(placed, {}, () => (x = (x * 16807) % 2147483647) / 2147483647))
   let streak = 0
   for (let t = 0; t < TICKS_PER_SECOND * 60; t++) {
     run.step()
-    streak = BLACK_FRIDAY.check(run.metrics(), placed) ? streak + 1 : 0
+    streak = BLACK_FRIDAY.check(run.metrics(), placed, {}) ? streak + 1 : 0
     if (streak >= BLACK_FRIDAY.holdSeconds * TICKS_PER_SECOND) return true
   }
   return false

@@ -49,7 +49,27 @@ export interface BuildMetrics {
   avgMs: number
   busy: Record<string, number> // node key → how busy its workers were, 0–1
   busiest: number // the highest of those
+  latency: Record<string, number> // source key → recent average response, ms
 }
+
+// A number the learner can adjust once a piece is placed, e.g. cache size.
+export interface BuildSetting {
+  id: string
+  label: string // singular unit, e.g. "item"
+  when: PieceKind
+  min: number
+  max: number
+  step: number
+  initial: number
+}
+
+export type Settings = Record<string, number>
+
+// A live number shown at the top: busy-ness of one node, response time of
+// one source, or (by default) the busiest server.
+export type Watch =
+  | { kind: 'busy'; key: string; label: string }
+  | { kind: 'latency'; key: string; label: string; limitMs: number }
 
 export interface BuildTask {
   title: string
@@ -62,8 +82,10 @@ export interface BuildTask {
   fixed: FixedPiece[]
   pads: Pad[]
   toolbox: { kind: PieceKind; count: number }[]
+  settings?: BuildSetting[]
+  watch?: Watch[]
   // Turn a placement into a running system. Node keys are the fixed pieces'
   // and pads' ids, so the scene knows where to draw each node.
-  assemble: (placed: Placement, rng?: () => number) => FlowSim
-  check: (m: BuildMetrics, placed: Placement) => boolean
+  assemble: (placed: Placement, settings: Settings, rng?: () => number) => FlowSim
+  check: (m: BuildMetrics, placed: Placement, settings: Settings) => boolean
 }

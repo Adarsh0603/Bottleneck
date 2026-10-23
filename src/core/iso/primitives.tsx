@@ -163,7 +163,7 @@ export function FloorSpot({ x, z, size }: { x: number; z: number; size: number }
 
 // A dashed route painted on the floor.
 export function FloorPath({ route }: { route: V3[] }) {
-  return <polyline points={points(route)} stroke="var(--muted)" strokeWidth={1} strokeDasharray="5 5" fill="none" />
+  return <polyline points={points(route)} stroke="var(--muted)" strokeWidth={1} strokeDasharray="5 5" fill="none" pointerEvents="none" />
 }
 
 export function IsoGrid() {

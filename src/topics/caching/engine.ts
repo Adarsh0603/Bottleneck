@@ -44,6 +44,9 @@ const pick = (table: number[], r: number) => {
   return i < 0 ? table.length - 1 : i
 }
 
+// Which item a request asks for, following the popularity curve.
+export const popularItem = (rng: () => number) => pick(ZIPF, rng())
+
 // The share of requests the `n` most popular items get (no viral item).
 export const topShare = (n: number) => (n <= 0 ? 0 : ZIPF[Math.min(n, ITEMS) - 1])
 

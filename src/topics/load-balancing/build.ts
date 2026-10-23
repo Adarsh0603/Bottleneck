@@ -31,7 +31,7 @@ export const BLACK_FRIDAY: BuildTask = {
     { kind: 'server', count: 6 },
   ],
 
-  assemble(placed, rng) {
+  assemble(placed, _settings, rng) {
     const flow = new FlowSim(rng)
     const users = flow.add(new Source('users'))
     users.rate = RPS / TICKS_PER_SECOND

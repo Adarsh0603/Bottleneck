@@ -16,6 +16,7 @@ export interface Job {
   remaining: number
   createdAt: number
   key?: number // what is being asked for, e.g. a cache key
+  from?: string // the source that sent it, e.g. a user region
 }
 
 export interface Transit {
@@ -67,6 +68,8 @@ export class FlowSim {
   stats: Stats = { completed: 0, dropped: 0, latencies: [] }
   recentDrops: Drop[] = []
   readonly rng: () => number
+  // Called as each request is answered, e.g. to track response time per region.
+  onComplete?: (job: Job, latencyTicks: number) => void
 
   private nodes = new Map<string, FlowNode>()
   private links = new Map<string, Link[]>()
@@ -120,8 +123,8 @@ export class FlowSim {
 
   // --- Moving requests ---------------------------------------------------------
 
-  newJob(work: number, key?: number): Job {
-    return { id: this.nextJobId++, work, remaining: work, createdAt: this.tick, key }
+  newJob(work: number, key?: number, from?: string): Job {
+    return { id: this.nextJobId++, work, remaining: work, createdAt: this.tick, key, from }
   }
 
   // Send a request along a link. A zero-tick link delivers it right away.
@@ -141,6 +144,7 @@ export class FlowSim {
     this.stats.completed++
     this.stats.latencies.push(this.tick - job.createdAt)
     if (this.stats.latencies.length > LATENCY_WINDOW) this.stats.latencies.shift()
+    this.onComplete?.(job, this.tick - job.createdAt)
   }
 
   drop(job: Job, node: string) {

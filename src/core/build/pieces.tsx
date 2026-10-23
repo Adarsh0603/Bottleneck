@@ -1,3 +1,4 @@
+import { Cache } from '../flow/cache'
 import type { FlowNode } from '../flow/engine'
 import { Worker } from '../flow/nodes'
 import { depth, points, project } from '../iso/geometry'
@@ -33,7 +34,7 @@ export function Piece({
     case 'app':
       return <Server x={x} z={z} rise={rise} worker={worker} w={1.5} h={1.4} />
     case 'cache':
-      return <IsoBox x={x} z={z} w={1.9} d={1.9} h={0.55 * rise} />
+      return <CachePiece x={x} z={z} rise={rise} cache={node instanceof Cache ? node : undefined} />
     case 'database':
       return <IsoCylinder x={x} z={z} r={0.85} h={1.7 * rise} />
   }
@@ -99,6 +100,38 @@ function Server({ x, z, rise, worker, w, h: fullH }: { x: number; z: number; ris
             fill={worker && i < worker.active.length ? 'var(--fg)' : undefined}
           />
         ))}
+    </g>
+  )
+}
+
+// A flat box with memory cells on its lid: one per item it can hold, filled
+// when used.
+function CachePiece({ x, z, rise, cache }: { x: number; z: number; rise: number; cache?: Cache }) {
+  const h = 0.55 * rise
+  const capacity = cache?.capacity ?? 8
+  const used = cache?.entries.size ?? 0
+  return (
+    <g>
+      <IsoBox x={x} z={z} w={1.9} d={1.9} h={h} />
+      {rise === 1 &&
+        Array.from({ length: Math.min(capacity, 40) }, (_, i) => {
+          const cx = x - 0.7 + (i % 8) * 0.2
+          const cz = z - 0.6 + Math.floor(i / 8) * 0.3
+          return (
+            <polygon
+              key={i}
+              points={points([
+                [cx - 0.08, h, cz - 0.12],
+                [cx - 0.08, h, cz + 0.12],
+                [cx + 0.08, h, cz + 0.12],
+                [cx + 0.08, h, cz - 0.12],
+              ])}
+              fill={i < used ? 'var(--fg)' : 'var(--subtle)'}
+              stroke="var(--line)"
+              strokeWidth={0.6}
+            />
+          )
+        })}
     </g>
   )
 }

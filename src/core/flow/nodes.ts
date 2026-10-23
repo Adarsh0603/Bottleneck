@@ -29,7 +29,7 @@ export class Source implements FlowNode {
     while (this.carry >= 1) {
       this.carry -= 1
       const work = this.minWork + Math.floor(sim.rng() * (this.maxWork - this.minWork + 1))
-      const job = sim.newJob(work, this.keyOf?.(sim.rng))
+      const job = sim.newJob(work, this.keyOf?.(sim.rng), this.key)
       const to = sim.targets(this.key)[0]
       if (to) sim.forward(job, this.key, to.key)
       else sim.drop(job, this.key)

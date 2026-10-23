@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { TopBar } from '../chrome'
-import { ArrowIcon, Chip, CrossIcon, GaugeIcon } from '../hud'
+import { Stepper } from '../controls'
+import { ArrowIcon, Chip, ClockIcon, CrossIcon, GaugeIcon } from '../hud'
 import { play } from '../sound'
 import type { Level } from '../types'
 import { COMPACT, SHORT, useMedia } from '../useMedia'
@@ -8,7 +9,7 @@ import BuildScene from './BuildScene'
 import { PieceIcon } from './pieces'
 import { canDrop, drop, lift, remaining } from './placement'
 import { MS_PER_TICK, Running } from './run'
-import { PIECE_NAMES, type BuildTask, type PieceKind, type Placement } from './types'
+import { PIECE_NAMES, type BuildTask, type PieceKind, type Placement, type Settings } from './types'
 
 interface Drag {
   kind: PieceKind
@@ -54,9 +55,15 @@ export default function BuildPlayer({
   const short = useMedia(SHORT)
   const lastChapter = index === chapters.length - 1
 
-  // The live system, rebuilt from scratch whenever the placement changes.
+  const [settings, setSettings] = useState<Settings>(() =>
+    Object.fromEntries((task.settings ?? []).map((s) => [s.id, s.initial])),
+  )
+  const settingsRef = useRef(settings)
+  settingsRef.current = settings
+
+  // The live system, rebuilt from scratch whenever the placement or a setting changes.
   const runRef = useRef<Running | null>(null)
-  if (!runRef.current) runRef.current = new Running(task.assemble({}))
+  if (!runRef.current) runRef.current = new Running(task.assemble({}, settings))
   const run = runRef.current
   const lastTickAt = useRef(0)
   useEffect(() => {
@@ -77,7 +84,14 @@ export default function BuildPlayer({
     if (Object.keys(next).length >= Object.keys(current).length) play('rise')
     placedRef.current = next
     setPlaced(next)
-    runRef.current = new Running(task.assemble(next))
+    runRef.current = new Running(task.assemble(next, settingsRef.current))
+    holdStart.current = null
+  }
+  const changeSetting = (id: string, value: number) => {
+    const next = { ...settingsRef.current, [id]: value }
+    settingsRef.current = next
+    setSettings(next)
+    runRef.current = new Running(task.assemble(placedRef.current, next))
     holdStart.current = null
   }
   const rebuildRef = useRef(rebuild)
@@ -97,7 +111,7 @@ export default function BuildPlayer({
   useEffect(() => {
     if (solved || tick === 0) return
     const now = performance.now()
-    if (task.check(m, placed)) {
+    if (task.check(m, placed, settings)) {
       holdStart.current ??= now
       if (now - holdStart.current >= task.holdSeconds * 1000) {
         setSolved(true)
@@ -108,7 +122,7 @@ export default function BuildPlayer({
     } else {
       holdStart.current = null
     }
-  }, [solved, tick, task, m, placed])
+  }, [solved, tick, task, m, placed, settings])
   const holdProgress = holdStart.current === null ? 0 : Math.min(1, (performance.now() - holdStart.current) / (task.holdSeconds * 1000))
 
   // Dragging: from the toolbox or off a pad. A press that doesn't move is a
@@ -189,7 +203,14 @@ export default function BuildPlayer({
         <div className={`flex gap-2 ${compact ? 'no-scrollbar pointer-events-auto -mx-3 overflow-x-auto px-3' : 'flex-wrap'}`}>
           <Chip icon={<ArrowIcon />} title="Traffic" value={`${task.rps} req/s`} />
           <Chip icon={<CrossIcon />} title="Errors" value={`${m.dropRate.toFixed(0)}%`} bad={m.dropRate > 1} />
-          <Chip icon={<GaugeIcon />} title="Busiest server" value={`${Math.round(m.busiest * 100)}%`} bad={m.busiest >= 0.9} />
+          {(task.watch ?? [{ kind: 'busy', key: '', label: 'Busiest server' } as const]).map((w) => {
+            if (w.kind === 'latency') {
+              const ms = m.latency[w.key] ?? 0
+              return <Chip key={w.key} icon={<ClockIcon />} title={w.label} value={`${(ms / 1000).toFixed(2)}s`} bad={ms > w.limitMs} />
+            }
+            const busy = w.key ? (m.busy[w.key] ?? 0) : m.busiest
+            return <Chip key={w.key || 'busiest'} icon={<GaugeIcon />} title={w.label} value={`${Math.round(busy * 100)}%`} bad={busy >= 0.9} />
+          })}
         </div>
       </div>
 
@@ -241,6 +262,21 @@ export default function BuildPlayer({
                   </button>
                 )
               })}
+              {/* Settings appear once the piece they adjust is on the floor. */}
+              {(task.settings ?? [])
+                .filter((s) => Object.values(placed).includes(s.when))
+                .map((s) => (
+                  <div key={s.id} className="flex items-center gap-2">
+                    <PieceIcon kind={s.when} size={28} />
+                    <Stepper
+                      value={settings[s.id]}
+                      min={s.min}
+                      max={s.max}
+                      label={s.label}
+                      onChange={(v) => changeSetting(s.id, settings[s.id] + (v > settings[s.id] ? s.step : -s.step))}
+                    />
+                  </div>
+                ))}
             </div>
           </div>
 

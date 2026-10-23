@@ -1,4 +1,5 @@
 import type { Ramp, Shot, V3 } from '../../core/types'
+import { SAVE_THE_DATABASE } from './build'
 import type { CachingSim } from './engine'
 import type { CachingChapter, CachingState } from './types'
 import { APP, CACHE, DB } from './world'
@@ -251,5 +252,12 @@ export const CHAPTERS: CachingChapter[] = [
       },
       { caption: 'Ready for the interview.', sub: 'The caching details that come up most.', sheet: true, shot: WIDE },
     ],
+  },
+  {
+    title: 'Build it',
+    level: 'Intermediate',
+    initial: BASE,
+    beats: [{ caption: SAVE_THE_DATABASE.title }],
+    build: SAVE_THE_DATABASE,
   },
 ]

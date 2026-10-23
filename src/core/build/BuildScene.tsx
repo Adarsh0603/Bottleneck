@@ -112,26 +112,21 @@ export default function BuildScene({
               </g>
             ),
           })
-          if (node instanceof Worker) {
-            const overloaded = node.queue.length >= node.queueLimit * 0.75
-            node.queue.forEach((job, k) => {
-              const qx = pad.x - HALF[kind] - 0.3 - k * QUEUE_GAP
-              solids.push({
-                d: depth(qx, pad.z),
-                node: (
-                  <IsoBox
-                    key={`q${job.id}`}
-                    x={qx}
-                    z={pad.z}
-                    w={CUBE}
-                    d={CUBE}
-                    h={CUBE}
-                    fill={overloaded ? 'var(--danger)' : 'var(--fg)'}
-                  />
-                ),
-              })
+        }
+        // Requests waiting in line in front of any server, fixed or placed.
+        for (const [key, s] of spots) {
+          const node = flow.node(key)
+          if (!(node instanceof Worker)) continue
+          const overloaded = node.queue.length >= node.queueLimit * 0.75
+          node.queue.slice(0, 10).forEach((job, k) => {
+            const qx = s.x - HALF[s.kind] - 0.3 - k * QUEUE_GAP
+            solids.push({
+              d: depth(qx, s.z),
+              node: (
+                <IsoBox key={`q${job.id}`} x={qx} z={s.z} w={CUBE} d={CUBE} h={CUBE} fill={overloaded ? 'var(--danger)' : 'var(--fg)'} />
+              ),
             })
-          }
+          })
         }
         solids.sort((a, b) => a.d - b.d)
 
@@ -171,7 +166,9 @@ export default function BuildScene({
 
             {solids.map((s) => s.node)}
 
-            {/* Requests in flight between pieces. */}
+            {/* Requests in flight between pieces. Nothing below here should
+                get in the way of dropping onto a pad. */}
+            <g pointerEvents="none">
             {flow.inTransit.map((t) => {
               if (!spots.has(t.from) || !spots.has(t.to)) return null
               const p = Math.min(1, t.progress + frac / t.ticks)
@@ -206,6 +203,7 @@ export default function BuildScene({
                 />
               )
             })}
+            </g>
           </>
         )
       }}
