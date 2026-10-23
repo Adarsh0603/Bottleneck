@@ -92,8 +92,25 @@ export default function Viewport({
     lastPanKey.current = panKey
     pan.current = { x: 0, y: 0 }
   }
-  const goalZoom = zoom * userZoom
-  const [gx, gy] = project(target)
+
+  // When a question opens, start from the planned shot so every answer can be seen.
+  const asks = markers.filter((m) => m.tone === 'ask')
+  const askKey = asks.map((m) => m.label).join('|')
+  const lastAskKey = useRef(askKey)
+  if (lastAskKey.current !== askKey) {
+    lastAskKey.current = askKey
+    if (askKey) {
+      pan.current = { x: 0, y: 0 }
+      if (userZoom !== 1) setUserZoom(1)
+    }
+  }
+
+  const narrow = size.w < 640
+  const fs = frameScale(size.w, size.h)
+  const k = narrow ? 0.1 : 0.06
+  const fit = fitMarkers(asks, target, zoom, size, fs, k, narrow)
+  const goalZoom = fit.zoom * userZoom
+  const [gx, gy] = fit.center
   const v = (view.current ??= { cx: gx, cy: gy, zoom: goalZoom })
   v.cx += (gx - v.cx) * ease
   v.cy += (gy - v.cy) * ease
@@ -102,16 +119,15 @@ export default function Viewport({
   const jx = shaking ? (Math.random() - 0.5) * 10 : 0
   const jy = shaking ? (Math.random() - 0.5) * 10 : 0
 
-  const unitsPerPixel = 1 / (frameScale(size.w, size.h) * v.zoom)
+  const unitsPerPixel = 1 / (fs * v.zoom)
   const w = size.w * unitsPerPixel
   const h = size.h * unitsPerPixel
 
   // Captions cover more of the bottom than the stats cover of the top, so
-  // frame the subject a little above the middle; more so on phones, where
-  // the caption takes a bigger share of the screen.
-  const narrow = size.w < 640
+  // frame the subject a little above the middle (`k`); more so on phones,
+  // where the caption takes a bigger share of the screen.
   const left = v.cx - w / 2 + jx + pan.current.x
-  const top = v.cy - h / 2 + h * (narrow ? 0.1 : 0.06) + jy + pan.current.y
+  const top = v.cy - h / 2 + h * k + jy + pan.current.y
 
   // One finger or the mouse pans; two fingers pinch to zoom.
   const gap = () => {
@@ -227,4 +243,61 @@ export default function Viewport({
       </svg>
     </div>
   )
+}
+
+// The part of the screen not covered by the stats on top, the question at the
+// bottom and the zoom buttons at the sides, in pixels.
+function clearArea(size: { w: number; h: number }, narrow: boolean) {
+  const short = size.h < 500
+  const top = short ? 80 : narrow ? 150 : 130
+  const bottom = short ? 130 : narrow ? 250 : 210
+  const side = narrow ? 16 : 80
+  return { x0: side, x1: size.w - side, y0: top, y1: Math.max(top + 1, size.h - bottom) }
+}
+
+// Where to point the camera, and how far in, so every answer to an open
+// question sits in the clear part of the screen. Leaves the shot alone when
+// they already do; otherwise recentres on them and zooms out as needed.
+function fitMarkers(
+  asks: Marker[],
+  target: V3,
+  zoom: number,
+  size: { w: number; h: number },
+  fs: number,
+  k: number,
+  narrow: boolean,
+): { center: [number, number]; zoom: number } {
+  const center = project(target)
+  if (asks.length === 0) return { center, zoom }
+
+  // The pins' extent in scene units (see MarkerPin: the tag sits above the point).
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity
+  for (const m of asks) {
+    const [sx, sy] = project(m.at)
+    const half = (m.label.length * 7.6 + 28) / 2 + 8
+    x0 = Math.min(x0, sx - half)
+    x1 = Math.max(x1, sx + half)
+    y0 = Math.min(y0, sy - 52)
+    y1 = Math.max(y1, sy + 12)
+  }
+
+  const area = clearArea(size, narrow)
+  // Scene point → screen pixel for a camera at (cx, cy) and zoom z.
+  const toScreen = (cx: number, cy: number, z: number, x: number, y: number) => {
+    const upp = 1 / (fs * z)
+    const left = cx - (size.w * upp) / 2
+    const top = cy - (size.h * upp) / 2 + size.h * upp * k
+    return [(x - left) / upp, (y - top) / upp]
+  }
+  const [ax, ay] = toScreen(center[0], center[1], zoom, x0, y0)
+  const [bx, by] = toScreen(center[0], center[1], zoom, x1, y1)
+  if (ax >= area.x0 && bx <= area.x1 && ay >= area.y0 && by <= area.y1) return { center, zoom }
+
+  const fitZoom = Math.min((area.x1 - area.x0) / (fs * (x1 - x0)), (area.y1 - area.y0) / (fs * (y1 - y0)))
+  const z = Math.max(0.3, Math.min(zoom, fitZoom))
+  const upp = 1 / (fs * z)
+  // Put the middle of the pins in the middle of the clear area.
+  const cx = (x0 + x1) / 2 - ((area.x0 + area.x1) / 2) * upp + (size.w * upp) / 2
+  const cy = (y0 + y1) / 2 - ((area.y0 + area.y1) / 2) * upp + (size.h * upp) / 2 - size.h * upp * k
+  return { center: [cx, cy], zoom: z }
 }
