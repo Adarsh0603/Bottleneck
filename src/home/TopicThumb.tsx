@@ -85,6 +85,18 @@ const THUMBS: Record<string, Thumb> = {
     ],
     routes: [-1.9, 0, 1.9].map((z): V3[] => [[-3.3, 0, 0], [-2.2, 0, 0], [-0.6, 0, 0], [1.1, 0, z]]),
   },
+  // A row of shards, each fed its own share by the app.
+  sharding: {
+    pieces: [
+      { kind: 'database', x: 2, z: -2.85 },
+      { kind: 'database', x: 2, z: -0.95 },
+      { kind: 'database', x: 2, z: 0.95 },
+      { kind: 'database', x: 2, z: 2.85 },
+      { kind: 'app', x: -1.4, z: 0 },
+      { kind: 'users', x: -4.3, z: 0, active: 8 },
+    ],
+    routes: [-2.85, -0.95, 0.95, 2.85].map((z): V3[] => [[-3.3, 0, 0], [-2.2, 0, 0], [-0.6, 0, 0], [1.1, 0, z]]),
+  },
 }
 
 const SOON: Thumb = { pieces: [], routes: [] }

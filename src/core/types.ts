@@ -34,6 +34,9 @@ export interface Ramp<S> {
 // A "what happens next?" question asked before a beat plays. The beat's setup
 // is shown, frozen, and the learner answers by tapping a thing in the scene.
 export interface Predict {
+  // The one fact the guess depends on, shown with the question (the caption
+  // and labels are hidden while it's open).
+  clue: string
   question: string
   options: { label: string; at: V3 }[] // tap targets, pinned in the world
   answer: number // index into options

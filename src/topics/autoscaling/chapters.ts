@@ -91,7 +91,7 @@ export const CHAPTERS: AutoscaleChapter[] = [
         caption: 'New servers aren’t instant.',
         sub: 'Each one boots for a few seconds before it can take a request.',
         predict: {
-          question: 'Traffic is about to triple. Where are requests turned away?',
+          clue: 'New servers take 8 seconds to boot. Until then they can’t take a request.', question: 'Traffic is about to triple. Where are requests turned away?',
           options: [TARGETS.running, TARGETS.fresh],
           answer: 0,
         },

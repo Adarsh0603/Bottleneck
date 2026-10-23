@@ -65,7 +65,7 @@ export const CHAPTERS: CachingChapter[] = [
       },
       {
         caption: 'Traffic grows. The database drowns.',
-        predict: { question: 'Traffic is about to triple. What breaks first?', options: [TARGETS.app, TARGETS.db], answer: 1 },
+        predict: { clue: 'Each lookup keeps the database busy for a while. The app servers just pass requests along.', question: 'Traffic is about to triple. What breaks first?', options: [TARGETS.app, TARGETS.db], answer: 1 },
         sub: 'Your app servers are fine. The database is the bottleneck now.',
         ramp: trafficRamp(10, 900),
         shot: ON_DB,
@@ -89,7 +89,7 @@ export const CHAPTERS: CachingChapter[] = [
     beats: [
       {
         caption: 'A cache remembers answers.',
-        predict: { question: 'The cache starts empty. Where does the first answer come from?', options: [TARGETS.cache, TARGETS.db], answer: 1 },
+        predict: { clue: 'A cache can only answer what it has seen before.', question: 'The cache starts empty. Where does the first answer come from?', options: [TARGETS.cache, TARGETS.db], answer: 1 },
         sub: 'Fast memory between your app and the database. It starts empty.',
         set: { cache: true, capacity: 20 },
         shot: ON_CACHE,
@@ -105,7 +105,7 @@ export const CHAPTERS: CachingChapter[] = [
       },
       {
         caption: 'Next time: a hit.',
-        predict: { question: 'Same item, asked again. Where does the answer come from now?', options: [TARGETS.cache, TARGETS.db], answer: 0 },
+        predict: { clue: 'On that miss, the cache kept the answer it got back.', question: 'Same item, asked again. Where does the answer come from now?', options: [TARGETS.cache, TARGETS.db], answer: 0 },
         sub: 'Its cell flashes and answers straight from memory. The database never sees it.',
         shot: HITS,
         tags: ['hit'],

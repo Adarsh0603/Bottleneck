@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { continueTarget, parse, topicProgress, withSolved, withStep } from './progress'
+import { continueTarget, fitted, parse, topicProgress, withSolved, withStep } from './progress'
 
 describe('withStep', () => {
   it('remembers where the learner is', () => {
@@ -53,5 +53,14 @@ describe('parse', () => {
   it('keeps valid entries and drops bad fields', () => {
     const raw = JSON.stringify({ lb: { done: [0, 'x'], solved: ['2:0'], last: { chapter: 1 }, updatedAt: 5 } })
     expect(parse(raw)).toEqual({ lb: { done: [0], solved: ['2:0'], last: undefined, updatedAt: 5 } })
+  })
+})
+
+describe('fitted', () => {
+  it('drops chapters and challenges a topic no longer has', () => {
+    const p = { sharding: { done: [0, 1, 4], solved: ['1:2', '4:1'], last: { chapter: 4, step: 0 }, updatedAt: 1 }, other: { done: [7], solved: [], updatedAt: 1 } }
+    const out = fitted(p, { sharding: { chapters: 4, challenges: ['1:2', '2:3'] } })
+    expect(out.sharding).toEqual({ done: [0, 1], solved: ['1:2'], last: undefined, updatedAt: 1 })
+    expect(out.other).toEqual(p.other)
   })
 })

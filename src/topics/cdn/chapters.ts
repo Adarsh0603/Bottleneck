@@ -49,7 +49,7 @@ export const CHAPTERS: CdnChapter[] = [
         caption: 'Put a copy near the users.',
         sub: 'An edge server is a cache close to them. A network of them is a CDN.',
         set: { edges: { ...NO_EDGES, asia: true } },
-        predict: { question: 'Asia’s first request. Where does the answer come from?', options: [TARGETS.asiaEdge, TARGETS.origin], answer: 1 },
+        predict: { clue: 'An edge server is a cache, and it starts empty.', question: 'Asia’s first request. Where does the answer come from?', options: [TARGETS.asiaEdge, TARGETS.origin], answer: 1 },
         shot: ASIA,
         tags: ['regions', 'edges'],
         hud: ['latency', 'hitrate'],

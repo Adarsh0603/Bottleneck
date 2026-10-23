@@ -181,7 +181,7 @@ export const CHAPTERS: LbChapter[] = [
       {
         caption: 'Fix #2: add more servers.',
         predict: {
-          question: 'Two new servers. Which one will get the traffic?',
+          clue: 'Server A is the one you already had. There’s no load balancer, so users still send to the one address they know.', question: 'Two new servers. Which one will get the traffic?',
           options: serverTargets([1, 1, 1]),
           answer: 0,
         },
@@ -229,7 +229,7 @@ export const CHAPTERS: LbChapter[] = [
       {
         caption: 'Who gets the next request?',
         predict: {
-          question: 'Round robin gives everyone turns. Which server falls behind?',
+          clue: 'Server D is half as fast as the others.', question: 'Round robin gives everyone turns. Which server falls behind?',
           options: serverTargets([1, 1, 1, 0.5]),
           answer: 3,
         },

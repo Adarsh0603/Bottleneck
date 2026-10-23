@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { CHAPTERS as CACHING } from './caching/chapters'
 import { CHAPTERS as LOAD_BALANCING } from './load-balancing/chapters'
 import { CHAPTERS as REPLICATION } from './replication/chapters'
+import { CHAPTERS as SHARDING } from './sharding/chapters'
 
-const topics = { 'load balancing': LOAD_BALANCING, caching: CACHING, replication: REPLICATION }
+const topics = { 'load balancing': LOAD_BALANCING, caching: CACHING, replication: REPLICATION, sharding: SHARDING }
 
 describe.each(Object.entries(topics))('%s questions', (_, chapters) => {
   const questions = chapters.flatMap((c) => c.beats.flatMap((b) => (b.predict ? [b.predict] : [])))
@@ -14,6 +15,7 @@ describe.each(Object.entries(topics))('%s questions', (_, chapters) => {
   })
 
   it.each(questions.map((q) => [q.question, q] as const))('is answerable by tapping the scene: %s', (_q, q) => {
+    expect(q.clue.trim()).not.toBe('')
     expect(q.options.length).toBeGreaterThanOrEqual(2)
     expect(new Set(q.options.map((o) => o.label)).size).toBe(q.options.length)
     expect(q.answer).toBeGreaterThanOrEqual(0)

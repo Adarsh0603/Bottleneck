@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { TOPICS } from '../topics/registry'
 
 // Learner progress, saved in this browser only (localStorage). Everything
 // that reads or writes progress goes through this file, so moving it to a
@@ -45,6 +46,30 @@ export function continueTarget(p: Progress, chapterCounts: Record<string, number
   return best
 }
 
+// Drop progress for chapters and challenges a topic no longer has, e.g.
+// after its chapters were reworked, so counts never read "5 / 4".
+export function fitted(p: Progress, shapes: Record<string, { chapters: number; challenges: string[] }>): Progress {
+  const out: Progress = {}
+  for (const [topic, t] of Object.entries(p)) {
+    const shape = shapes[topic]
+    if (!shape) {
+      out[topic] = t
+      continue
+    }
+    out[topic] = {
+      ...t,
+      done: t.done.filter((n) => n < shape.chapters),
+      solved: t.solved.filter((id) => shape.challenges.includes(id)),
+      last: t.last && t.last.chapter < shape.chapters ? t.last : undefined,
+    }
+  }
+  return out
+}
+
+const SHAPES = Object.fromEntries(
+  TOPICS.filter((t) => t.chapters).map((t) => [t.id, { chapters: t.chapters!.length, challenges: t.challenges ?? [] }]),
+)
+
 // Anything unexpected in storage (old format, hand-edited) is ignored rather
 // than crashing the app.
 export function parse(raw: string | null): Progress {
@@ -76,7 +101,7 @@ export function parse(raw: string | null): Progress {
 
 function read(): Progress {
   try {
-    return parse(localStorage.getItem(KEY))
+    return fitted(parse(localStorage.getItem(KEY)), SHAPES)
   } catch {
     return {}
   }

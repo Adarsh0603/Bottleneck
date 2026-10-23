@@ -287,6 +287,9 @@ function LessonPlayer<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
                 <div className="font-mono text-[10px] uppercase tracking-widest text-muted">
                   Paused · tap your guess
                 </div>
+                <p className="mt-1 text-sm text-muted sm:text-base">
+                  {predict.clue}
+                </p>
                 <h2
                   className={`mt-1 font-semibold tracking-tight ${short ? "text-lg" : "text-xl sm:text-3xl"}`}
                 >
