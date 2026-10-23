@@ -1,5 +1,7 @@
 import type { ComponentType } from 'react'
 import type { Level } from '../core/types'
+import { CHAPTERS as AUTOSCALING_CHAPTERS } from './autoscaling/chapters'
+import AutoscalingPlay from './autoscaling/Play'
 import { CHAPTERS as CACHING_CHAPTERS } from './caching/chapters'
 import CachingPlay from './caching/Play'
 import { CHAPTERS as CDN_CHAPTERS } from './cdn/chapters'
@@ -72,7 +74,15 @@ export const TOPICS: TopicEntry[] = [
     challenges: challengeIds(CDN_CHAPTERS),
     Play: CdnPlay,
   },
-  { id: 'autoscaling', title: 'Autoscaling', track: 'scaling', pitch: 'Add and remove servers as traffic rises and falls.' },
+  {
+    id: 'autoscaling',
+    title: 'Autoscaling',
+    track: 'scaling',
+    pitch: 'Add and remove servers as traffic rises and falls.',
+    chapters: AUTOSCALING_CHAPTERS.map((c) => c.title),
+    challenges: challengeIds(AUTOSCALING_CHAPTERS),
+    Play: AutoscalingPlay,
+  },
 
   { id: 'replication', title: 'Database replication', track: 'data', pitch: 'Copy data to replicas for reads, and live with lag.' },
   { id: 'sharding', title: 'Sharding', track: 'data', pitch: 'Split one database into many by key.' },
