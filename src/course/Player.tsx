@@ -1,34 +1,22 @@
-import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Algorithm, LoadBalancerSim } from '../simulators/loadBalancer/engine'
 import { capacity, useSim } from '../simulators/loadBalancer/useSim'
 import { ADVANCED, INTERVIEW } from './advanced'
 import { CHAPTERS, monthlyCost, shotAt, SIZES, stateAt } from './chapters'
 import { Segmented, Slider, Stepper } from './controls'
-import type { Renderer } from './device'
 import IsoScene from './iso/IsoScene'
 import { isSoundOn, play, setSoundOn } from './sound'
 import { syncSim } from './sync'
 import type { CourseState, HudId, SceneProps } from './types'
 
-// Three.js is only downloaded when the 3D view is actually shown.
-const Scene3D = lazy(() => import('./three/Scene3D'))
-
 const MAX_SERVERS = 6
 
-export default function Player({ renderer }: { renderer: Renderer }) {
+export default function Player() {
   const [chapter, setChapter] = useState(0)
-  return <ChapterPlayer key={chapter} index={chapter} renderer={renderer} onChapter={setChapter} />
+  return <ChapterPlayer key={chapter} index={chapter} onChapter={setChapter} />
 }
 
-function ChapterPlayer({
-  index,
-  renderer,
-  onChapter,
-}: {
-  index: number
-  renderer: Renderer
-  onChapter: (index: number) => void
-}) {
+function ChapterPlayer({ index, onChapter }: { index: number; onChapter: (index: number) => void }) {
   const chapter = CHAPTERS[index]
   const [beatIdx, setBeatIdx] = useState(0)
   const [st, setSt] = useState(() => stateAt(chapter, 0))
@@ -136,19 +124,11 @@ function ChapterPlayer({
 
   return (
     <div className="relative h-[calc(100svh-57px)] min-h-[600px] w-full overflow-hidden">
-      {renderer === '3d' ? (
-        <div className="absolute inset-x-0 top-0 bottom-24">
-          <Suspense fallback={<div className="grid h-full place-items-center font-mono text-sm text-muted">Loading 3D…</div>}>
-            <Scene3D {...sceneProps} />
-          </Suspense>
-        </div>
-      ) : (
-        <div className="absolute inset-x-0 top-20 bottom-40">
-          <IsoScene {...sceneProps} />
-        </div>
-      )}
+      <div className="absolute inset-0">
+        <IsoScene {...sceneProps} />
+      </div>
 
-      {/* Top: chapter menu, sound, beat progress and live numbers. */}
+      {/* Top: chapter menu, sound and live numbers. */}
       <div className="pointer-events-none absolute inset-x-0 top-0 space-y-3 p-4">
         <div className="flex items-center justify-between gap-3">
           <div className="pointer-events-auto relative flex items-center gap-2">
@@ -193,17 +173,6 @@ function ChapterPlayer({
           >
             Sound {sound ? 'on' : 'off'}
           </button>
-        </div>
-
-        <div className="pointer-events-auto flex gap-1">
-          {chapter.beats.map((_, i) => (
-            <button
-              key={i}
-              onClick={() => go(i)}
-              aria-label={`Step ${i + 1}`}
-              className={`h-1 flex-1 rounded-full transition ${i <= beatIdx ? 'bg-fg' : 'bg-line'}`}
-            />
-          ))}
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -351,24 +320,24 @@ function HudChip({
   const limit = sim.config.queueLimit
   switch (id) {
     case 'traffic':
-      return <Chip icon={<ArrowIcon />} title="Traffic" value={`${st.rps}/s`} />
+      return <Chip icon={<ArrowIcon />} title="Traffic" value={`${st.rps} req/s`} />
     case 'latency':
       return <Chip icon={<ClockIcon />} title="Response time" value={`${(m.avgMs / 1000).toFixed(1)}s`} bad={m.avgMs > 2500} />
     case 'queue': {
       const longest = Math.max(0, ...sim.servers.map((s) => s.queue.length))
-      return <Chip icon={<StackIcon />} title="Waiting in line" value={`${longest}/${limit}`} bad={longest >= limit * 0.75} />
+      return <Chip icon={<StackIcon />} title="Queue" value={`${longest} / ${limit}`} bad={longest >= limit * 0.75} />
     }
     case 'dropped':
-      return <Chip icon={<CrossIcon />} title="Requests dropped" value={`${m.dropRate.toFixed(0)}%`} bad={m.dropRate > 1} />
+      return <Chip icon={<CrossIcon />} title="Errors" value={`${m.dropRate.toFixed(0)}%`} bad={m.dropRate > 1} />
     case 'capacity': {
       const cap = capacity(sim)
-      return <Chip icon={<GaugeIcon />} title="Capacity" value={`max ${cap.toFixed(1)}/s`} bad={cap < st.rps} />
+      return <Chip icon={<GaugeIcon />} title="Capacity" value={`${cap.toFixed(1)} req/s`} bad={cap < st.rps} />
     }
     case 'cost':
-      return <Chip icon={<CoinIcon />} title="Monthly cost" value={`$${monthlyCost(st)}/mo`} />
+      return <Chip icon={<CoinIcon />} title="Cost" value={`$${monthlyCost(st)}/mo`} />
     case 'healthy': {
       const alive = sim.servers.filter((s) => s.alive).length
-      return <Chip icon={<HeartIcon />} title="Healthy servers" value={`${alive}/${sim.servers.length}`} bad={alive < sim.servers.length} />
+      return <Chip icon={<HeartIcon />} title="Healthy servers" value={`${alive} / ${sim.servers.length}`} bad={alive < sim.servers.length} />
     }
   }
 }
@@ -376,14 +345,16 @@ function HudChip({
 function Chip({ icon, title, value, bad }: { icon: ReactNode; title: string; value: string; bad?: boolean }) {
   return (
     <div
-      title={title}
       aria-label={`${title}: ${value}`}
-      className={`flex items-center gap-1.5 rounded-full border bg-bg/80 px-3 py-1.5 font-mono text-sm tabular-nums backdrop-blur transition-colors ${
-        bad ? 'border-danger text-danger' : 'border-line'
+      className={`min-w-28 rounded-xl border bg-bg/80 px-3 py-2 backdrop-blur transition-colors ${
+        bad ? 'border-danger' : 'border-line'
       }`}
     >
-      {icon}
-      {value}
+      <div className={`flex items-center gap-1.5 text-[11px] font-medium ${bad ? 'text-danger' : 'text-muted'}`}>
+        {icon}
+        {title}
+      </div>
+      <div className={`mt-0.5 font-mono text-base tabular-nums ${bad ? 'text-danger' : ''}`}>{value}</div>
     </div>
   )
 }

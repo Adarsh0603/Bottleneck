@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { defaultRenderer, saveRenderer, type Renderer } from './course/device'
 import Player from './course/Player'
 
 function useTheme() {
@@ -19,12 +18,6 @@ function useTheme() {
 
 export default function App() {
   const { dark, toggle } = useTheme()
-  const [renderer, setRenderer] = useState<Renderer>(defaultRenderer)
-
-  const pickRenderer = (r: Renderer) => {
-    setRenderer(r)
-    saveRenderer(r)
-  }
 
   return (
     <div className="min-h-screen">
@@ -36,29 +29,16 @@ export default function App() {
             <span className="hidden text-line sm:inline">/</span>
             <span className="hidden text-sm text-muted sm:inline">Load Balancing</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex rounded-full border border-line p-0.5 font-mono text-xs" title="3D or lightweight isometric view">
-              {(['3d', 'iso'] as const).map((r) => (
-                <button
-                  key={r}
-                  onClick={() => pickRenderer(r)}
-                  className={`rounded-full px-2.5 py-0.5 transition ${renderer === r ? 'bg-fg text-bg' : 'text-muted hover:text-fg'}`}
-                >
-                  {r.toUpperCase()}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={toggle}
-              className="rounded-full border border-line px-3 py-1 font-mono text-xs text-muted transition hover:text-fg"
-              aria-label="Toggle theme"
-            >
-              {dark ? 'Light' : 'Dark'}
-            </button>
-          </div>
+          <button
+            onClick={toggle}
+            className="rounded-full border border-line px-3 py-1 font-mono text-xs text-muted transition hover:text-fg"
+            aria-label="Toggle theme"
+          >
+            {dark ? 'Light' : 'Dark'}
+          </button>
         </div>
       </header>
-      <Player renderer={renderer} />
+      <Player />
     </div>
   )
 }

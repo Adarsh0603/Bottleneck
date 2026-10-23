@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import type { Server } from '../../simulators/loadBalancer/engine'
 import { MS_PER_TICK, TICKS_PER_SECOND } from '../../simulators/loadBalancer/useSim'
 import { buildTags, type TagSpec } from '../tags'
@@ -41,6 +41,11 @@ const points = (vs: V3[]) => vs.map((v) => project(v).join(',')).join(' ')
 const depth = (x: number, z: number) => z - x
 const RISE_MS = 900
 
+const MIN_ZOOM = 0.5
+const MAX_ZOOM = 3
+const ZOOM_STEP = 1.25
+const clampZoom = (z: number) => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z))
+
 export default function IsoScene({ simRef, lastTickAt, st, beat, shot, shake, onServerClick }: SceneProps) {
   // Redraw every animation frame so motion is smooth between 20 Hz ticks.
   const [now, setNow] = useState(() => performance.now())
@@ -63,6 +68,26 @@ export default function IsoScene({ simRef, lastTickAt, st, beat, shot, shake, on
     if (shake > 0) shakeUntil.current = performance.now() + 380
   }, [shake])
 
+  // Viewer zoom (buttons or mouse wheel) on top of each beat's framing, and
+  // drag-to-pan. Panning resets when the beat moves the camera.
+  const svgRef = useRef<SVGSVGElement>(null)
+  const [userZoom, setUserZoom] = useState(1)
+  const pan = useRef({ x: 0, y: 0 })
+  const lastShot = useRef(shot)
+  const drag = useRef<{ x: number; y: number } | null>(null)
+  const dragged = useRef(false)
+
+  useEffect(() => {
+    const el = svgRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      setUserZoom((z) => clampZoom(z * (e.deltaY < 0 ? 1.1 : 1 / 1.1)))
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
+
   const sim = simRef.current
   if (!sim) return null
 
@@ -84,8 +109,12 @@ export default function IsoScene({ simRef, lastTickAt, st, beat, shot, shake, on
 
   // Camera: glide the viewBox toward the beat's shot.
   const extent = ((count - 1) * 2.3) / 2 + 0.75
-  const zoomGoal = shot.zoom * (shot.fit ? Math.min(1, 4.2 / extent) : 1)
+  const zoomGoal = shot.zoom * (shot.fit ? Math.min(1, 4.2 / extent) : 1) * userZoom
   const [gx, gy] = project(shot.target)
+  if (lastShot.current !== shot) {
+    lastShot.current = shot
+    pan.current = { x: 0, y: 0 }
+  }
   const v = (view.current ??= { cx: gx, cy: gy, zoom: zoomGoal })
   v.cx += (gx - v.cx) * ease(3)
   v.cy += (gy - v.cy) * ease(3)
@@ -165,12 +194,74 @@ export default function IsoScene({ simRef, lastTickAt, st, beat, shot, shake, on
   })
   if (beat.ghost) labels.push(<Tag key="ceiling" at={[SERVER_X, BASE.h * scaleOf(8) + 0.5, 0]} label="Biggest machine sold" />)
 
+  // Captions cover more of the bottom than the stats cover of the top, so
+  // frame the subject a little above the middle.
+  const left = v.cx - w / 2 + jx + pan.current.x
+  const top = v.cy - h / 2 + h * 0.06 + jy + pan.current.y
+
+  const startDrag = (e: PointerEvent) => {
+    drag.current = { x: e.clientX, y: e.clientY }
+    dragged.current = false
+  }
+  const moveDrag = (e: PointerEvent) => {
+    const d = drag.current
+    const el = svgRef.current
+    if (!d || !el) return
+    const dx = e.clientX - d.x
+    const dy = e.clientY - d.y
+    if (!dragged.current && Math.hypot(dx, dy) < 4) return
+    dragged.current = true
+    const rect = el.getBoundingClientRect()
+    const unit = Math.max(w / rect.width, h / rect.height)
+    pan.current.x -= dx * unit
+    pan.current.y -= dy * unit
+    drag.current = { x: e.clientX, y: e.clientY }
+  }
+  const endDrag = () => {
+    drag.current = null
+  }
+
+  const zoomBtn =
+    'grid h-9 w-9 place-items-center rounded-lg text-lg leading-none transition hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-30'
+
   return (
+    <div className="relative h-full w-full">
+      <div className="absolute right-4 top-1/2 z-10 flex -translate-y-1/2 flex-col gap-1 rounded-xl border border-line bg-bg/80 p-1 backdrop-blur">
+        <button className={zoomBtn} onClick={() => setUserZoom((z) => clampZoom(z * ZOOM_STEP))} disabled={userZoom >= MAX_ZOOM} aria-label="Zoom in">
+          +
+        </button>
+        <button className={zoomBtn} onClick={() => setUserZoom((z) => clampZoom(z / ZOOM_STEP))} disabled={userZoom <= MIN_ZOOM} aria-label="Zoom out">
+          −
+        </button>
+        <button
+          className={`${zoomBtn} text-sm`}
+          onClick={() => {
+            setUserZoom(1)
+            pan.current = { x: 0, y: 0 }
+          }}
+          aria-label="Reset view"
+          title="Reset view"
+        >
+          ⟲
+        </button>
+      </div>
     <svg
-      viewBox={`${v.cx - w / 2 + jx} ${v.cy - h / 2 + jy} ${w} ${h}`}
-      className="h-full w-full select-none"
+      ref={svgRef}
+      viewBox={`${left} ${top} ${w} ${h}`}
+      className="h-full w-full cursor-grab touch-none select-none active:cursor-grabbing"
       role="img"
-      aria-label="Isometric view of the system"
+      aria-label="Isometric view of the system. Drag to pan, scroll to zoom."
+      onPointerDown={startDrag}
+      onPointerMove={moveDrag}
+      onPointerUp={endDrag}
+      onPointerLeave={endDrag}
+      onClickCapture={(e) => {
+        // A drag that ends over a server shouldn't count as clicking it.
+        if (dragged.current) {
+          e.stopPropagation()
+          dragged.current = false
+        }
+      }}
     >
       <IsoGrid />
 
@@ -245,6 +336,7 @@ export default function IsoScene({ simRef, lastTickAt, st, beat, shot, shake, on
 
       {labels}
     </svg>
+    </div>
   )
 }
 
