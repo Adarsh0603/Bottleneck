@@ -9,17 +9,24 @@ import type { BaseBeat, Reference, TopicSpec } from './types'
 export default function Player<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
   topic,
   index,
+  startStep = 0,
   onChapter,
+  onStep,
+  onSolved,
 }: {
   topic: TopicSpec<S, Sim, M, B>
   index: number
+  startStep?: number
   onChapter: (index: number) => void
+  onStep?: (step: number, isLastStep: boolean) => void
+  onSolved?: (step: number) => void
 }) {
   const chapters = topic.chapters
   const chapter = chapters[index]
-  const [beatIdx, setBeatIdx] = useState(0)
-  const [st, setSt] = useState(() => stateAt(chapter, 0))
-  const [ramping, setRamping] = useState(!!chapter.beats[0].ramp)
+  const first = Math.min(Math.max(0, startStep), chapter.beats.length - 1)
+  const [beatIdx, setBeatIdx] = useState(first)
+  const [st, setSt] = useState(() => stateAt(chapter, first))
+  const [ramping, setRamping] = useState(!!chapter.beats[first].ramp)
   const [shake, setShake] = useState(0)
   const [solvedBeat, setSolvedBeat] = useState(-1)
   const [sound, setSound] = useState(isSoundOn)
@@ -52,6 +59,15 @@ export default function Player<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
     sync(sim, st)
   }, [sync, sim, st])
 
+  // Report each step reached, for saved progress and the address bar. Kept in
+  // a ref so a new callback each render doesn't re-report the same step.
+  const onStepRef = useRef(onStep)
+  onStepRef.current = onStep
+  const stepCount = chapter.beats.length
+  useEffect(() => {
+    onStepRef.current?.(beatIdx, beatIdx === stepCount - 1)
+  }, [beatIdx, stepCount])
+
   // Shake and sound when something breaks; a rising tone when something arrives.
   const prev = useRef(st)
   useEffect(() => {
@@ -81,6 +97,8 @@ export default function Player<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
   // held long enough.
   const lastDrops = useRef(0)
   const lastDropSound = useRef(0)
+  const onSolvedRef = useRef(onSolved)
+  onSolvedRef.current = onSolved
   useEffect(() => {
     const now = performance.now()
     const drops = dropCount(sim)
@@ -95,6 +113,7 @@ export default function Player<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
       holdStart.current ??= now
       if (now - holdStart.current >= challenge.holdSeconds * 1000) {
         setSolvedBeat(beatIdx)
+        onSolvedRef.current?.(beatIdx)
         play('success')
       }
     } else {

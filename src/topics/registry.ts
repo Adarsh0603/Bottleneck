@@ -18,7 +18,10 @@ export const TRACKS: { id: TrackId; title: string; level: Level }[] = [
 
 export interface PlayProps {
   chapter: number
+  step: number
   onChapter: (index: number) => void
+  onStep: (step: number, isLastStep: boolean) => void
+  onSolved: (step: number) => void
 }
 
 export interface TopicEntry {
