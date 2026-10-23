@@ -8,6 +8,8 @@ import { CHAPTERS as CDN_CHAPTERS } from './cdn/chapters'
 import CdnPlay from './cdn/Play'
 import { CHAPTERS as LOAD_BALANCING_CHAPTERS } from './load-balancing/chapters'
 import LoadBalancingPlay from './load-balancing/Play'
+import { CHAPTERS as REPLICATION_CHAPTERS } from './replication/chapters'
+import ReplicationPlay from './replication/Play'
 
 // Every concept Bottleneck teaches, in the recommended order. A topic with no
 // `Play` yet isn't built and shows as "Soon".
@@ -85,7 +87,16 @@ export const TOPICS: TopicEntry[] = [
     Play: AutoscalingPlay,
   },
 
-  { id: 'replication', title: 'Database replication', short: 'Replication', track: 'data', pitch: 'Copy data to replicas for reads, and live with lag.' },
+  {
+    id: 'replication',
+    title: 'Database replication',
+    short: 'Replication',
+    track: 'data',
+    pitch: 'Copy data to replicas for reads, and live with lag.',
+    chapters: REPLICATION_CHAPTERS.map((c) => c.title),
+    challenges: challengeIds(REPLICATION_CHAPTERS),
+    Play: ReplicationPlay,
+  },
   { id: 'sharding', title: 'Sharding', track: 'data', pitch: 'Split one database into many by key.' },
   { id: 'consistent-hashing', title: 'Consistent hashing', track: 'data', pitch: 'Add a node without reshuffling every key.' },
   { id: 'cap', title: 'CAP & consistency', track: 'data', pitch: 'When the network splits, choose: correct or available.' },

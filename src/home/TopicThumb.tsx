@@ -74,6 +74,17 @@ const THUMBS: Record<string, Thumb> = {
     ],
     routes: [-1.5, 0].map((z): V3[] => [[-2.6, 0, 0], [-1.6, 0, 0], [-0.4, 0, 0], [0.9, 0, z]]),
   },
+  // A primary in the middle of a column of replicas, all fed by the app.
+  replication: {
+    pieces: [
+      { kind: 'database', x: 2, z: -1.9 },
+      { kind: 'database', x: 2, z: 0 },
+      { kind: 'database', x: 2, z: 1.9 },
+      { kind: 'app', x: -1.4, z: 0 },
+      { kind: 'users', x: -4.3, z: 0, active: 8 },
+    ],
+    routes: [-1.9, 0, 1.9].map((z): V3[] => [[-3.3, 0, 0], [-2.2, 0, 0], [-0.6, 0, 0], [1.1, 0, z]]),
+  },
 }
 
 const SOON: Thumb = { pieces: [], routes: [] }

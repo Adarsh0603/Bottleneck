@@ -1,0 +1,38 @@
+import { useTicker } from '../../core/flow/useTicker'
+import type { Runtime, TopicSpec } from '../../core/types'
+import { CHAPTERS } from './chapters'
+import Controls from './Controls'
+import { ReplicationSim, type ReplicationMetrics } from './engine'
+import { REFERENCE } from './reference'
+import Scene from './Scene'
+import Stats from './Stats'
+import type { Beat, ReplicationState } from './types'
+import { TICKS_PER_SECOND } from './world'
+
+function useRuntime(stRef: { current: ReplicationState }, paused: boolean): Runtime<ReplicationSim, ReplicationMetrics> {
+  const { sim, simRef, lastTickAt } = useTicker(
+    () => {
+      const s = new ReplicationSim()
+      s.apply(stRef.current)
+      return s
+    },
+    TICKS_PER_SECOND,
+    paused,
+  )
+  return { sim, simRef, lastTickAt, metrics: sim.metrics, tick: sim.tick }
+}
+
+export const replication: TopicSpec<ReplicationState, ReplicationSim, ReplicationMetrics, Beat> = {
+  chapters: CHAPTERS,
+  useRuntime,
+  sync: (sim, st) => sim.apply(st),
+  Scene,
+  Stats,
+  Controls,
+  feedback: (prev, next) => ({
+    crash: next.failed && !prev.failed,
+    rise: next.replicas > prev.replicas || (next.promoted && !prev.promoted),
+  }),
+  dropCount: (sim) => sim.flow.stats.dropped,
+  reference: REFERENCE,
+}

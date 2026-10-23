@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { CHAPTERS as CACHING } from './caching/chapters'
 import { CHAPTERS as LOAD_BALANCING } from './load-balancing/chapters'
+import { CHAPTERS as REPLICATION } from './replication/chapters'
 
-const topics = { 'load balancing': LOAD_BALANCING, caching: CACHING }
+const topics = { 'load balancing': LOAD_BALANCING, caching: CACHING, replication: REPLICATION }
 
 describe.each(Object.entries(topics))('%s questions', (_, chapters) => {
   const questions = chapters.flatMap((c) => c.beats.flatMap((b) => (b.predict ? [b.predict] : [])))
