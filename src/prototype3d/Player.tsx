@@ -1,5 +1,6 @@
 import { Line } from '@react-three/drei'
 import { useEffect, useState, type ReactNode } from 'react'
+import IsoScene from '../prototypeIso/IsoScene'
 import { Slider } from '../simulators/loadBalancer/ui'
 import { capacity, useSim } from '../simulators/loadBalancer/useSim'
 import { PATH_START, SERVER_FRONT } from './layout'
@@ -33,7 +34,7 @@ const BEATS: Beat[] = [
   { caption: 'Every server has a limit.', sub: 'Find this one’s.', slider: true, tags: ['queue', 'dropped'], hud: ['latency', 'queue', 'dropped'] },
 ]
 
-export default function Player() {
+export default function Player({ mode }: { mode: '3d' | 'iso' }) {
   const colors = useThemeColors()
   const s = useSim((sim) => sim.addServer(1), 0)
   const [beat, setBeat] = useState(0)
@@ -63,12 +64,18 @@ export default function Player() {
 
   return (
     <div className="relative h-[calc(100svh-57px)] min-h-[560px] w-full overflow-hidden">
-      <Stage colors={colors}>
-        <Line points={[[PATH_START, 0.01, 0], [SERVER_FRONT, 0.01, 0]]} color={colors.muted} lineWidth={1} dashed dashSize={0.15} gapSize={0.12} />
-        <Users3D rps={rps} colors={colors} tagged={!!b.usersTag} />
-        {server && <Server3D server={server} queueLimit={queueLimit} colors={colors} tags={b.tags} />}
-        <Requests simRef={s.simRef} lastTickAt={s.lastTickAt} colors={colors} />
-      </Stage>
+      {mode === '3d' ? (
+        <Stage colors={colors}>
+          <Line points={[[PATH_START, 0.01, 0], [SERVER_FRONT, 0.01, 0]]} color={colors.muted} lineWidth={1} dashed dashSize={0.15} gapSize={0.12} />
+          <Users3D rps={rps} colors={colors} tagged={!!b.usersTag} />
+          {server && <Server3D server={server} queueLimit={queueLimit} colors={colors} tags={b.tags} />}
+          <Requests simRef={s.simRef} lastTickAt={s.lastTickAt} colors={colors} />
+        </Stage>
+      ) : (
+        <div className="absolute inset-0 pb-28 pt-10">
+          <IsoScene simRef={s.simRef} lastTickAt={s.lastTickAt} rps={rps} tags={b.tags} usersTag={!!b.usersTag} />
+        </div>
+      )}
 
       {/* Beat progress */}
       <div className="absolute inset-x-0 top-0 flex gap-1 px-4 pt-4">

@@ -11,6 +11,10 @@
   --card: rgb(255 255 255 / 0.78);
   --grid: rgb(0 0 0 / 0.09);
   --danger: #d92d20;
+  --iso-top: #ffffff;
+  --iso-left: #f0f0f0;
+  --iso-right: #dedede;
+  --iso-idle: #d2d2d2;
   color-scheme: light;
 }
 
@@ -23,6 +27,10 @@
   --card: rgb(16 16 16 / 0.78);
   --grid: rgb(255 255 255 / 0.09);
   --danger: #ff6b5e;
+  --iso-top: #2a2a2a;
+  --iso-left: #1c1c1c;
+  --iso-right: #121212;
+  --iso-idle: #333333;
   color-scheme: dark;
 }
 

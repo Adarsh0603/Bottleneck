@@ -19,7 +19,7 @@ function useTheme() {
 
 export default function App() {
   const { dark, toggle } = useTheme()
-  const [view, setView] = useState<'3d' | '2d'>('3d')
+  const [view, setView] = useState<'3d' | 'iso' | '2d'>('3d')
 
   return (
     <>
@@ -35,7 +35,7 @@ export default function App() {
             </div>
             <div className="flex items-center gap-2">
               <div className="flex rounded-full border border-line p-0.5 font-mono text-xs">
-                {(['3d', '2d'] as const).map((v) => (
+                {(['3d', 'iso', '2d'] as const).map((v) => (
                   <button
                     key={v}
                     onClick={() => setView(v)}
@@ -55,8 +55,8 @@ export default function App() {
             </div>
           </div>
         </header>
-        {view === '3d' ? (
-          <Player />
+        {view !== '2d' ? (
+          <Player key={view} mode={view} />
         ) : (
           <main className="mx-auto max-w-6xl px-4 py-8 sm:py-10">
             <LoadBalancerCourse />
