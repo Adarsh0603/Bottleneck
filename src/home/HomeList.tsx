@@ -1,7 +1,7 @@
 import { resetProgress, topicProgress, useProgress } from '../core/progress'
 import { TOPICS, TRACKS, type TopicEntry } from '../topics/registry'
 import HeroScene from './HeroScene'
-import { ContinueButton, ViewToggle, type HomeView } from './parts'
+import { ContinueButton, Credit, ViewToggle, type HomeView } from './parts'
 import { actionLabel, nextTopic, openTopic, solvedCount, statusOf, topicNumber } from './shared'
 
 export default function HomeList({ onView }: { onView: (view: HomeView) => void }) {
@@ -53,17 +53,20 @@ export default function HomeList({ onView }: { onView: (view: HomeView) => void 
         })}
 
         <footer className="mt-16 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-6 text-xs text-muted">
-          <span>Progress is saved in this browser only.</span>
-          {Object.keys(progress).length > 0 && (
-            <button
-              onClick={() => {
-                if (window.confirm('Reset all progress? This can’t be undone.')) resetProgress()
-              }}
-              className="font-mono underline-offset-4 transition hover:text-fg hover:underline"
-            >
-              Reset progress
-            </button>
-          )}
+          <Credit />
+          <span className="flex flex-wrap items-center gap-3">
+            <span>Progress is saved in this browser only.</span>
+            {Object.keys(progress).length > 0 && (
+              <button
+                onClick={() => {
+                  if (window.confirm('Reset all progress? This can’t be undone.')) resetProgress()
+                }}
+                className="font-mono underline-offset-4 transition hover:text-fg hover:underline"
+              >
+                Reset progress
+              </button>
+            )}
+          </span>
         </footer>
       </main>
     </div>

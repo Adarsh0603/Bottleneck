@@ -6,7 +6,7 @@ import { topicProgress, useProgress } from '../core/progress'
 import type { V3 } from '../core/types'
 import { TRACKS, type TopicEntry } from '../topics/registry'
 import { DISTRICT_HALF, DISTRICTS, LOTS, STREETS, type Lot } from './cityLayout'
-import { ContinueButton, ViewToggle, type HomeView } from './parts'
+import { ContinueButton, Credit, ViewToggle, type HomeView } from './parts'
 import { actionLabel, nextTopic, openTopic, solvedCount, statusOf, topicNumber, trackOf, type TopicStatus } from './shared'
 
 const OVERVIEW = { target: [0, 0.8, 0] as V3, zoom: 1.05 }
@@ -103,6 +103,8 @@ export default function HomeMap({ onView }: { onView: (view: HomeView) => void }
       </div>
 
       <Legend />
+
+      {!lot && <Credit className="absolute bottom-4 right-4 hidden rounded-full bg-bg/80 px-3 py-1 text-[11px] text-muted backdrop-blur sm:block" />}
 
       {lot && <TopicPanel key={lot.topic.id} topic={lot.topic} status={statusOf(progress, lot.topic)} onClose={() => setSelected(null)} />}
     </div>

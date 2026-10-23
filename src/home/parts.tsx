@@ -28,6 +28,25 @@ export function ContinueButton({ className = '' }: { className?: string }) {
   )
 }
 
+// "Made by Adarsh Verma · Source on GitHub"
+export function Credit({ className = '' }: { className?: string }) {
+  const link = 'underline-offset-4 transition hover:text-fg hover:underline'
+  return (
+    <span className={className}>
+      Made by{' '}
+      <a href="https://github.com/Adarsh0603" target="_blank" rel="noreferrer" className={`text-fg ${link}`}>
+        Adarsh Verma
+      </a>
+      <span className="mx-1.5" aria-hidden>
+        ·
+      </span>
+      <a href="https://github.com/Adarsh0603/Bottleneck" target="_blank" rel="noreferrer" className={link}>
+        Source on GitHub
+      </a>
+    </span>
+  )
+}
+
 export function ViewToggle({ view, onChange }: { view: HomeView; onChange: (view: HomeView) => void }) {
   return (
     <div className="inline-flex rounded-full border border-line bg-bg/80 p-0.5 font-mono text-xs backdrop-blur" role="group" aria-label="Home view">
