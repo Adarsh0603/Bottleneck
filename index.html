@@ -4,7 +4,9 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bottleneck · Learn system design by breaking things</title>
+    <title>
+      Bottleneck · See why systems break, then build ones that don't
+    </title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -13,14 +15,14 @@
     />
     <script>
       // Apply the saved or system theme before first paint to avoid a flash.
-      ;(function () {
-        var dark = matchMedia('(prefers-color-scheme: dark)').matches
+      (function () {
+        var dark = matchMedia("(prefers-color-scheme: dark)").matches;
         try {
-          var saved = localStorage.getItem('theme')
-          if (saved) dark = saved === 'dark'
+          var saved = localStorage.getItem("theme");
+          if (saved) dark = saved === "dark";
         } catch (e) {}
-        if (dark) document.documentElement.classList.add('dark')
-      })()
+        if (dark) document.documentElement.classList.add("dark");
+      })();
     </script>
   </head>
   <body>
