@@ -185,6 +185,14 @@ function LessonPlayer<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
         ? [{ at: predict.options[predict.answer].at, label: guess === predict.answer ? '✓ Called it' : '✓ This one', tone: 'answer' as const }]
         : []
 
+  // The answer label shows for a moment, then gets out of the way.
+  const answered = guess !== null
+  useEffect(() => {
+    if (!answered) return
+    const id = setTimeout(() => setGuess(null), 1000)
+    return () => clearTimeout(id)
+  }, [answered])
+
   const update = (change: (p: S) => Partial<S>) => setSt((p) => ({ ...p, ...change(p) }))
   const panel = { st, sim, m: metrics, beat, update, stopRamp: () => setRamping(false) }
   const { Scene, Stats, Controls } = topic
