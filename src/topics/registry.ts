@@ -6,6 +6,8 @@ import { CHAPTERS as CACHING_CHAPTERS } from './caching/chapters'
 import CachingPlay from './caching/Play'
 import { CHAPTERS as CDN_CHAPTERS } from './cdn/chapters'
 import CdnPlay from './cdn/Play'
+import { CHAPTERS as CONSISTENT_HASHING_CHAPTERS } from './consistent-hashing/chapters'
+import ConsistentHashingPlay from './consistent-hashing/Play'
 import { CHAPTERS as LOAD_BALANCING_CHAPTERS } from './load-balancing/chapters'
 import LoadBalancingPlay from './load-balancing/Play'
 import { CHAPTERS as REPLICATION_CHAPTERS } from './replication/chapters'
@@ -108,7 +110,15 @@ export const TOPICS: TopicEntry[] = [
     challenges: challengeIds(SHARDING_CHAPTERS),
     Play: ShardingPlay,
   },
-  { id: 'consistent-hashing', title: 'Consistent hashing', track: 'data', pitch: 'Add a node without reshuffling every key.' },
+  {
+    id: 'consistent-hashing',
+    title: 'Consistent hashing',
+    track: 'data',
+    pitch: 'Add a node without reshuffling every key.',
+    chapters: CONSISTENT_HASHING_CHAPTERS.map((c) => c.title),
+    challenges: challengeIds(CONSISTENT_HASHING_CHAPTERS),
+    Play: ConsistentHashingPlay,
+  },
   { id: 'cap', title: 'CAP & consistency', track: 'data', pitch: 'When the network splits, choose: correct or available.' },
 
   { id: 'queues', title: 'Message queues', track: 'async', pitch: 'Absorb bursts and do slow work in the background.' },

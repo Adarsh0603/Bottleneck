@@ -1,7 +1,7 @@
 import { Cache } from '../flow/cache'
 import type { FlowNode } from '../flow/engine'
 import { Worker } from '../flow/nodes'
-import { depth, points, project } from '../iso/geometry'
+import { depth, points, project, S } from '../iso/geometry'
 import { Crowd, IsoBox, IsoCylinder } from '../iso/primitives'
 import type { PieceKind } from './types'
 
@@ -41,7 +41,23 @@ export function Piece({
       return <IsoCylinder x={x} z={z} r={0.65} h={1.2 * rise} bands={[0.5]} />
     case 'autoscaler':
       return <Autoscaler x={x} z={z} rise={rise} />
+    case 'ring':
+      return <HashRing x={x} z={z} rise={rise} />
   }
+}
+
+// A low dark disc with a ring on its lid: it places servers on a circle.
+function HashRing({ x, z, rise }: { x: number; z: number; rise: number }) {
+  const h = 0.4 * rise
+  const rx = Math.SQRT2 * 0.4 * Math.cos(Math.PI / 6) * S
+  const ry = (Math.SQRT2 * 0.4 * S) / 2
+  const [cx, cy] = project([x, h, z])
+  return (
+    <g>
+      <IsoCylinder x={x} z={z} r={0.65} h={h} bands={[]} />
+      {rise === 1 && <ellipse cx={cx} cy={cy} rx={rx} ry={ry} fill="none" stroke="var(--fg)" strokeWidth={2.5} strokeDasharray="3 4" strokeLinecap="round" />}
+    </g>
+  )
 }
 
 // A low dark box with up and down arrows on its lid: it adds and removes
@@ -90,6 +106,7 @@ function Balancer({ x, z, rise }: { x: number; z: number; rise: number }) {
 function Server({ x, z, rise, worker, w, h: fullH }: { x: number; z: number; rise: number; worker?: Worker; w: number; h: number }) {
   const h = fullH * rise
   const overloaded = !!worker && worker.queue.length >= worker.queueLimit * 0.75
+  if (worker && !worker.alive) return <IsoBox x={x} z={z} w={w} d={w} h={h} dim stroke="var(--danger)" />
   const x0 = x - w / 2
   const slot = 0.3
   const slots = [
@@ -165,7 +182,7 @@ function CachePiece({ x, z, rise, cache }: { x: number; z: number; rise: number;
 
 // A small picture of a piece, for the toolbox and the piece being dragged.
 export function PieceIcon({ kind, size = 40 }: { kind: PieceKind; size?: number }) {
-  const box = kind === 'users' ? '-70 -60 140 110' : kind === 'database' || kind === 'replica' || kind === 'cache' ? '-55 -80 110 110' : '-45 -80 90 100'
+  const box = kind === 'users' ? '-70 -60 140 110' : kind === 'database' || kind === 'replica' || kind === 'cache' || kind === 'ring' ? '-55 -80 110 110' : '-45 -80 90 100'
   return (
     <svg viewBox={box} width={size} height={size} aria-hidden className="shrink-0">
       <Piece kind={kind} x={0} z={0} active={6} />

@@ -4,7 +4,7 @@ import type { Shot } from '../types'
 // "Build it": the learner drags pieces onto pads on the floor, and traffic
 // flows through whatever they've assembled.
 
-export type PieceKind = 'users' | 'balancer' | 'server' | 'app' | 'cache' | 'database' | 'replica' | 'autoscaler'
+export type PieceKind = 'users' | 'balancer' | 'server' | 'app' | 'cache' | 'database' | 'replica' | 'autoscaler' | 'ring'
 
 export const PIECE_NAMES: Record<PieceKind, string> = {
   users: 'Users',
@@ -15,6 +15,7 @@ export const PIECE_NAMES: Record<PieceKind, string> = {
   database: 'Database',
   replica: 'Read replica',
   autoscaler: 'Autoscaler',
+  ring: 'Hash ring',
 }
 
 // Half the footprint of each piece: where requests leave and arrive.
@@ -27,6 +28,7 @@ export const HALF: Record<PieceKind, number> = {
   database: 0.85,
   replica: 0.65,
   autoscaler: 0.6,
+  ring: 0.65,
 }
 
 // A spot on the floor where pieces can be dropped.

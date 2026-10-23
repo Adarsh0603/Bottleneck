@@ -97,6 +97,18 @@ const THUMBS: Record<string, Thumb> = {
     ],
     routes: [-2.85, -0.95, 0.95, 2.85].map((z): V3[] => [[-3.3, 0, 0], [-2.2, 0, 0], [-0.6, 0, 0], [1.1, 0, z]]),
   },
+  // Servers around a ring, with the database in the middle.
+  'consistent-hashing': {
+    pieces: [
+      { kind: 'server', x: 1.2, z: -1.7 },
+      { kind: 'server', x: 3.4, z: 0.2 },
+      { kind: 'server', x: 1.2, z: 2.1 },
+      { kind: 'database', x: 1.2, z: 0.2 },
+      { kind: 'app', x: -1.8, z: 0.2 },
+      { kind: 'users', x: -4.6, z: 0.2, active: 8 },
+    ],
+    routes: [-1.7, 2.1].map((z): V3[] => [[-3.6, 0, 0.2], [-2.5, 0, 0.2], [-0.8, 0, 0.2], [0.6, 0, z]]),
+  },
 }
 
 const SOON: Thumb = { pieces: [], routes: [] }
