@@ -18,8 +18,12 @@ export interface Beat extends BaseBeat<ConsistentState, ConsistentSim, Consisten
   tags?: TagId[]
   hud?: HudId[]
   controls?: ControlId[]
-  // Show the items sitting on the ring.
+  // Show the ring's position numbers.
   ring?: boolean
+  // Show the items sitting on the ring.
+  items?: boolean
+  // Colour each server and its virtual nodes, so you can tell whose is whose.
+  virtual?: boolean
   // An item to point out, by number.
   pick?: number
 }

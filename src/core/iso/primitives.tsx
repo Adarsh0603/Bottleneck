@@ -246,11 +246,11 @@ export function MarkerPin({ marker }: { marker: Marker }) {
 }
 
 // A label pinned above a point in the world.
-export function Tag({ at, label, danger }: { at: V3; label: string; danger?: boolean }) {
+export function Tag({ at, label, danger, color: tint }: { at: V3; label: string; danger?: boolean; color?: string }) {
   const [sx, sy] = project(at)
   const text = label.toUpperCase()
   const w = text.length * 7.4 + 24
-  const color = danger ? 'var(--danger)' : 'var(--fg)'
+  const color = danger ? 'var(--danger)' : (tint ?? 'var(--fg)')
   return (
     <g transform={`translate(${sx} ${sy})`} className="pointer-events-none">
       <g className="tag-in">

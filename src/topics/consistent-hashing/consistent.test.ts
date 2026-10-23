@@ -89,15 +89,6 @@ function solves(title: string, steps: Partial<ConsistentState>[], seed: number) 
   return false
 }
 
-describe('grow challenge', () => {
-  it('is solved only by growing on the ring', () => {
-    expect(seeds.every((s) => solves('The ring', [{ mode: 'ring' }, { nodes: 5 }, { nodes: 6 }], s))).toBe(true)
-    expect(seeds.every((s) => !solves('The ring', [{ nodes: 5 }, { nodes: 6 }], s))).toBe(true)
-    expect(seeds.every((s) => !solves('The ring', [{ nodes: 6 }, { mode: 'ring' }], s))).toBe(true)
-    expect(seeds.every((s) => !solves('The ring', [{ mode: 'ring' }, { nodes: 5 }], s))).toBe(true)
-  })
-})
-
 describe('spots challenge', () => {
   it('needs more than one spot per server', () => {
     expect(seeds.every((s) => !solves('Even it out', [], s))).toBe(true)

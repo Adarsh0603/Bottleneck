@@ -19,6 +19,9 @@ const CELL_GAP = 0.15
 const CELL_COLS = 6
 const ARC_STEPS = 24
 
+// Each server's colour, to tell its virtual nodes apart.
+const serverColor = (i: number) => `var(--srv-${i + 1})`
+
 // A stretch of the ring from one spot to another, going clockwise.
 function arc(from: number, to: number): V3[] {
   const span = to >= from ? to - from : to + 1 - from
@@ -96,11 +99,11 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
           for (const i of sim.alive) {
             for (let j = 1; j < st.points; j++) {
               const p = onRing(pointSpot(i, j))
-              floor.push(<IsoBox key={`p${i}-${j}`} x={p.x} z={p.z} w={0.26} d={0.26} h={0.12} fill="var(--muted)" />)
+              floor.push(<IsoBox key={`p${i}-${j}`} x={p.x} z={p.z} w={0.26} d={0.26} h={0.12} fill={beat.virtual ? serverColor(i) : 'var(--muted)'} />)
             }
           }
         }
-        if (ring && beat.ring) {
+        if (ring && beat.items) {
           for (let k = 0; k < KEY_COUNT; k++) {
             const p = onRing(keySpot(k), RING.r - 0.5)
             const isPick = k === picked
@@ -112,6 +115,22 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
               <polyline key="clockwise" points={polyline(arc(keySpot(picked), hit.at))} stroke="var(--fg)" strokeWidth={2.5} fill="none" strokeLinecap="round" />,
             )
           }
+        }
+
+        // With hash mod N, trace one item's requests from the app to its server.
+        const owner = picked === undefined ? -1 : sim.assigner.owner[picked]
+        const routeTo = !ring && owner >= 0 && !quiet ? spotOf(nodeKey(owner)) : undefined
+        if (routeTo) {
+          floor.push(
+            <polyline
+              key="route"
+              points={polyline([[APP.x + APP.w / 2, 0.02, APP.z], [routeTo.x, 0.02, routeTo.z]])}
+              stroke="var(--fg)"
+              strokeWidth={2.5}
+              fill="none"
+              strokeLinecap="round"
+            />,
+          )
         }
 
         const solids: { d: number; node: ReactNode }[] = [
@@ -132,6 +151,7 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
                 busy={sim.servers[i].active.length}
                 hot={hotNow(i)}
                 down={sim.down === i}
+                color={beat.virtual ? serverColor(i) : undefined}
                 rise={i === 0 ? 1 : riseOf(key)}
                 owned={owned.map((k) => sim.assigner.warm[k])}
               />
@@ -159,7 +179,7 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
                   : range
                     ? `Server ${i + 1} · holds ${range}`
                     : `Server ${i + 1}`
-            labels.push(<Tag key={key} at={[s.x, NODE.h + 0.7, s.z]} label={label} danger={down || hotNow(i)} />)
+            labels.push(<Tag key={key} at={[s.x, NODE.h + 0.7, s.z]} label={label} danger={down || hotNow(i)} color={beat.virtual ? serverColor(i) : undefined} />)
           }
         }
 
@@ -167,6 +187,10 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
           picked !== undefined && beat.ring ? (
             <Tag key="pick" at={[onRing(keySpot(picked), RING.r - 0.5).x, 0.9, onRing(keySpot(picked), RING.r - 0.5).z]} label={`Item at ${clock(keySpot(picked))}`} />
           ) : null
+
+        const routeTag = routeTo ? (
+          <Tag key="route" at={[routeTo.x, NODE.h + 1.5, routeTo.z]} label={`Item ${picked} → Server ${owner + 1}`} />
+        ) : null
 
         return (
           <>
@@ -217,6 +241,7 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
 
             {!quiet && labels}
             {pickTag}
+            {routeTag}
             {ring && beat.ring
               ? [0, 25, 50, 75].map((n) => {
                   const p = onRing(n / 100, RING.r + 0.9)
@@ -280,13 +305,13 @@ function Database({ busy, hot }: { busy: number; hot: boolean }) {
 
 // A cache server: a cylinder whose lid shows every item it holds, as a cell.
 // A filled cell is ready to serve; a red one moved here and isn't fetched yet.
-function Server({ x, z, busy, hot, down, rise, owned }: { x: number; z: number; busy: number; hot: boolean; down: boolean; rise: number; owned: boolean[] }) {
+function Server({ x, z, busy, hot, down, rise, owned, color }: { x: number; z: number; busy: number; hot: boolean; down: boolean; rise: number; owned: boolean[]; color?: string }) {
   const h = NODE.h * rise
   if (down) return <IsoCylinder x={x} z={z} r={NODE.r} h={h} dim stroke="var(--danger)" />
   const rows = Math.ceil(owned.length / CELL_COLS)
   return (
     <g>
-      <IsoCylinder x={x} z={z} r={NODE.r} h={h} stroke={hot ? 'var(--danger)' : 'var(--fg)'} bands={[0.5]} />
+      <IsoCylinder x={x} z={z} r={NODE.r} h={h} stroke={hot ? 'var(--danger)' : (color ?? 'var(--fg)')} bands={[0.5]} />
       {rise === 1 &&
         owned.map((warm, i) => {
           const cx = x + ((i % CELL_COLS) - (CELL_COLS - 1) / 2) * CELL_GAP

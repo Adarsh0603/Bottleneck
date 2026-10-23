@@ -25,7 +25,7 @@ export default function Controls({ beat, st, update }: PanelProps<ConsistentStat
       )}
       {controls.has('points') && (
         <div className="mt-4">
-          <Stepper value={st.points} min={1} max={MAX_POINTS} label="spot" onChange={(v) => update(() => ({ points: v }))} />
+          <Stepper value={st.points} min={1} max={MAX_POINTS} label="virtual nodes per server" onChange={(v) => update(() => ({ points: v }))} />
         </div>
       )}
     </>
