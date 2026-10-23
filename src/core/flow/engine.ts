@@ -87,6 +87,10 @@ export class FlowSim {
     return this.nodes.get(key)
   }
 
+  all(): FlowNode[] {
+    return [...this.nodes.values()]
+  }
+
   // Remove a node, dropping everything it held or that was on its way to it.
   remove(key: string) {
     if (!this.nodes.has(key)) return

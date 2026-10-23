@@ -1,4 +1,5 @@
 import type { Ramp, Shot } from '../../core/types'
+import { LAUNCH_DAY } from './build'
 import type { LoadBalancerSim, Server } from './engine'
 import type { CourseState, LbChapter } from './types'
 import { TICKS_PER_SECOND } from './useSim'
@@ -369,5 +370,12 @@ export const CHAPTERS: LbChapter[] = [
       },
       { caption: 'Ready for the interview.', sub: 'The details that come up most.', sheet: true, shot: FLEET },
     ],
+  },
+  {
+    title: 'Build it',
+    level: 'Intermediate',
+    initial: BASE_STATE,
+    beats: [{ caption: LAUNCH_DAY.title }],
+    build: LAUNCH_DAY,
   },
 ]

@@ -1,4 +1,5 @@
 import type { ComponentType } from 'react'
+import type { BuildTask } from './build/types'
 
 // Shared shapes for every topic. A topic supplies its own state (S),
 // simulation (Sim), live metrics (M) and beat type (B); the core player and
@@ -57,6 +58,9 @@ export interface Chapter<S, B> {
   level: Level
   initial: S
   beats: B[]
+  // A "Build it" chapter: instead of playing beats, the learner assembles
+  // the system themselves.
+  build?: BuildTask
 }
 
 export type Update<S> = (change: (prev: S) => Partial<S>) => void

@@ -1,22 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
+import BuildPlayer from './build/BuildPlayer'
 import { shotAt, stateAt, stateBefore } from './chapters'
-import { isSoundOn, play, setSoundOn } from './sound'
+import { TopBar } from './chrome'
+import { play } from './sound'
 import { COMPACT, SHORT, useMedia } from './useMedia'
 import type { BaseBeat, Predict, Reference, TopicSpec } from './types'
 
-// Plays one chapter of any topic: the scene, captions, live stats, controls,
-// practice challenges, sound and navigation. Remounted per chapter (keyed by
-// the caller), so each chapter starts with a fresh simulation.
-export default function Player<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
-  topic,
-  index,
-  startStep = 0,
-  doneChapters = [],
-  onChapter,
-  onStep,
-  onSolved,
-  onFinish,
-}: {
+interface PlayerProps<S, Sim, M, B extends BaseBeat<S, Sim, M>> {
   topic: TopicSpec<S, Sim, M, B>
   index: number
   startStep?: number
@@ -25,7 +15,43 @@ export default function Player<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
   onStep?: (step: number, isLastStep: boolean) => void
   onSolved?: (step: number) => void
   onFinish?: () => void
-}) {
+}
+
+// Plays one chapter of any topic: a guided lesson, or a "Build it" chapter
+// where the learner assembles the system. Remounted per chapter (keyed by the
+// caller), so each chapter starts fresh.
+export default function Player<S, Sim, M, B extends BaseBeat<S, Sim, M>>(props: PlayerProps<S, Sim, M, B>) {
+  const { topic, index, doneChapters = [] } = props
+  const build = topic.chapters[index].build
+  if (build) {
+    return (
+      <BuildPlayer
+        task={build}
+        chapters={topic.chapters}
+        index={index}
+        doneChapters={doneChapters}
+        onChapter={props.onChapter}
+        onStep={props.onStep}
+        onSolved={props.onSolved}
+        onFinish={props.onFinish}
+      />
+    )
+  }
+  return <LessonPlayer {...props} />
+}
+
+// A guided lesson: the scene, captions, live stats, controls, predictions,
+// practice challenges, sound and navigation.
+function LessonPlayer<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
+  topic,
+  index,
+  startStep = 0,
+  doneChapters = [],
+  onChapter,
+  onStep,
+  onSolved,
+  onFinish,
+}: PlayerProps<S, Sim, M, B>) {
   const chapters = topic.chapters
   const chapter = chapters[index]
   const first = Math.min(Math.max(0, startStep), chapter.beats.length - 1)
@@ -39,8 +65,6 @@ export default function Player<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
   const [ramping, setRamping] = useState(!firstAsks && !!chapter.beats[first].ramp)
   const [shake, setShake] = useState(0)
   const [solvedBeat, setSolvedBeat] = useState(-1)
-  const [sound, setSound] = useState(isSoundOn)
-  const [menuOpen, setMenuOpen] = useState(false)
   // Small screens get a sideways-scrolling stats row; short ones (a phone on
   // its side) also get tighter spacing and smaller text.
   const compact = useMedia(COMPACT)
@@ -178,55 +202,7 @@ export default function Player<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
       <div
         className={`pointer-events-none absolute inset-x-0 top-0 ${short ? 'space-y-1.5 p-2' : 'space-y-2 p-3 sm:space-y-3 sm:p-4'}`}
       >
-        <div className="flex items-center justify-between gap-3">
-          <div className="pointer-events-auto relative flex min-w-0 items-center gap-2">
-            <button
-              onClick={() => setMenuOpen((o) => !o)}
-              className="flex min-w-0 items-center gap-2 rounded-full border border-line bg-bg/80 px-3 py-1.5 text-sm backdrop-blur transition hover:border-fg"
-            >
-              <span className="font-mono text-xs text-muted">{String(index + 1).padStart(2, '0')}</span>
-              <span className="truncate font-medium">{chapter.title}</span>
-              <span className="text-muted">▾</span>
-            </button>
-            <span className="hidden rounded-full border border-line bg-bg/80 px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-muted backdrop-blur sm:inline">
-              {chapter.level}
-            </span>
-            {menuOpen && (
-              <ol className="absolute left-0 top-full z-20 mt-2 w-60 overflow-hidden rounded-xl border border-line bg-bg shadow-lg">
-                {chapters.map((c, i) => (
-                  <li key={c.title}>
-                    <button
-                      onClick={() => {
-                        setMenuOpen(false)
-                        onChapter(i)
-                      }}
-                      className={`flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition hover:bg-subtle ${
-                        i === index ? 'font-medium' : 'text-muted'
-                      }`}
-                    >
-                      <span className="font-mono text-xs">{String(i + 1).padStart(2, '0')}</span>
-                      <span className="flex-1">{c.title}</span>
-                      {doneChapters.includes(i) && (
-                        <span className="font-mono text-xs text-fg" aria-label="done">
-                          ✓
-                        </span>
-                      )}
-                    </button>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </div>
-          <button
-            onClick={() => {
-              setSoundOn(!sound)
-              setSound(!sound)
-            }}
-            className="pointer-events-auto shrink-0 rounded-full border border-line bg-bg/80 px-3 py-1.5 font-mono text-xs text-muted backdrop-blur transition hover:text-fg"
-          >
-            Sound {sound ? 'on' : 'off'}
-          </button>
-        </div>
+        <TopBar chapters={chapters} index={index} doneChapters={doneChapters} onChapter={onChapter} />
 
         {/* Small screens: one row that scrolls sideways (short ones drop the
             labels too). Larger screens: wraps. */}

@@ -38,8 +38,9 @@ export interface TopicEntry {
   Play?: ComponentType<PlayProps>
 }
 
-const challengeIds = (chapters: { beats: { challenge?: unknown }[] }[]) =>
-  chapters.flatMap((c, ci) => c.beats.flatMap((b, bi) => (b.challenge ? [`${ci}:${bi}`] : [])))
+// Every practice challenge, including a "Build it" chapter's goal.
+const challengeIds = (chapters: { build?: unknown; beats: { challenge?: unknown }[] }[]) =>
+  chapters.flatMap((c, ci) => (c.build ? [`${ci}:0`] : c.beats.flatMap((b, bi) => (b.challenge ? [`${ci}:${bi}`] : []))))
 
 export const TOPICS: TopicEntry[] = [
   {
