@@ -10,16 +10,20 @@ export default function Player<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
   topic,
   index,
   startStep = 0,
+  doneChapters = [],
   onChapter,
   onStep,
   onSolved,
+  onFinish,
 }: {
   topic: TopicSpec<S, Sim, M, B>
   index: number
   startStep?: number
+  doneChapters?: number[]
   onChapter: (index: number) => void
   onStep?: (step: number, isLastStep: boolean) => void
   onSolved?: (step: number) => void
+  onFinish?: () => void
 }) {
   const chapters = topic.chapters
   const chapter = chapters[index]
@@ -173,7 +177,12 @@ export default function Player<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
                       }`}
                     >
                       <span className="font-mono text-xs">{String(i + 1).padStart(2, '0')}</span>
-                      {c.title}
+                      <span className="flex-1">{c.title}</span>
+                      {doneChapters.includes(i) && (
+                        <span className="font-mono text-xs text-fg" aria-label="done">
+                          ✓
+                        </span>
+                      )}
                     </button>
                   </li>
                 ))}
@@ -233,23 +242,26 @@ export default function Player<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
             >
               ←
             </button>
-            <button
-              onClick={() => go(beatIdx + 1)}
-              disabled={lastBeat && lastChapter}
-              className={`h-10 rounded-full px-6 text-sm font-medium transition disabled:opacity-30 ${
-                challenge && !solved
-                  ? 'border border-line bg-bg/80 text-muted backdrop-blur hover:text-fg'
-                  : 'bg-fg text-bg hover:opacity-85'
-              } ${solved ? 'animate-pulse' : ''}`}
-            >
-              {lastBeat && lastChapter
-                ? 'The end'
-                : challenge && !solved
-                  ? 'Skip →'
-                  : lastBeat
-                    ? `Next: ${chapters[index + 1].title} →`
-                    : 'Next →'}
-            </button>
+            {lastBeat && lastChapter ? (
+              <button
+                onClick={onFinish}
+                disabled={!onFinish}
+                className="h-10 rounded-full bg-fg px-6 text-sm font-medium text-bg transition hover:opacity-85 disabled:opacity-30"
+              >
+                Finish ✓
+              </button>
+            ) : (
+              <button
+                onClick={() => go(beatIdx + 1)}
+                className={`h-10 rounded-full px-6 text-sm font-medium transition ${
+                  challenge && !solved
+                    ? 'border border-line bg-bg/80 text-muted backdrop-blur hover:text-fg'
+                    : 'bg-fg text-bg hover:opacity-85'
+                } ${solved ? 'animate-pulse' : ''}`}
+              >
+                {challenge && !solved ? 'Skip →' : lastBeat ? `Next: ${chapters[index + 1].title} →` : 'Next →'}
+              </button>
+            )}
           </div>
         </div>
       </div>

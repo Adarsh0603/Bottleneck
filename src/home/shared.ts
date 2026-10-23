@@ -21,6 +21,18 @@ export function nextTopic(progress: Progress) {
   return builtTopics.find((t) => statusOf(progress, t) !== 'done')
 }
 
+// What to suggest after finishing `topic`: the next unfinished topic after it
+// in the recommended order, else any unfinished one.
+export function nextAfter(progress: Progress, topic: TopicEntry) {
+  const later = builtTopics.slice(builtTopics.indexOf(topic) + 1)
+  return later.find((t) => statusOf(progress, t) !== 'done') ?? builtTopics.find((t) => t !== topic && statusOf(progress, t) !== 'done')
+}
+
+export function solvedCount(progress: Progress, topic: TopicEntry) {
+  const solved = topicProgress(progress, topic.id).solved
+  return (topic.challenges ?? []).filter((id) => solved.includes(id)).length
+}
+
 // Pick up where the learner left off; a finished topic starts over for review.
 export function openTopic(progress: Progress, topic: TopicEntry, chapter?: number) {
   if (chapter !== undefined) return navigate({ page: 'topic', topic: topic.id, chapter, step: 0 })

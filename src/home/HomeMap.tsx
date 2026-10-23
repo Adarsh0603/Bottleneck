@@ -7,7 +7,7 @@ import type { V3 } from '../core/types'
 import { TRACKS, type TopicEntry } from '../topics/registry'
 import { DISTRICT_HALF, DISTRICTS, LOTS, STREETS, type Lot } from './cityLayout'
 import { ContinueButton, ViewToggle, type HomeView } from './parts'
-import { actionLabel, nextTopic, openTopic, statusOf, topicNumber, trackOf, type TopicStatus } from './shared'
+import { actionLabel, nextTopic, openTopic, solvedCount, statusOf, topicNumber, trackOf, type TopicStatus } from './shared'
 
 const OVERVIEW = { target: [0, 0.8, 0] as V3, zoom: 1.05 }
 const FOCUS_ZOOM = 2.1
@@ -90,6 +90,8 @@ export default function HomeMap({ onView }: { onView: (view: HomeView) => void }
         <ViewToggle view="map" onChange={onView} />
       </div>
 
+      <Legend />
+
       {lot && <TopicPanel key={lot.topic.id} topic={lot.topic} status={statusOf(progress, lot.topic)} onClose={() => setSelected(null)} />}
     </div>
   )
@@ -148,6 +150,7 @@ function City({
           key={l.topic.id}
           lot={l}
           status={statusOf(progress, l.topic)}
+          fraction={topicProgress(progress, l.topic.id).done.length / (l.topic.chapters?.length || 1)}
           selected={selected === l.topic.id}
           onSelect={() => onSelect(l.topic.id)}
           onHover={(on) => onHover(on ? l.topic.id : null)}
@@ -181,12 +184,14 @@ function City({
 function Building({
   lot,
   status,
+  fraction,
   selected,
   onSelect,
   onHover,
 }: {
   lot: Lot
   status: TopicStatus
+  fraction: number
   selected: boolean
   onSelect: () => void
   onHover: (on: boolean) => void
@@ -194,6 +199,19 @@ function Building({
   const { x, z, size, h, topic } = lot
   const ring = size / 2 + 0.22
   const [rx, ry] = project([x, h, z])
+  const [poleX, poleY] = project([x, h + 0.75, z])
+
+  // A thin bar on the floor in front of the building: how many chapters are done.
+  const bar = (to: number): V3[] => {
+    const z0 = z + size / 2 + 0.16
+    const x0 = x - size / 2
+    return [
+      [x0, 0, z0],
+      [x0, 0, z0 + 0.1],
+      [x0 + size * to, 0, z0 + 0.1],
+      [x0 + size * to, 0, z0],
+    ]
+  }
   const onKey = (e: KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
@@ -247,8 +265,58 @@ function Building({
       >
         {topicNumber(topic)}
       </text>
+
+      {/* In progress: a floor bar. Completed: a flag on the roof. */}
+      {status === 'started' && (
+        <g pointerEvents="none">
+          <polygon points={points(bar(1))} fill="var(--line)" />
+          {fraction > 0 && <polygon points={points(bar(fraction))} fill="var(--fg)" />}
+        </g>
+      )}
+      {status === 'done' && (
+        <g pointerEvents="none">
+          <line x1={rx + 9} y1={ry - 2} x2={poleX + 9} y2={poleY} stroke="var(--fg)" strokeWidth={1.5} />
+          <path d={`M ${poleX + 9} ${poleY} l 15 5 l -15 5 z`} fill="var(--fg)" />
+        </g>
+      )}
     </g>
   )
+}
+
+// What the building styles mean.
+function Legend() {
+  const item = 'flex items-center gap-2'
+  return (
+    <div className="pointer-events-none absolute bottom-4 left-4 hidden rounded-xl border border-line bg-bg/80 px-3 py-2 text-[11px] text-muted backdrop-blur sm:block">
+      <div className="space-y-1.5">
+        <div className={item}>
+          <span className="h-3 w-3 border border-fg bg-bg" /> Not started
+        </div>
+        <div className={item}>
+          <span className="flex h-3 w-3 flex-col justify-end border border-fg bg-bg">
+            <span className="h-0.5 w-1.5 bg-fg" />
+          </span>
+          In progress
+        </div>
+        <div className={item}>
+          <span className="h-3 w-3 bg-fg" /> Completed ⚑
+        </div>
+        <div className={item}>
+          <span className="h-3 w-3 border border-dashed border-muted" /> Coming soon
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function StatusPill({ status }: { status: TopicStatus }) {
+  if (status === 'done')
+    return <span className="rounded-full bg-fg px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-widest text-bg">✓ Completed</span>
+  if (status === 'started')
+    return <span className="rounded-full border border-fg px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-widest">In progress</span>
+  if (status === 'new')
+    return <span className="rounded-full border border-line px-2.5 py-0.5 font-mono text-[10px] uppercase tracking-widest text-muted">Not started</span>
+  return null
 }
 
 function TopicPanel({ topic, status, onClose }: { topic: TopicEntry; status: TopicStatus; onClose: () => void }) {
@@ -276,8 +344,21 @@ function TopicPanel({ topic, status, onClose }: { topic: TopicEntry; status: Top
         <div className="mt-5 rounded-xl border border-dashed border-line p-4 text-sm text-muted">Coming soon.</div>
       ) : (
         <>
-          <div className="mt-5 font-mono text-[11px] text-muted">
-            {p.done.length} / {topic.chapters.length} chapters
+          <div className="mt-4">
+            <StatusPill status={status} />
+          </div>
+          <div className="mt-4 flex gap-1" aria-hidden>
+            {topic.chapters.map((title, i) => (
+              <span key={title} className={`h-1 flex-1 rounded-full ${p.done.includes(i) ? 'bg-fg' : 'bg-line'}`} />
+            ))}
+          </div>
+          <div className="mt-2 flex justify-between font-mono text-[11px] text-muted">
+            <span>
+              {p.done.length} / {topic.chapters.length} chapters
+            </span>
+            <span>
+              {solvedCount(progress, topic)} / {topic.challenges?.length ?? 0} challenges
+            </span>
           </div>
           <ol className="mt-2 space-y-1">
             {topic.chapters.map((title, i) => (

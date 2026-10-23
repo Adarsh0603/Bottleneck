@@ -1,7 +1,7 @@
 import { resetProgress, topicProgress, useProgress } from '../core/progress'
 import { TOPICS, TRACKS, type TopicEntry } from '../topics/registry'
 import { ContinueButton, ViewToggle, type HomeView } from './parts'
-import { actionLabel, nextTopic, openTopic, statusOf, topicNumber } from './shared'
+import { actionLabel, nextTopic, openTopic, solvedCount, statusOf, topicNumber } from './shared'
 
 export default function HomeList({ onView }: { onView: (view: HomeView) => void }) {
   const progress = useProgress()
@@ -84,15 +84,17 @@ function TopicCard({ topic, isNext, onOpen }: { topic: TopicEntry; isNext: boole
     <button
       onClick={onOpen}
       className={`group flex flex-col rounded-2xl border bg-bg p-4 text-left transition hover:border-fg ${
-        isNext ? 'border-fg' : 'border-line'
+        isNext || status === 'done' ? 'border-fg' : 'border-line'
       }`}
     >
       <div className="flex items-center justify-between font-mono text-xs text-muted">
         <span>{label}</span>
         {status === 'done' ? (
-          <span className="rounded-full border border-fg px-2 py-0.5 text-[10px] uppercase tracking-widest text-fg">✓ Done</span>
+          <span className="rounded-full bg-fg px-2 py-0.5 text-[10px] uppercase tracking-widest text-bg">✓ Completed</span>
         ) : isNext ? (
           <span className="rounded-full bg-fg px-2 py-0.5 text-[10px] uppercase tracking-widest text-bg">Next</span>
+        ) : status === 'started' ? (
+          <span className="rounded-full border border-fg px-2 py-0.5 text-[10px] uppercase tracking-widest text-fg">In progress</span>
         ) : null}
       </div>
       <h3 className="mt-3 font-medium">{topic.title}</h3>
@@ -107,8 +109,11 @@ function TopicCard({ topic, isNext, onOpen }: { topic: TopicEntry; isNext: boole
         <span>
           {p.done.length} / {total} chapters
         </span>
-        <span className="transition group-hover:text-fg">{actionLabel(status)} →</span>
+        <span>
+          {solvedCount(progress, topic)} / {topic.challenges?.length ?? 0} challenges
+        </span>
       </div>
+      <div className="mt-3 text-right font-mono text-[11px] text-muted transition group-hover:text-fg">{actionLabel(status)} →</div>
     </button>
   )
 }

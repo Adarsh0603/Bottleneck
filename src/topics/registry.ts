@@ -21,9 +21,11 @@ export const TRACKS: { id: TrackId; title: string; level: Level }[] = [
 export interface PlayProps {
   chapter: number
   step: number
+  doneChapters: number[]
   onChapter: (index: number) => void
   onStep: (step: number, isLastStep: boolean) => void
   onSolved: (step: number) => void
+  onFinish: () => void
 }
 
 export interface TopicEntry {
@@ -32,8 +34,12 @@ export interface TopicEntry {
   track: TrackId
   pitch: string
   chapters?: string[]
+  challenges?: string[] // "chapter:step" of every practice challenge
   Play?: ComponentType<PlayProps>
 }
+
+const challengeIds = (chapters: { beats: { challenge?: unknown }[] }[]) =>
+  chapters.flatMap((c, ci) => c.beats.flatMap((b, bi) => (b.challenge ? [`${ci}:${bi}`] : [])))
 
 export const TOPICS: TopicEntry[] = [
   {
@@ -42,6 +48,7 @@ export const TOPICS: TopicEntry[] = [
     track: 'scaling',
     pitch: 'Spread traffic across servers, and survive when they fail.',
     chapters: LOAD_BALANCING_CHAPTERS.map((c) => c.title),
+    challenges: challengeIds(LOAD_BALANCING_CHAPTERS),
     Play: LoadBalancingPlay,
   },
   {
@@ -50,6 +57,7 @@ export const TOPICS: TopicEntry[] = [
     track: 'scaling',
     pitch: 'Stop the database drowning by remembering answers.',
     chapters: CACHING_CHAPTERS.map((c) => c.title),
+    challenges: challengeIds(CACHING_CHAPTERS),
     Play: CachingPlay,
   },
   { id: 'cdn', title: 'CDN', track: 'scaling', pitch: 'Serve users from a box near them, not across the world.' },

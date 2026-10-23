@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
-import { recordSolved, recordStep } from './core/progress'
+import { recordSolved, recordStep, topicProgress, useProgress } from './core/progress'
 import { navigate, replaceRoute, useRoute } from './core/router'
 import Home from './home/Home'
+import TopicComplete from './TopicComplete'
 import { TOPICS, type TopicEntry } from './topics/registry'
 
 function useTheme() {
@@ -67,18 +68,25 @@ export default function App() {
 function TopicView({ topic, chapter, step }: { topic: TopicEntry; chapter: number; step: number }) {
   const Play = topic.Play!
   const ch = Math.min(chapter, (topic.chapters?.length ?? 1) - 1)
+  const progress = useProgress()
+  const [finished, setFinished] = useState(false)
 
   return (
-    <Play
-      key={`${topic.id}-${ch}-${step}`}
-      chapter={ch}
-      step={step}
-      onChapter={(i) => navigate({ page: 'topic', topic: topic.id, chapter: i, step: 0 })}
-      onStep={(s, isLast) => {
-        recordStep(topic.id, ch, s, isLast)
-        replaceRoute({ page: 'topic', topic: topic.id, chapter: ch, step: s })
-      }}
-      onSolved={(s) => recordSolved(topic.id, ch, s)}
-    />
+    <>
+      <Play
+        key={`${topic.id}-${ch}-${step}`}
+        chapter={ch}
+        step={step}
+        doneChapters={topicProgress(progress, topic.id).done}
+        onChapter={(i) => navigate({ page: 'topic', topic: topic.id, chapter: i, step: 0 })}
+        onStep={(s, isLast) => {
+          recordStep(topic.id, ch, s, isLast)
+          replaceRoute({ page: 'topic', topic: topic.id, chapter: ch, step: s })
+        }}
+        onSolved={(s) => recordSolved(topic.id, ch, s)}
+        onFinish={() => setFinished(true)}
+      />
+      {finished && <TopicComplete topic={topic} onClose={() => setFinished(false)} />}
+    </>
   )
 }
