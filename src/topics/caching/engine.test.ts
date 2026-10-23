@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { CachingSim, NODES, TICKS_PER_SECOND, topShare } from './engine'
 import type { CachingState } from './types'
 
-const ST: CachingState = { rps: 10, cache: true, capacity: 20, ttl: 0, coalesce: false, cacheDown: false, viral: false }
+const ST: CachingState = { rps: 10, cache: true, capacity: 20, ttl: 0, coalesce: false, cacheDown: false, viral: false, changes: 0 }
 
 function seeded(seed = 1) {
   let x = seed

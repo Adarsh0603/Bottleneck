@@ -1,12 +1,14 @@
 import { useRef, type ReactNode } from 'react'
-import { depth, points } from '../../core/iso/geometry'
+import { depth, points, project } from '../../core/iso/geometry'
 import { Crowd, FloorPath, FloorSpot, IsoBox, IsoCylinder, Tag } from '../../core/iso/primitives'
 import Viewport from '../../core/iso/Viewport'
 import type { SceneProps, V3 } from '../../core/types'
-import { MS_PER_TICK, TICKS_PER_SECOND, type CachingSim } from './engine'
+import { FILL_TICKS, MS_PER_TICK, share, TICKS_PER_SECOND, type CachingSim } from './engine'
 import type { Beat, CachingState } from './types'
 import {
   APP,
+  BARS,
+  barSpot,
   CACHE,
   cellSpot,
   CUBE,
@@ -15,15 +17,21 @@ import {
   dbQueueSpot,
   dropPoint,
   FALL_SECONDS,
+  fillPoint,
   flightPoint,
   HIT_SECONDS,
   hitPoint,
+  MARKED_CUBE,
+  markOf,
   USERS_X,
   WAIT_SPOT,
 } from './world'
 
 const RISE_MS = 900
 const SLOT = 0.3
+const FILL_SECONDS = FILL_TICKS / TICKS_PER_SECOND
+const PULSE_SECONDS = 0.35
+const SLIDE_MS = 300
 
 export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet, markers }: SceneProps<CachingState, CachingSim, Beat>) {
   const born = useRef(new Map<string, number>())
@@ -54,6 +62,8 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
         const limit = sim.db.queueLimit
 
         if (!showCache) born.current.delete('cache')
+        // Which cell each cached item sits in: least recently used first.
+        const cellOf = new Map([...sim.cache.entries.keys()].map((k, i) => [k, i]))
 
         const routes: V3[][] = [
           [
@@ -76,14 +86,26 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
           const [x, , z] = dbQueueSpot(k)
           solids.push({
             d: depth(x, z),
-            node: <IsoBox key={`q${job.id}`} x={x} z={z} w={CUBE} d={CUBE} h={CUBE} fill={overloaded ? 'var(--danger)' : 'var(--fg)'} />,
+            node: <ItemCube key={`q${job.id}`} x={x} z={z} y={0} item={job.key} fill={overloaded ? 'var(--danger)' : 'var(--fg)'} />,
           })
         })
         if (showCache) {
           solids.push({
             d: depth(CACHE.x, 0),
-            node: <CacheBox key="cache" sim={sim} st={st} rise={riseOf('cache')} ageOf={ageOf} />,
+            node: <CacheBox key="cache" sim={sim} st={st} rise={riseOf('cache')} ageOf={ageOf} now={now} />,
           })
+        }
+        // The popularity chart: a cached item's bar is solid, the rest grey.
+        if (tags.has('popularity')) {
+          const top = share(0)
+          for (let item = 0; item < BARS.count; item++) {
+            const { x, z } = barSpot(item)
+            const cached = cacheUp && sim.cache.entries.has(item)
+            solids.push({
+              d: depth(x, z),
+              node: <Bar key={`bar${item}`} x={x} z={z} h={(share(item) / top) * BARS.maxH} item={item} cached={cached} />,
+            })
+          }
         }
         solids.sort((a, b) => a.d - b.d)
 
@@ -98,12 +120,20 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
         if (tags.has('db')) tag('db', [DB.x, DB.h + 0.7, 0], 'Database')
         if (showCache && st.cacheDown) tag('down', [CACHE.x, CACHE.h + 0.8, 0], 'Down', true)
         else if (tags.has('cache') && showCache) tag('cache', [CACHE.x, CACHE.h + 0.9, 0], `Cache · ${sim.cache.entries.size}/${st.capacity}`)
+        if (tags.has('stale') && cacheUp && sim.staleHits.some((s) => ageOf(s.tick) < HIT_SECONDS)) {
+          tag('stale', [(APP.x + CACHE.x) / 2, 1.3, 0], 'Stale · old copy', true)
+        }
         if (tags.has('hit') && cacheUp) tag('hit', [(APP.x + CACHE.x) / 2, 1.3, 0], 'Hit · answered from memory')
         if (tags.has('miss') && cacheUp) tag('miss', [(CACHE.x + DB.x) / 2 - 0.4, 1.3, 0], 'Miss · ask the database')
         if (tags.has('queue')) tag('queue', [dbQueueSpot((limit - 1) / 2)[0], 0.75, 0], `Queue · ${sim.db.queue.length}/${limit}`, overloaded)
         // In front of the queue's end, where the red cubes fall, clear of the queue label.
         if (tags.has('dropped') && overloaded) tag('dropped', [dbQueueSpot(limit)[0] - 0.5, 0.3, 1], 'Dropped', true)
-        if (tags.has('lru') && cacheUp && sim.cache.entries.size > 0) tag('lru', cellSpot(0), 'Evicted next')
+        if (tags.has('lru') && cacheUp && sim.cache.entries.size > 0) {
+          const [x, y, z] = cellSpot(0)
+          // High enough that the pill doesn't hide the row of cells.
+          tag('lru', [x, y + 1.1, z], 'Evicted next')
+        }
+        if (tags.has('popularity')) tag('popularity', [BARS.x, BARS.maxH + 0.5, BARS.z], 'Requests per item')
         if (tags.has('waiting') && waiting > 0) tag('waiting', [WAIT_SPOT[0], waiting * 0.26 + 0.4, WAIT_SPOT[2]], `Waiting · ${waiting}`)
 
         return (
@@ -126,7 +156,7 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
             {sim.flow.inTransit.map((t) => {
               const p = Math.min(1, t.progress + frac / t.ticks)
               const [x, y, z] = flightPoint(t.from, t.to, p, t.job.id)
-              return <IsoBox key={t.job.id} x={x} z={z} y={y - CUBE / 2} w={CUBE} d={CUBE} h={CUBE} fill="var(--fg)" />
+              return <ItemCube key={t.job.id} x={x} z={z} y={y - CUBE / 2} item={t.job.key} />
             })}
 
             {/* Hits bounce back from the cache; evicted and expired items pop off its lid. */}
@@ -136,25 +166,43 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
                 if (e.kind === 'hit') {
                   if (age > HIT_SECONDS) return null
                   const [x, y, z] = hitPoint(age, e.jobId ?? i)
+                  const stale = sim.staleHits.some((s) => s.jobId === e.jobId && s.tick === e.tick)
                   return (
-                    <IsoBox key={`h${i}-${e.tick}`} x={x} z={z} y={y - CUBE / 2} w={CUBE} d={CUBE} h={CUBE} fill="var(--fg)" opacity={1 - age / HIT_SECONDS} />
+                    <ItemCube
+                      key={`h${i}-${e.tick}`}
+                      x={x}
+                      z={z}
+                      y={y - CUBE / 2}
+                      item={e.key}
+                      fill={stale ? 'var(--danger)' : undefined}
+                      opacity={1 - age / HIT_SECONDS}
+                    />
                   )
                 }
+                // Evicted (from the least-recent end) or expired: the item pops off the lid.
                 if (age > 0.8) return null
                 const [x, y, z] = cellSpot(0)
                 return (
-                  <IsoBox
+                  <ItemCube
                     key={`e${i}-${e.tick}`}
-                    x={x}
-                    z={z}
-                    y={y + age * 1.4}
-                    w={0.16}
-                    d={0.24}
-                    h={0.12}
+                    x={x - age * 0.6}
+                    z={z - age * 0.4}
+                    y={y + age * 1.6}
+                    item={e.key}
                     fill={e.kind === 'evict' ? 'var(--fg)' : 'var(--muted)'}
                     opacity={1 - age / 0.8}
                   />
                 )
+              })}
+
+            {/* A miss's answer flies back from the database and drops into its cell. */}
+            {cacheUp &&
+              sim.fills.map((f) => {
+                const age = ageOf(f.tick)
+                const cell = cellOf.get(f.key)
+                if (age > FILL_SECONDS || cell === undefined) return null
+                const [x, y, z] = fillPoint(cellSpot(cell), age / FILL_SECONDS)
+                return <ItemCube key={`f${f.jobId}`} x={x} z={z} y={y} item={f.key} />
               })}
 
             {/* Dropped requests tumble and fade. */}
@@ -229,17 +277,50 @@ function CacheBox({
   st,
   rise,
   ageOf,
+  now,
 }: {
   sim: CachingSim
   st: CachingState
   rise: number
   ageOf: (tick: number) => number
+  now: number
 }) {
+  // Where each item's cell is drawn. When an item moves (it was just used, so
+  // it goes to the most-recent end) it slides there instead of jumping.
+  const slides = useRef(new Map<number, { from: V3; to: number; at: number }>())
   const h = CACHE.h * rise
   if (st.cacheDown) return <IsoBox x={CACHE.x} z={0} w={CACHE.w} d={CACHE.d} h={h} dim stroke="var(--muted)" />
 
   const entries = [...sim.cache.entries.values()]
+  const lastHit = new Map<number, number>()
+  for (const e of sim.cache.events) if (e.kind === 'hit') lastHit.set(e.key, e.tick)
   const ttlSeconds = st.ttl > 0 ? st.ttl : Infinity
+
+  const spotNow = (key: number, index: number): V3 => {
+    const target = cellSpot(index)
+    const s = slides.current.get(key)
+    if (!s) {
+      slides.current.set(key, { from: target, to: index, at: now })
+      return target
+    }
+    const t = Math.min(1, (now - s.at) / SLIDE_MS)
+    const k = 1 - Math.pow(1 - t, 3)
+    const end = cellSpot(s.to)
+    const shown: V3 = [s.from[0] + (end[0] - s.from[0]) * k, end[1], s.from[2] + (end[2] - s.from[2]) * k]
+    if (s.to !== index) slides.current.set(key, { from: shown, to: index, at: now })
+    return shown
+  }
+  for (const key of slides.current.keys()) if (!sim.cache.entries.has(key)) slides.current.delete(key)
+
+  const r = { w: 0.08, d: 0.12 }
+  const cell = ([x, y, z]: V3, k = 1) =>
+    points([
+      [x - r.w * k, y, z - r.d * k],
+      [x - r.w * k, y, z + r.d * k],
+      [x + r.w * k, y, z + r.d * k],
+      [x + r.w * k, y, z - r.d * k],
+    ])
+
   return (
     <g>
       <IsoBox x={CACHE.x} z={0} w={CACHE.w} d={CACHE.d} h={h} />
@@ -258,30 +339,76 @@ function CacheBox({
           strokeLinejoin="round"
         />
       )}
-      {/* Memory cells on the lid: one per item it can hold; filled when used,
-          fading as the item ages toward its TTL. Least recently used first. */}
+      {/* Memory cells on the lid: one slot per item it can hold. */}
       {rise === 1 &&
-        Array.from({ length: st.capacity }, (_, i) => {
-          const [x, y, z] = cellSpot(i)
-          const entry = entries[i]
-          const fresh = entry ? 1 - Math.min(1, ageOf(entry.storedAt) / ttlSeconds) * 0.7 : 0
-          const r = { w: 0.08, d: 0.12 }
+        Array.from({ length: st.capacity }, (_, i) => (
+          <polygon key={`slot${i}`} points={cell(cellSpot(i))} fill="var(--subtle)" stroke="var(--line)" strokeWidth={0.6} />
+        ))}
+      {/* What it holds, least recently used first: filled, fading as it ages
+          toward its TTL, red once the database has changed it. A cell stays
+          empty until its answer has landed, and pulses when it answers a hit.
+          Popular items show their letter. */}
+      {rise === 1 &&
+        entries.map((entry, i) => {
+          const spot = spotNow(entry.key, i)
+          if (ageOf(entry.storedAt) < FILL_SECONDS) return null
+          const fresh = 1 - Math.min(1, ageOf(entry.storedAt) / ttlSeconds) * 0.7
+          const hit = lastHit.get(entry.key)
+          const pulse = hit === undefined ? 1 : ageOf(hit) / PULSE_SECONDS
+          const mark = markOf(entry.key)
+          const outdated = (sim.cachedVersion.get(entry.key) ?? 0) < sim.versions[entry.key]
+          const [tx, ty] = project(spot)
           return (
-            <polygon
-              key={i}
-              points={points([
-                [x - r.w, y, z - r.d],
-                [x - r.w, y, z + r.d],
-                [x + r.w, y, z + r.d],
-                [x + r.w, y, z - r.d],
-              ])}
-              fill={entry ? 'var(--fg)' : 'var(--subtle)'}
-              fillOpacity={entry ? fresh : 1}
-              stroke="var(--line)"
-              strokeWidth={0.6}
-            />
+            <g key={entry.key}>
+              <polygon
+                points={cell(spot)}
+                fill={outdated ? 'var(--danger)' : 'var(--fg)'}
+                fillOpacity={fresh}
+                stroke="var(--line)"
+                strokeWidth={0.6}
+              />
+              {pulse < 1 && <polygon points={cell(spot, 1.4 + pulse)} fill="none" stroke="var(--fg)" strokeWidth={1.5} opacity={1 - pulse} />}
+              {mark && (
+                <text x={tx} y={ty + 0.4} textAnchor="middle" dominantBaseline="middle" className="font-mono" fontSize={6.5} fontWeight={700} fill="var(--bg)">
+                  {mark}
+                </text>
+              )}
+            </g>
           )
         })}
+    </g>
+  )
+}
+
+// One bar of the popularity chart: solid while the item is in the cache.
+function Bar({ x, z, h, item, cached }: { x: number; z: number; h: number; item: number; cached: boolean }) {
+  const mark = markOf(item)
+  const [tx, ty] = project([x, h, z])
+  return (
+    <g>
+      <IsoBox x={x} z={z} w={BARS.size} d={BARS.size} h={h} fill={cached ? 'var(--fg)' : 'var(--iso-idle)'} />
+      {mark && (
+        <text x={tx} y={ty - 6} textAnchor="middle" className="font-mono" fontSize={8} fontWeight={700} fill="var(--fg)">
+          {mark}
+        </text>
+      )}
+    </g>
+  )
+}
+
+// A request in flight. The most popular items are bigger and carry their
+// letter on top, so the same item can be followed through the system.
+function ItemCube({ x, y, z, item, fill = 'var(--fg)', opacity }: { x: number; y: number; z: number; item?: number; fill?: string; opacity?: number }) {
+  const mark = markOf(item)
+  const size = mark ? MARKED_CUBE : CUBE
+  if (!mark) return <IsoBox x={x} z={z} y={y} w={size} d={size} h={size} fill={fill} opacity={opacity} />
+  const [tx, ty] = project([x, y + size, z])
+  return (
+    <g opacity={opacity}>
+      <IsoBox x={x} z={z} y={y} w={size} d={size} h={size} fill={fill} />
+      <text x={tx} y={ty + 0.5} textAnchor="middle" dominantBaseline="middle" className="font-mono" fontSize={8} fontWeight={700} fill="var(--bg)">
+        {mark}
+      </text>
     </g>
   )
 }

@@ -13,6 +13,12 @@ export const CACHE = { x: 0.2, w: 1.9, d: 1.9, h: 0.55 }
 export const DB = { x: 4.8, r: 0.85, h: 1.7 }
 
 export const CUBE = 0.24
+export const MARKED_CUBE = 0.32
+
+// The most popular items carry a letter, so you can follow the same item
+// being asked for again: A is the most popular.
+const MARKS = ['A', 'B', 'C', 'D', 'E']
+export const markOf = (key: number | undefined) => (key === undefined ? undefined : MARKS[key])
 export const FLY_Y = 0.6
 export const QUEUE_GAP = 0.3
 export const HIT_SECONDS = 0.6
@@ -60,6 +66,19 @@ export function hitPoint(age: number, jobId: number): V3 {
   const t = Math.min(1, age / HIT_SECONDS)
   const jitter = (((jobId * 37) % 7) - 3) * 0.05
   return [lerp(ENTRY[NODES.cache], EXIT[NODES.app], t), FLY_Y + Math.sin(t * Math.PI) * 0.5, jitter]
+}
+
+// The popularity chart: a bar per item for the most popular ones, in a row
+// running toward the viewer behind the users, tallest at the back so every
+// bar stays in view. Taller bars get more requests.
+export const BARS = { count: 15, x: -6, z: -6.6, gap: 0.36, size: 0.24, maxH: 2 }
+export const barSpot = (item: number) => ({ x: BARS.x, z: BARS.z + item * BARS.gap })
+
+// An answer flying back from the database and dropping into its cache cell.
+export function fillPoint(cell: V3, p: number): V3 {
+  const [x0] = dbQueueSpot(0)
+  const [cx, cy, cz] = cell
+  return [lerp(x0, cx, p), lerp(FLY_Y, cy, p) + Math.sin(p * Math.PI) * 0.9, lerp(0, cz, p)]
 }
 
 export function dropPoint(node: string, age: number, jobId: number): V3 {

@@ -35,11 +35,18 @@ describe('caching challenges reward the right fix and only the right fix', () =>
     expect(always('Add a cache', { capacity: 20 })).toBe(true)
   })
 
+  it('freshness: a middle TTL balances stale answers against database load', () => {
+    expect(never('Freshness', { ttl: 2 })).toBe(true) // fresh, but the database drowns
+    expect(never('Freshness', { ttl: 20 })).toBe(true) // calm database, too stale
+    expect(always('Freshness', { ttl: 5 })).toBe(true)
+    expect(always('Freshness', { ttl: 6 })).toBe(true)
+  })
+
   it('stampede: only coalescing survives with fresh data', () => {
-    expect(never('When caches fail', { ttl: 5, coalesce: false })).toBe(true)
-    expect(never('When caches fail', { ttl: 2, coalesce: false })).toBe(true)
-    expect(never('When caches fail', { ttl: 30, coalesce: true })).toBe(true) // fine, but too stale
-    expect(always('When caches fail', { ttl: 5, coalesce: true })).toBe(true)
-    expect(always('When caches fail', { ttl: 3, coalesce: true })).toBe(true)
+    expect(never('Stampede', { ttl: 5, coalesce: false })).toBe(true)
+    expect(never('Stampede', { ttl: 2, coalesce: false })).toBe(true)
+    expect(never('Stampede', { ttl: 30, coalesce: true })).toBe(true) // fine, but too stale
+    expect(always('Stampede', { ttl: 5, coalesce: true })).toBe(true)
+    expect(always('Stampede', { ttl: 3, coalesce: true })).toBe(true)
   })
 })

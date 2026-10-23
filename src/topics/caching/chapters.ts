@@ -12,10 +12,11 @@ const BASE: CachingState = {
   coalesce: false,
   cacheDown: false,
   viral: false,
+  changes: 0,
 }
 
 const WIDE: Shot = { target: [-1.6, 0.7, 0], zoom: 0.95 }
-const APP_DB: Shot = { target: [0.4, 0.8, 0], zoom: 1.05 }
+const POPULAR: Shot = { target: [-5, 0.9, -2.6], zoom: 1.05 }
 const ON_DB: Shot = { target: [DB.x - 1.4, 0.9, 0], zoom: 1.6 }
 const ON_CACHE: Shot = { target: [CACHE.x - 0.4, 0.6, 0], zoom: 1.7 }
 const CACHE_LID: Shot = { target: [CACHE.x, 0.7, 0], zoom: 2.6 }
@@ -73,9 +74,10 @@ export const CHAPTERS: CachingChapter[] = [
       },
       {
         caption: 'But users keep asking for the same things.',
-        sub: 'The 10 most popular items get about 70% of all requests.',
+        sub: 'A few items get most requests: the top 10 get about 70%. The lettered cubes are the top five.',
         set: { rps: 10 },
-        shot: APP_DB,
+        shot: POPULAR,
+        tags: ['popularity'],
         hud: ['traffic', 'dbload', 'errors'],
       },
     ],
@@ -96,7 +98,7 @@ export const CHAPTERS: CachingChapter[] = [
       },
       {
         caption: 'First time: a miss.',
-        sub: 'The cache asks the database, then keeps the answer.',
+        sub: 'The cache passes it on to the database. The answer flies back and fills a cell.',
         shot: MISSES,
         tags: ['miss', 'cache'],
         hud: ['hitrate', 'dbload'],
@@ -104,18 +106,18 @@ export const CHAPTERS: CachingChapter[] = [
       {
         caption: 'Next time: a hit.',
         predict: { question: 'Same item, asked again. Where does the answer come from now?', options: [TARGETS.cache, TARGETS.db], answer: 0 },
-        sub: 'Answered straight from memory. The database never sees it.',
+        sub: 'Its cell flashes and answers straight from memory. The database never sees it.',
         shot: HITS,
         tags: ['hit'],
         hud: ['hitrate', 'dbload', 'latency'],
       },
       {
         caption: 'Your turn.',
-        sub: 'How big does the cache need to be?',
+        sub: 'How big does the cache need to be? Solid bars are the items it holds right now.',
         set: { capacity: 3 },
         shot: WIDE,
         controls: ['size'],
-        tags: ['cache'],
+        tags: ['cache', 'popularity'],
         hud: ['hitrate', 'dbload', 'errors'],
         challenge: {
           goal: 'Keep the database under 75% busy at 10 req/s.',
@@ -140,7 +142,7 @@ export const CHAPTERS: CachingChapter[] = [
       },
       {
         caption: 'Full? Evict the least recently used.',
-        sub: 'The item nobody has asked for in the longest time makes room.',
+        sub: 'Each item used moves to the most recent end. The one at the other end, unused the longest, makes room.',
         shot: CACHE_LID,
         tags: ['lru'],
         hud: ['hitrate'],
@@ -150,7 +152,7 @@ export const CHAPTERS: CachingChapter[] = [
         sub: 'The popular items matter most. The long tail rarely gets asked for.',
         shot: WIDE,
         controls: ['size'],
-        tags: ['cache'],
+        tags: ['cache', 'popularity'],
         hud: ['hitrate', 'dbload'],
       },
     ],
@@ -158,45 +160,60 @@ export const CHAPTERS: CachingChapter[] = [
   {
     title: 'Freshness',
     level: 'Intermediate',
-    initial: { ...BASE, rps: 10, cache: true, capacity: 40 },
+    initial: { ...BASE, rps: 10, cache: true, capacity: 40, changes: 1 },
     beats: [
       {
         caption: 'Cached answers can go stale.',
-        sub: 'If the data changes in the database, the cache still has the old copy.',
+        sub: 'The data changes in the database, but the cache keeps its old copy. Old copies turn red, and so do the answers they give.',
         shot: ON_CACHE,
-        tags: ['cache'],
-        hud: ['age', 'hitrate'],
+        tags: ['cache', 'stale'],
+        hud: ['stale', 'hitrate'],
       },
       {
         caption: 'So entries expire after a TTL.',
-        sub: 'Time to live. After it, the next request is a miss. Cells fade as they age.',
+        sub: 'Time to live. After it, the copy is thrown away and the next request fetches the new data. Cells fade as they age.',
         set: { ttl: 10 },
         shot: CACHE_LID,
-        hud: ['age', 'hitrate', 'dbload'],
+        tags: ['stale'],
+        hud: ['age', 'stale', 'dbload'],
       },
       {
         caption: 'Short TTL: fresh data, busy database.',
-        sub: 'Expire every 2 seconds and the cache barely helps.',
+        sub: 'Expire every 2 seconds and almost nothing is stale. But the database is drowning again.',
         set: { ttl: 2 },
         shot: WIDE,
         tags: ['queue'],
-        hud: ['age', 'hitrate', 'dbload', 'errors'],
+        hud: ['stale', 'dbload', 'errors'],
       },
       {
-        caption: 'Pick the trade-off.',
-        sub: 'Slide the TTL. Watch freshness and database load pull against each other.',
-        set: { ttl: 10 },
+        caption: 'Your turn.',
+        sub: 'Slide the TTL. Fresher answers cost the database more work.',
+        set: { ttl: 20 },
         shot: WIDE,
         controls: ['ttl'],
-        hud: ['age', 'hitrate', 'dbload', 'errors'],
+        tags: ['stale'],
+        hud: ['stale', 'dbload', 'errors'],
+        challenge: {
+          goal: 'Keep stale answers under 15% and the database under 80% busy.',
+          win: 'A TTL is a trade-off: how old an answer you can live with, against how hard the database works.',
+          holdSeconds: 5,
+          check: ({ m, sim }) => sim.ttlSettled && m.staleRate < 15 && m.dbLoad < 0.8 && m.dropRate < 1,
+        },
       },
     ],
   },
   {
-    title: 'When caches fail',
+    title: 'Cache crashes',
     level: 'Advanced',
     initial: { ...BASE, rps: 8, cache: true, capacity: 40 },
     beats: [
+      {
+        caption: 'A warm cache carries the load.',
+        sub: 'Nearly every request is a hit. The database barely notices the traffic.',
+        shot: WIDE,
+        tags: ['cache'],
+        hud: ['hitrate', 'dbload'],
+      },
       {
         caption: 'The cache crashes.',
         sub: 'Every request falls through to the database at once.',
@@ -213,6 +230,13 @@ export const CHAPTERS: CachingChapter[] = [
         tags: ['cache'],
         hud: ['hitrate', 'dbload', 'errors'],
       },
+    ],
+  },
+  {
+    title: 'Stampede',
+    level: 'Advanced',
+    initial: { ...BASE, rps: 8, cache: true, capacity: 40 },
+    beats: [
       {
         caption: 'One item goes viral.',
         sub: 'Most traffic is now for one item, and it’s expensive to build.',

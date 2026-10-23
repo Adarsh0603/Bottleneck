@@ -13,7 +13,7 @@ const finish = (p: Progress, topic: typeof lb) =>
 describe('completion helpers', () => {
   it('knows each built topic’s challenges', () => {
     expect(lb.challenges).toEqual(['2:0', '3:3', '4:3', '5:3', '7:0'])
-    expect(caching.challenges?.length).toBe(3)
+    expect(caching.challenges?.length).toBe(4)
   })
 
   it('a topic is complete only when every chapter is done', () => {

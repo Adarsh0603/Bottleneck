@@ -9,11 +9,12 @@ export interface CachingState {
   coalesce: boolean // misses for the same item wait for one fetch
   cacheDown: boolean
   viral: boolean // one item gets most of the traffic
+  changes: number // data updates in the database per second; cached copies go stale
 }
 
-export type TagId = 'app' | 'db' | 'cache' | 'hit' | 'miss' | 'queue' | 'dropped' | 'lru' | 'waiting' | 'users'
+export type TagId = 'app' | 'db' | 'cache' | 'hit' | 'miss' | 'queue' | 'dropped' | 'lru' | 'waiting' | 'users' | 'stale' | 'popularity'
 
-export type HudId = 'traffic' | 'latency' | 'hitrate' | 'dbload' | 'errors' | 'age'
+export type HudId = 'traffic' | 'latency' | 'hitrate' | 'dbload' | 'errors' | 'age' | 'stale'
 
 export type ControlId = 'traffic' | 'size' | 'ttl' | 'coalesce'
 

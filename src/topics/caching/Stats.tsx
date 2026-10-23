@@ -55,6 +55,15 @@ function Stat({ id, st, m }: { id: HudId; st: CachingState; m: CachingMetrics })
       return <Chip icon={<DbIcon />} title="Database busy" value={`${Math.round(m.dbLoad * 100)}%`} bad={m.dbLoad > 0.75} />
     case 'errors':
       return <Chip icon={<CrossIcon />} title="Errors" value={`${m.dropRate.toFixed(0)}%`} bad={m.dropRate > 1} />
+    case 'stale':
+      return (
+        <Chip
+          icon={<CrossIcon />}
+          title="Stale answers"
+          value={Number.isNaN(m.staleRate) ? '—' : `${Math.round(m.staleRate)}%`}
+          bad={m.staleRate >= 15}
+        />
+      )
     case 'age':
       return <Chip icon={<HourglassIcon />} title="Data can be" value={st.ttl > 0 ? `≤ ${st.ttl}s old` : 'any age'} />
   }

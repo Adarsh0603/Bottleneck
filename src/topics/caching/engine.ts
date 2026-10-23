@@ -28,12 +28,21 @@ export const LINK_TICKS = { usersApp: 8, appCache: 5, cacheDb: 6, appDb: 10 }
 const DB_LOOKUP = 15 // ticks per lookup per slot: 4 slots ≈ 5.3 lookups/s
 const VIRAL_LOOKUP = 45 // the viral item is expensive to build, e.g. a home feed
 const WINDOW = TICKS_PER_SECOND * 3
+const STALE_WINDOW = TICKS_PER_SECOND * 8 // stale answers come in waves; judge them over longer
+
+// Each item's TTL is stretched or shrunk a little (75–125%), so items cached
+// together don't all expire together and hit the database in one wave.
+const jitter = (key: number) => 0.75 + ((key * 37) % 11) / 20
+export const FILL_TICKS = 12 // how long an answer takes to fly back into the cache
 
 const ZIPF = zipfTable(ITEMS)
 const ZIPF_REST = zipfTable(ITEMS - 1)
 
 // Which item a request asks for, following the popularity curve.
 export const popularItem = (rng: () => number) => pick(ZIPF, rng())
+
+// The share of requests item `k` gets on its own (no viral item).
+export const share = (k: number) => ZIPF[k] - (k > 0 ? ZIPF[k - 1] : 0)
 
 // The share of requests the `n` most popular items get (no viral item).
 export const topShare = (n: number) => (n <= 0 ? 0 : ZIPF[Math.min(n, ITEMS) - 1])
@@ -43,6 +52,7 @@ export interface CachingMetrics {
   dropRate: number // percent
   dbLoad: number // 0–1: how busy the database's slots were
   avgMs: number
+  staleRate: number // percent of answers that were an outdated cached copy; NaN with none
 }
 
 interface Sample {
@@ -50,6 +60,7 @@ interface Sample {
   dropped: number
   hits: number
   misses: number
+  stale: number
   dbBusy: number
 }
 
@@ -59,6 +70,16 @@ export class CachingSim {
   readonly app: Worker
   readonly cache: Cache
   readonly db: Worker
+  // Answers on their way back from the database to fill the cache (for drawing).
+  fills: { key: number; jobId: number; tick: number }[] = []
+  // The data changes in the database over time. Each item has a version; the
+  // cache remembers the version it copied. A hit on an older copy is stale.
+  readonly versions = new Int32Array(ITEMS)
+  readonly cachedVersion = new Map<number, number>()
+  staleHits: { key: number; jobId: number; tick: number }[] = []
+  private stale = 0
+  private changes = 0 // per tick
+  private ttlSetAt = 0
   private viral = false
   private cacheInPath = false
   private history: Sample[] = []
@@ -76,7 +97,12 @@ export class CachingSim {
     this.db = this.flow.add(new Worker(NODES.db, { slots: 4, queueLimit: 8, workPerRequest: DB_LOOKUP }))
     this.db.workOf = (job) => (this.viral && job.key === 0 ? VIRAL_LOOKUP : DB_LOOKUP)
     this.db.onFinish = (job, sim) => {
-      if (this.cacheInPath && job.key !== undefined) this.cache.fill(job.key, sim)
+      if (!this.cacheInPath || job.key === undefined) return
+      this.cache.fill(job.key, sim)
+      const entry = this.cache.entries.get(job.key)
+      if (entry) entry.expiresAt = entry.storedAt + this.cache.ttl * jitter(job.key)
+      this.cachedVersion.set(job.key, this.versions[job.key])
+      this.fills.push({ key: job.key, jobId: job.id, tick: sim.tick })
     }
     this.flow.link(NODES.users, NODES.app, LINK_TICKS.usersApp)
     this.flow.link(NODES.cache, NODES.db, LINK_TICKS.cacheDb)
@@ -90,16 +116,19 @@ export class CachingSim {
   apply(st: CachingState) {
     this.users.rate = st.rps / TICKS_PER_SECOND
     this.viral = st.viral
+    this.changes = st.changes / TICKS_PER_SECOND
 
     // Crash or restart the cache. A restarted cache is empty ("cold").
     if (st.cacheDown && this.cache.alive) this.flow.fail(NODES.cache)
     this.cache.alive = !st.cacheDown
 
     this.cache.capacity = st.capacity
-    this.cache.ttl = st.ttl > 0 ? st.ttl * TICKS_PER_SECOND : Infinity
+    const ttl = st.ttl > 0 ? st.ttl * TICKS_PER_SECOND : Infinity
+    if (ttl !== this.cache.ttl) this.ttlSetAt = this.flow.tick
+    this.cache.ttl = ttl
     this.cache.coalesce = st.coalesce
     this.cache.evictOverflow(this.flow)
-    for (const entry of this.cache.entries.values()) entry.expiresAt = entry.storedAt + this.cache.ttl
+    for (const entry of this.cache.entries.values()) entry.expiresAt = entry.storedAt + this.cache.ttl * jitter(entry.key)
 
     // Route the app through the cache only while it's on and up.
     const through = st.cache && !st.cacheDown
@@ -114,22 +143,44 @@ export class CachingSim {
 
   step() {
     this.flow.step()
+    const t = this.flow.tick
+    this.fills = this.fills.filter((f) => t - f.tick <= FILL_TICKS)
+
+    // Popular items change more often too (a busy profile, a live score).
+    if (this.changes > 0 && this.flow.rng() < this.changes) this.versions[pick(ZIPF, this.flow.rng())]++
+    for (const e of this.cache.events) {
+      if (e.kind !== 'hit' || e.tick !== t) continue
+      if ((this.cachedVersion.get(e.key) ?? 0) < this.versions[e.key]) {
+        this.stale++
+        this.staleHits.push({ key: e.key, jobId: e.jobId ?? 0, tick: t })
+      }
+    }
+    this.staleHits = this.staleHits.filter((s) => t - s.tick <= TICKS_PER_SECOND)
     this.history.push({
       completed: this.flow.stats.completed,
       dropped: this.flow.stats.dropped,
       hits: this.cache.hits,
       misses: this.cache.misses,
+      stale: this.stale,
       dbBusy: this.db.active.length / this.db.slots,
     })
-    if (this.history.length > WINDOW + 1) this.history.shift()
+    if (this.history.length > STALE_WINDOW + 1) this.history.shift()
+  }
+
+  // Has every cached copy been around for a full TTL since it last changed?
+  // Only then do the stale numbers show what this TTL really gives.
+  get ttlSettled() {
+    return Number.isFinite(this.cache.ttl) && this.flow.tick - this.ttlSetAt >= this.cache.ttl
   }
 
   // Rolling numbers over the last few seconds, so they recover after a fix.
   get metrics(): CachingMetrics {
-    const h = this.history
-    if (h.length < 2) return { hitRate: NaN, dropRate: 0, dbLoad: 0, avgMs: 0 }
+    const all = this.history
+    const h = all.slice(-(WINDOW + 1))
+    if (h.length < 2) return { hitRate: NaN, dropRate: 0, dbLoad: 0, avgMs: 0, staleRate: NaN }
     const first = h[0]
     const last = h[h.length - 1]
+    const answered = last.completed - all[0].completed
     const completed = last.completed - first.completed
     const dropped = last.dropped - first.dropped
     const hits = last.hits - first.hits
@@ -139,6 +190,7 @@ export class CachingSim {
       dropRate: completed + dropped === 0 ? 0 : (dropped / (completed + dropped)) * 100,
       dbLoad: h.slice(1).reduce((sum, s) => sum + s.dbBusy, 0) / (h.length - 1),
       avgMs: this.flow.avgLatency() * MS_PER_TICK,
+      staleRate: answered === 0 ? NaN : ((last.stale - all[0].stale) / answered) * 100,
     }
   }
 }
