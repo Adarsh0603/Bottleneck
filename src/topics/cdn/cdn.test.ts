@@ -93,3 +93,18 @@ describe('go global build', () => {
     expect(seeds.every((s) => !buildWins({ ...edge('us'), 'edge-asia': 'server' }, s))).toBe(true)
   })
 })
+
+describe('go global problems', () => {
+  const state = (placed: Placement, seconds: number) => {
+    const run = new Running(GO_GLOBAL.assemble(placed, {}, seeded(1)))
+    for (let t = 0; t < TICKS_PER_SECOND * seconds; t++) run.step()
+    return GO_GLOBAL.problem!(run.metrics(), placed, {}, run.flow)
+  }
+  it('explains a wasted edge in Europe, but stays quiet about a working build', () => {
+    expect(state({ 'edge-eu': 'cache' }, 20)).toMatch(/Europe/)
+    expect(state({ 'edge-us': 'cache', 'edge-asia': 'cache' }, 20)).toBeNull()
+  })
+  it('explains a plain server', () => {
+    expect(state({ 'edge-us': 'server' }, 20)).toMatch(/plain server/)
+  })
+})
