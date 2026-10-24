@@ -70,6 +70,7 @@ export const CIRCUIT_SHOP: BuildTask = {
   goalShort: 'Pages load · checkouts fail only in the outage',
   win: 'Calls give up quickly and stop altogether once a service is clearly failing. Reviews fall back to saved ratings, and checkout fails fast during the outage and recovers soon after. The pool never ran dry.',
   holdSeconds: 4,
+  testSeconds: 54,
   rps: 7,
   shot: { target: [-1.8, 0.8, 0.4], zoom: 0.62 },
   fixed: [

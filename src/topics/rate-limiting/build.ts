@@ -63,6 +63,7 @@ export const API_GATEWAY: BuildTask = {
   goalShort: 'API safe · bot held back · A and B served',
   win: 'The gateways shared the load, the limiter counted each client on its own, and the setting you chose held up through the bursts and the flood. A’s page loads went through and the API never ran out of room.',
   holdSeconds: 4,
+  testSeconds: 29,
   rps: 6,
   shot: { target: [-1.6, 0.8, -0.6], zoom: 0.68 },
   fixed: [

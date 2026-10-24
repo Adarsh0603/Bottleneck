@@ -98,6 +98,7 @@ export const FLASH_SALE: BuildTask = {
   goalShort: 'No order lost · backlog cleared',
   win: 'The queue soaked up the spike and the workers drained it. Nothing was turned away, and nobody waited too long.',
   holdSeconds: 4,
+  testSeconds: 34,
   rps: BURST_RPS,
   shot: { target: [-1.4, 0.7, 0], zoom: 0.62 },
   fixed: [

@@ -103,6 +103,8 @@ export interface BuildTask {
   goalShort?: string // the goal in a few words, for when it's folded away
   win: string
   holdSeconds: number
+  // About how long a run takes to judge, hold included, so the learner knows to wait.
+  testSeconds?: number
   rps: number
   shot: Shot
   fixed: FixedPiece[]

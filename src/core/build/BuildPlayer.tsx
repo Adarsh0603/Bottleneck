@@ -34,6 +34,8 @@ interface Drag {
   moved: boolean;
 }
 
+const PROBLEM_DELAY_MS = 2500;
+
 // The pad under a screen point, if any (pads carry a data-pad attribute).
 const padAt = (x: number, y: number) =>
   document
@@ -113,6 +115,10 @@ export default function BuildPlayer({
   };
 
   const holdStart = useRef<number | null>(null);
+  const problemSeen = useRef<{ text: string | null; since: number }>({
+    text: null,
+    since: 0,
+  });
   const placedRef = useRef(placed);
   placedRef.current = placed;
   // Any change starts the run over, so nothing from the old build (numbers,
@@ -141,6 +147,8 @@ export default function BuildPlayer({
     settingsRef.current = next;
     setSettings(next);
     restart(placedRef.current, next);
+    // Tuning a setting is asking to see what it does: no need to press Start.
+    if (task.manualStart) setRunning(true);
   };
   const rebuildRef = useRef(rebuild);
   rebuildRef.current = rebuild;
@@ -181,10 +189,21 @@ export default function BuildPlayer({
             sum + (n instanceof Source ? n.rate * TICKS_PER_SECOND : 0),
           0,
         );
-  const problem =
+  const raw =
     solved || tick === 0
       ? null
       : (task.problem?.(m, placed, settings, run.flow) ?? null);
+  // A problem only shows once it has lasted a moment, and never while the goal
+  // holds: a brief blip on a build that works would make the learner doubt it.
+  if (raw !== problemSeen.current.text)
+    problemSeen.current = { text: raw, since: performance.now() };
+  const found =
+    raw &&
+    holdStart.current === null &&
+    performance.now() - problemSeen.current.since >= PROBLEM_DELAY_MS
+      ? raw
+      : null;
+  const problem = found;
   // On a small screen the goal and title can be folded away to show more floor.
   const focus = compact && !detailsOpen && !solved;
   const holdProgress =
@@ -386,6 +405,13 @@ export default function BuildPlayer({
       {lastChapter ? "Finish ✓" : "Next →"}
     </button>
   );
+  // Tells the learner a run takes a while to judge, and that any change starts it over.
+  const elapsed = Math.floor(tick / TICKS_PER_SECOND);
+  const testNote = task.testSeconds
+    ? elapsed < task.testSeconds
+      ? `Testing your build: ${elapsed}s of about ${task.testSeconds}s. Any change restarts the test.`
+      : "Almost done. The goal has to hold until the bar fills."
+    : `The goal has to hold for ${task.holdSeconds}s. Any change restarts the test.`;
   const goalCard = (
     <div
       className={`max-w-md rounded-xl border transition ${side ? "w-full p-3" : short || focus ? "mb-2 px-3 py-2" : "mb-3 p-3"} ${
@@ -406,6 +432,9 @@ export default function BuildPlayer({
       >
         {solved ? task.win : focus ? (task.goalShort ?? task.goal) : task.goal}
       </div>
+      {!solved && running && !focus && (
+        <div className="mt-1 text-xs opacity-70">{testNote}</div>
+      )}
       {!solved && (
         <div
           className={`${focus ? "mt-1.5" : "mt-2"} h-1 overflow-hidden rounded-full bg-line`}

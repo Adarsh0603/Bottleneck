@@ -20,21 +20,23 @@ import { APP, CACHE, DB, USERS_X } from './world'
 const RPS = 10
 const SHIFT_TICK = 12 * TICKS_PER_SECOND // when different items become popular
 const SHIFT_BY = 20
-const CHANGES_PER_SECOND = 0.3 // prices changing, on the popular items
+const OLD_AFTER = 7 * TICKS_PER_SECOND // a price this long in the cache is likely to have changed
 const SETTLED_TICK = 32 * TICKS_PER_SECOND // the new popular items have warmed up, and old copies have had time to go stale
-const STALE_LIMIT = 8 // percent of cached answers that may be out of date
-const WINDOW = 8 * TICKS_PER_SECOND
+const STALE_LIMIT = 25 // percent of cached answers that may be out of date
+const WINDOW = 10 * TICKS_PER_SECOND
+const MIN_ANSWERS = 25
 const KEEP_SECONDS = [3, 8, 30, Infinity]
 
 const hotItem = (tick: number, rng: () => number) => (popularItem(rng) + (tick >= SHIFT_TICK ? SHIFT_BY : 0)) % ITEMS
 
-// Changes prices in the database, and counts how many answers from the cache
-// were out of date, over the last few seconds.
+// Counts how many answers from the cache were out of date, over the last few
+// seconds. Prices change all the time, so a copy older than OLD_AFTER is
+// counted as out of date. That depends only on how long the cache keeps
+// items, so the same settings always give the same result.
 class Prices implements FlowNode {
   alive = true
   readonly key = 'prices'
-  private version = new Int32Array(ITEMS)
-  private copied = new Map<number, number>()
+  private copied = new Map<number, number>() // item → tick its copy was made
   private hits = 0
   private stale = 0
   private history: { hits: number; stale: number }[] = []
@@ -46,19 +48,18 @@ class Prices implements FlowNode {
 
   receive() {}
 
-  // The database has just read `key`: that's the version the cache keeps.
-  read(key: number) {
-    this.copied.set(key, this.version[key])
+  // The database has just read `key`: that's the copy the cache keeps.
+  read(key: number, tick: number) {
+    this.copied.set(key, tick)
   }
 
   process(sim: FlowSim) {
-    if (sim.rng() < CHANGES_PER_SECOND / TICKS_PER_SECOND) this.version[hotItem(sim.tick, sim.rng)]++
     const cache = this.cache
     if (cache) {
       const fresh = cache.hits - this.hits
       this.hits = cache.hits
       const hits = fresh > 0 ? cache.events.filter((e) => e.kind === 'hit').slice(-fresh) : []
-      for (const e of hits) if ((this.copied.get(e.key) ?? 0) < this.version[e.key]) this.stale++
+      for (const e of hits) if (sim.tick - (this.copied.get(e.key) ?? 0) > OLD_AFTER) this.stale++
     }
     this.history.push({ hits: this.hits, stale: this.stale })
     if (this.history.length > WINDOW) this.history.shift()
@@ -68,7 +69,8 @@ class Prices implements FlowNode {
   staleRate() {
     const first = this.history[0]
     const last = this.history[this.history.length - 1]
-    if (!first || !last || last.hits === first.hits) return 0
+    // A handful of answers says nothing yet (one stale of three is not 33%).
+    if (!first || !last || last.hits - first.hits < MIN_ANSWERS) return 0
     return ((last.stale - first.stale) / (last.hits - first.hits)) * 100
   }
 }
@@ -87,6 +89,7 @@ export const SAVE_THE_DATABASE: BuildTask = {
   goalShort: 'Database under 75% busy, answers up to date.',
   win: 'A cache big enough for the popular items, and kept just long enough.',
   holdSeconds: 6,
+  testSeconds: 38,
   rps: RPS,
   shot: { target: [-1.4, 0.7, 0], zoom: 0.95 },
   fixed: [
@@ -139,12 +142,12 @@ export const SAVE_THE_DATABASE: BuildTask = {
       // The shop has been open a while: the cache already holds the most
       // popular items, so traffic doesn't start against an empty cache.
       for (let k = 0; k < cache.capacity; k++) {
-        prices.read(k)
+        prices.read(k, 0)
         cache.fill(k, flow)
       }
       db.onFinish = (job, sim) => {
         if (job.key === undefined) return
-        prices.read(job.key)
+        prices.read(job.key, sim.tick)
         cache.fill(job.key, sim)
       }
     }

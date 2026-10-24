@@ -51,6 +51,7 @@ export const BLACK_FRIDAY: BuildTask = {
   goal: 'Survive the crash: under 1% errors and no server over 90% busy.',
   win: 'A load balancer in front, every server used, and a smart way of picking so the old one gets less.',
   holdSeconds: 6,
+  testSeconds: 22,
   rps: RPS,
   shot: { target: [-1.2, 0.6, 0], zoom: 0.9 },
   fixed: [{ id: 'users', kind: 'users', x: -6.5, z: 0 }],
