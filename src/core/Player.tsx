@@ -189,6 +189,10 @@ function LessonPlayer<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
         )
       : 0;
 
+  const barProgress = challenge?.progress
+    ? Math.min(1, Math.max(0, challenge.progress({ m: metrics, st, sim })))
+    : holdProgress;
+
   // A question's options are tap targets in the scene. Once answered, the
   // right one stays marked for the rest of the beat.
   const predict = beat.predict;
@@ -315,14 +319,14 @@ function LessonPlayer<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
                 <div className="font-mono text-[10px] uppercase tracking-widest text-muted">
                   Paused · tap your guess
                 </div>
-                <p className="mt-1 text-sm text-muted sm:text-base">
-                  {predict.clue}
-                </p>
                 <h2
                   className={`mt-1 font-semibold tracking-tight ${short ? "text-lg" : "text-xl sm:text-3xl"}`}
                 >
                   {predict.question}
                 </h2>
+                <p className="mt-1 text-sm text-muted sm:text-base">
+                  {predict.clue}
+                </p>
                 <button
                   onClick={() => answer(null)}
                   className="mt-2 font-mono text-xs text-muted underline-offset-4 transition hover:text-fg hover:underline"
@@ -347,7 +351,7 @@ function LessonPlayer<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
                       <div className="mt-2 h-1 overflow-hidden rounded-full bg-line">
                         <div
                           className="h-full rounded-full bg-fg transition-[width]"
-                          style={{ width: `${holdProgress * 100}%` }}
+                          style={{ width: `${barProgress * 100}%` }}
                         />
                       </div>
                     )}

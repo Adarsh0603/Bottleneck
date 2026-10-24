@@ -22,6 +22,9 @@ export interface Challenge<S, Sim, M> {
   win: string
   holdSeconds: number
   check: (ctx: { m: M; st: S; sim: Sim }) => boolean
+  // How much of the goal is done, 0 to 1, for a goal reached in several steps.
+  // The bar shows this instead of the hold timer.
+  progress?: (ctx: { m: M; st: S; sim: Sim }) => number
 }
 
 // A beat that changes state on a timer, e.g. traffic climbing. `next` returns

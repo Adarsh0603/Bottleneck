@@ -10,9 +10,10 @@ import { CHAPTERS as PUBSUB } from './pubsub/chapters'
 import { CHAPTERS as RATE_LIMITING } from './rate-limiting/chapters'
 import { CHAPTERS as QUEUES } from './queues/chapters'
 import { CHAPTERS as REPLICATION } from './replication/chapters'
+import { CHAPTERS as TRANSACTIONS } from './transactions/chapters'
 import { CHAPTERS as SHARDING } from './sharding/chapters'
 
-const topics = { 'load balancing': LOAD_BALANCING, caching: CACHING, replication: REPLICATION, sharding: SHARDING, 'cap & consistency': CAP, 'message queues': QUEUES, 'pub/sub & streams': PUBSUB, 'rate limiting': RATE_LIMITING, 'consistent hashing': CONSISTENT_HASHING, 'circuit breakers': CIRCUIT_BREAKERS, consensus: CONSENSUS, idempotency: IDEMPOTENCY }
+const topics = { 'load balancing': LOAD_BALANCING, caching: CACHING, replication: REPLICATION, sharding: SHARDING, 'cap & consistency': CAP, 'message queues': QUEUES, 'pub/sub & streams': PUBSUB, 'rate limiting': RATE_LIMITING, 'consistent hashing': CONSISTENT_HASHING, 'circuit breakers': CIRCUIT_BREAKERS, consensus: CONSENSUS, idempotency: IDEMPOTENCY, 'distributed transactions': TRANSACTIONS }
 
 describe.each(Object.entries(topics))('%s questions', (_, chapters) => {
   const questions = chapters.flatMap((c) => c.beats.flatMap((b) => (b.predict ? [b.predict] : [])))

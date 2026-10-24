@@ -39,6 +39,9 @@ import { REFERENCE as QUEUES_REFERENCE } from './queues/reference'
 import { CHAPTERS as REPLICATION_CHAPTERS } from './replication/chapters'
 import ReplicationPlay from './replication/Play'
 import { REFERENCE as REPLICATION_REFERENCE } from './replication/reference'
+import { CHAPTERS as TRANSACTIONS_CHAPTERS } from './transactions/chapters'
+import TransactionsPlay from './transactions/Play'
+import { REFERENCE as TRANSACTIONS_REFERENCE } from './transactions/reference'
 import { CHAPTERS as SHARDING_CHAPTERS } from './sharding/chapters'
 import ShardingPlay from './sharding/Play'
 import { REFERENCE as SHARDING_REFERENCE } from './sharding/reference'
@@ -234,7 +237,17 @@ export const TOPICS: TopicEntry[] = [
     Play: IdempotencyPlay,
     reference: IDEMPOTENCY_REFERENCE,
   },
-  { id: 'sagas', title: 'Distributed transactions', track: 'distributed', pitch: 'Finish or cleanly undo work across services.' },
+  {
+    id: 'sagas',
+    title: 'Distributed transactions',
+    short: 'Transactions',
+    track: 'distributed',
+    pitch: 'Finish or cleanly undo work across services.',
+    chapters: TRANSACTIONS_CHAPTERS.map((c) => c.title),
+    challenges: challengeIds(TRANSACTIONS_CHAPTERS),
+    Play: TransactionsPlay,
+    reference: TRANSACTIONS_REFERENCE,
+  },
   { id: 'bloom-filters', title: 'Bloom filters', track: 'distributed', pitch: 'Answer “have I seen this?” in a few bits.' },
 
   { id: 'url-shortener', title: 'URL shortener', track: 'capstones', pitch: 'Billions of redirects, mostly reads.' },
