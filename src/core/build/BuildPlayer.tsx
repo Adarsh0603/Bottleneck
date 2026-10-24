@@ -53,6 +53,9 @@ export default function BuildPlayer({
   const [drag, setDrag] = useState<Drag | null>(null)
   const [hoverPad, setHoverPad] = useState<string | null>(null)
   const [solved, setSolved] = useState(false)
+  const [briefOpen, setBriefOpen] = useState(!!task.brief)
+  const [detailsOpen, setDetailsOpen] = useState(true)
+  const [running, setRunning] = useState(!task.manualStart)
   const [, setFrame] = useState(0)
   const compact = useMedia(COMPACT)
   const short = useMedia(SHORT)
@@ -70,13 +73,20 @@ export default function BuildPlayer({
   const run = runRef.current
   const lastTickAt = useRef(0)
   useEffect(() => {
+    if (!running) return
     const id = setInterval(() => {
       runRef.current!.step()
       lastTickAt.current = performance.now()
       setFrame((f) => f + 1)
     }, MS_PER_TICK)
     return () => clearInterval(id)
-  }, [])
+  }, [running])
+  // Stopping puts the run back at the start, ready to build again.
+  const stop = () => {
+    runRef.current = new Running(task.assemble(placedRef.current, settingsRef.current))
+    holdStart.current = null
+    setRunning(false)
+  }
 
   const holdStart = useRef<number | null>(null)
   const placedRef = useRef(placed)
@@ -127,7 +137,10 @@ export default function BuildPlayer({
     }
   }, [solved, tick, task, m, placed, settings, run])
   // Traffic right now: it can rise and fall during a build.
-  const rps = run.flow.all().reduce((sum, n) => sum + (n instanceof Source ? n.rate * TICKS_PER_SECOND : 0), 0)
+  const rps = !running ? 0 : run.flow.all().reduce((sum, n) => sum + (n instanceof Source ? n.rate * TICKS_PER_SECOND : 0), 0)
+  const problem = solved || tick === 0 ? null : (task.problem?.(m, placed, settings, run.flow) ?? null)
+  // On a small screen the goal and title can be folded away to show more floor.
+  const focus = compact && !detailsOpen && !solved
   const holdProgress = holdStart.current === null ? 0 : Math.min(1, (performance.now() - holdStart.current) / (task.holdSeconds * 1000))
 
   // Dragging: from the toolbox or off a pad. A press that doesn't move is a
@@ -212,12 +225,16 @@ export default function BuildPlayer({
       </div>
 
       {/* Top: chapter menu, sound and live numbers. */}
-      <div className={`pointer-events-none absolute inset-x-0 top-0 ${short ? 'space-y-1.5 p-2' : 'space-y-2 p-3 sm:space-y-3 sm:p-4'}`}>
+      <div className={`pointer-events-none absolute inset-x-0 top-0 z-20 ${short ? 'space-y-1.5 p-2' : 'space-y-2 p-3 sm:space-y-3 sm:p-4'}`}>
         <TopBar chapters={chapters} index={index} doneChapters={doneChapters} onChapter={onChapter} />
         <div className={`flex gap-2 ${compact ? 'no-scrollbar pointer-events-auto -mx-3 overflow-x-auto px-3' : 'flex-wrap'}`}>
           <Chip icon={<ArrowIcon />} title="Traffic" value={`${Math.round(rps)} req/s`} />
           <Chip icon={<CrossIcon />} title="Errors" value={`${m.dropRate.toFixed(0)}%`} bad={m.dropRate > 1} />
           {(task.watch ?? [{ kind: 'busy', key: '', label: 'Busiest server' } as const]).map((w) => {
+            if (w.kind === 'note') {
+              const { text, bad } = w.read(run.flow)
+              return <Chip key={w.label} icon={<ClockIcon />} title={w.label} value={text} bad={bad} />
+            }
             if (w.kind === 'latency') {
               const ms = m.latency[w.key] ?? 0
               return <Chip key={w.key} icon={<ClockIcon />} title={w.label} value={`${(ms / 1000).toFixed(2)}s`} bad={ms > w.limitMs} />
@@ -230,29 +247,57 @@ export default function BuildPlayer({
 
       {/* Bottom: goal, toolbox and navigation. */}
       <div
-        className={`pointer-events-none absolute inset-x-0 bottom-0 bg-linear-to-t from-bg via-bg/90 to-transparent ${
+        className={`pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-linear-to-t from-bg via-bg/90 to-transparent ${
           short ? 'px-3 pb-2 pt-6' : 'px-3 pb-4 pt-10 sm:px-4 sm:pb-6 sm:pt-16'
         }`}
       >
         <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-5">
           <div className="pointer-events-auto min-w-0">
+            {briefOpen && task.brief && (
+              <div className="mb-3 flex max-h-[40svh] sm:max-h-[55svh] max-w-md flex-col rounded-xl border border-line bg-bg/95 p-3 backdrop-blur">
+                <div className="font-mono text-[10px] uppercase tracking-widest text-muted">The situation</div>
+                <div className="mt-2 min-h-0 flex-1 space-y-2 overflow-y-auto text-sm">
+                  {task.brief.map((line) => (
+                    <p key={line}>{line}</p>
+                  ))}
+                </div>
+                <button
+                  onClick={() => setBriefOpen(false)}
+                  className="mt-3 h-9 shrink-0 self-start rounded-full bg-fg px-5 text-sm font-medium text-bg transition hover:opacity-85"
+                >
+                  Start building
+                </button>
+              </div>
+            )}
+            {problem && !briefOpen && (
+              <div className="mb-3 max-w-md rounded-xl border border-danger bg-bg/90 p-3 text-sm backdrop-blur" role="status">
+                <div className="font-mono text-[10px] uppercase tracking-widest text-danger">What’s going wrong</div>
+                <p className="mt-1">{problem}</p>
+              </div>
+            )}
             <div
-              className={`max-w-md rounded-xl border transition ${short ? 'mb-2 px-3 py-2' : 'mb-3 p-3'} ${
+              className={`max-w-md rounded-xl border transition ${short || focus ? 'mb-2 px-3 py-2' : 'mb-3 p-3'} ${
                 solved ? 'border-fg bg-fg text-bg' : 'border-line bg-bg/80 backdrop-blur'
               }`}
             >
-              <div className={`font-mono text-[10px] uppercase tracking-widest opacity-70 ${short ? 'hidden' : ''}`}>
+              <div className={`font-mono text-[10px] uppercase tracking-widest opacity-70 ${short || focus ? 'hidden' : ''}`}>
                 {solved ? '✓ Built' : 'Goal'}
               </div>
-              <div className="mt-1 text-sm font-medium">{solved ? task.win : task.goal}</div>
+              <div className={focus ? 'truncate text-xs font-medium' : 'mt-1 text-sm font-medium'}>
+                {solved ? task.win : focus ? (task.goalShort ?? task.goal) : task.goal}
+              </div>
               {!solved && (
-                <div className="mt-2 h-1 overflow-hidden rounded-full bg-line">
+                <div className={`${focus ? 'mt-1.5' : 'mt-2'} h-1 overflow-hidden rounded-full bg-line`}>
                   <div className="h-full rounded-full bg-fg transition-[width]" style={{ width: `${holdProgress * 100}%` }} />
                 </div>
               )}
             </div>
-            <h2 className={`font-semibold tracking-tight ${short ? 'text-lg' : 'text-xl sm:text-2xl'}`}>{task.title}</h2>
-            <p className="mt-1 text-sm text-muted">{selected ? `Now tap a pad to place the ${PIECE_NAMES[selected].toLowerCase()}.` : task.sub}</p>
+            <h2 className={`font-semibold tracking-tight ${focus ? 'hidden' : ''} ${short ? 'text-lg' : 'text-xl sm:text-2xl'}`}>{task.title}</h2>
+            <p className={`mt-1 text-sm text-muted ${focus ? 'hidden' : ''}`}>{selected
+                ? `Now tap a pad to place the ${PIECE_NAMES[selected].toLowerCase()}.`
+                : !running
+                  ? 'Place your pieces, then press Start requests. Changing anything restarts the run.'
+                  : task.sub}</p>
 
             {/* The toolbox. touch-none so a finger drag moves the piece
                 instead of scrolling the page. */}
@@ -276,6 +321,23 @@ export default function BuildPlayer({
                   </button>
                 )
               })}
+              {compact && !solved && (
+                <button
+                  onClick={() => setDetailsOpen((o) => !o)}
+                  aria-expanded={detailsOpen}
+                  className="rounded-xl border border-line bg-bg/90 px-3 py-1.5 text-sm backdrop-blur transition hover:border-fg"
+                >
+                  {detailsOpen ? 'Hide goal ▾' : 'Goal ▴'}
+                </button>
+              )}
+              {task.brief && !briefOpen && (
+                <button
+                  onClick={() => setBriefOpen(true)}
+                  className="rounded-xl border border-line bg-bg/90 px-3 py-1.5 text-sm backdrop-blur transition hover:border-fg"
+                >
+                  Situation
+                </button>
+              )}
               {/* Settings appear once the piece they adjust is on the floor. */}
               {(task.settings ?? [])
                 .filter((s) => Object.values(placed).includes(s.when))
@@ -291,6 +353,16 @@ export default function BuildPlayer({
                     />
                   </div>
                 ))}
+              {task.manualStart && !solved && (
+                <button
+                  onClick={running ? stop : () => setRunning(true)}
+                  className={`rounded-xl px-4 py-1.5 text-sm font-medium transition ${
+                    running ? 'border border-line bg-bg/90 backdrop-blur hover:border-fg' : 'bg-fg text-bg hover:opacity-85'
+                  }`}
+                >
+                  {running ? 'Stop and edit' : 'Start requests'}
+                </button>
+              )}
             </div>
           </div>
 

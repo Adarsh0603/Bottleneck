@@ -76,11 +76,18 @@ export type Settings = Record<string, number>
 export type Watch =
   | { kind: 'busy'; key: string; label: string }
   | { kind: 'latency'; key: string; label: string; limitMs: number }
+  // Anything the task tracks itself, read off the running system.
+  | { kind: 'note'; label: string; read: (flow: FlowSim) => { text: string; bad: boolean } }
 
 export interface BuildTask {
   title: string
   sub: string
+  // The situation in plain words, one paragraph each, shown before building.
+  brief?: string[]
+  // Hold traffic back until the learner presses Start, so they can build first.
+  manualStart?: boolean
   goal: string
+  goalShort?: string // the goal in a few words, for when it's folded away
   win: string
   holdSeconds: number
   rps: number
@@ -96,5 +103,8 @@ export interface BuildTask {
   // as the first piece that pad accepts.
   assemble: (placed: Placement, settings: Settings, rng?: () => number) => FlowSim
   // `flow` is the running system, for goals the numbers alone can't judge.
+  // Says what's going wrong with the build right now, if anything, so the
+  // learner knows why it isn't working.
+  problem?: (m: BuildMetrics, placed: Placement, settings: Settings, flow: FlowSim) => string | null
   check: (m: BuildMetrics, placed: Placement, settings: Settings, flow?: FlowSim) => boolean
 }

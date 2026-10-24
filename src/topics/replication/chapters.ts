@@ -1,4 +1,5 @@
 import type { Shot, V3 } from '../../core/types'
+import { PAYDAY_CRASH } from './build'
 import type { ReplicationChapter, ReplicationState } from './types'
 import { above, APP, DB_X, HOT, PRIMARY_KEY, replicaKey } from './world'
 
@@ -174,5 +175,12 @@ export const CHAPTERS: ReplicationChapter[] = [
       },
       { caption: 'Ready for the interview.', sub: 'The replication details that come up most.', sheet: true, shot: ALL_DBS },
     ],
+  },
+  {
+    title: 'Build it',
+    level: 'Advanced',
+    initial: BASE,
+    beats: [{ caption: PAYDAY_CRASH.title }],
+    build: PAYDAY_CRASH,
   },
 ]
