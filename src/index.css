@@ -125,3 +125,13 @@ body {
     animation: none;
   }
 }
+
+/* Capstone pages: a faint blueprint grid, to feel like a design sheet. */
+.blueprint {
+  background-color: var(--bg);
+  background-image:
+    linear-gradient(var(--line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: -1px -1px;
+}

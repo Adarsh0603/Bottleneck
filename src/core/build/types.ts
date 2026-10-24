@@ -92,8 +92,18 @@ export type Watch =
   // Anything the task tracks itself, read off the running system.
   | { kind: 'note'; label: string; read: (flow: FlowSim) => { text: string; bad: boolean } }
 
+// One line of a capstone's requirement checks: green once it holds.
+export interface Requirement {
+  label: string
+  read: (flow: FlowSim, m: BuildMetrics) => { text: string; ok: boolean }
+}
+
 export interface BuildTask {
   title: string
+  // A capstone's client brief: pinned on screen the whole time, not a popup.
+  pinned?: { title: string; lines: string[] }
+  // What the finished system must satisfy, as checks that turn green live.
+  requirements?: Requirement[]
   sub: string
   // The situation in plain words, one paragraph each, shown before building.
   brief?: string[]

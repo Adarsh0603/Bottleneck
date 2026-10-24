@@ -45,6 +45,9 @@ import { REFERENCE as REPLICATION_REFERENCE } from './replication/reference'
 import { CHAPTERS as TRANSACTIONS_CHAPTERS } from './transactions/chapters'
 import TransactionsPlay from './transactions/Play'
 import { REFERENCE as TRANSACTIONS_REFERENCE } from './transactions/reference'
+import UrlShortenerPlay from './url-shortener/Play'
+import { URL_SHORTENER } from './url-shortener/build'
+import { REFERENCE as URL_SHORTENER_REFERENCE } from './url-shortener/reference'
 import { CHAPTERS as SHARDING_CHAPTERS } from './sharding/chapters'
 import ShardingPlay from './sharding/Play'
 import { REFERENCE as SHARDING_REFERENCE } from './sharding/reference'
@@ -262,9 +265,42 @@ export const TOPICS: TopicEntry[] = [
     reference: BLOOM_FILTERS_REFERENCE,
   },
 
-  { id: 'url-shortener', title: 'URL shortener', track: 'capstones', pitch: 'Billions of redirects, mostly reads.' },
+  {
+    id: 'url-shortener',
+    title: 'URL shortener',
+    track: 'capstones',
+    pitch: 'Billions of redirects, mostly reads.',
+    chapters: [...URL_SHORTENER.stages],
+    challenges: ['0:0', '1:0', '2:0'],
+    Play: UrlShortenerPlay,
+    reference: URL_SHORTENER_REFERENCE,
+  },
   { id: 'news-feed', title: 'News feed', track: 'capstones', pitch: 'Fan out posts to millions of followers.' },
   { id: 'chat', title: 'Chat app', track: 'capstones', pitch: 'Real-time messages and who’s online.' },
   { id: 'video-streaming', title: 'Video streaming', track: 'capstones', pitch: 'Upload, transcode, and stream worldwide.' },
   { id: 'ride-sharing', title: 'Ride sharing', track: 'capstones', pitch: 'Match riders and drivers by location, live.' },
+]
+
+// Topics still to build, shown in the list under their track. They are not in
+// TOPICS: the map has a fixed number of spots per district. See ROADMAP.md.
+export interface PlannedTopic {
+  id: string
+  title: string
+  track: TrackId
+  pitch: string
+}
+
+export const PLANNED: PlannedTopic[] = [
+  { id: 'estimation', title: 'Back-of-envelope estimation', track: 'scaling', pitch: 'Turn users into requests, storage and bandwidth.' },
+  { id: 'api-design', title: 'API design', track: 'scaling', pitch: 'Pagination, versioning and safe retries.' },
+  { id: 'authentication', title: 'Authentication', track: 'scaling', pitch: 'Sessions, tokens and who may do what.' },
+  { id: 'data-modeling', title: 'Data modeling', track: 'data', pitch: 'Pick the right database for the access pattern.' },
+  { id: 'geospatial', title: 'Geospatial indexing', track: 'data', pitch: 'Find what is near a point, fast.' },
+  { id: 'blob-storage', title: 'Blob storage', track: 'data', pitch: 'Keep big files cheaply and serve them fast.' },
+  { id: 'search', title: 'Search', track: 'data', pitch: 'Find text across millions of documents.' },
+  { id: 'availability', title: 'Availability & failover', track: 'async', pitch: 'Stay up when machines and regions fail.' },
+  { id: 'real-time', title: 'Real-time messaging', track: 'async', pitch: 'Push updates over WebSockets, polling or SSE.' },
+  { id: 'fan-out', title: 'Fan-out', track: 'async', pitch: 'Write once, deliver to millions of followers.' },
+  { id: 'observability', title: 'Observability', track: 'async', pitch: 'Metrics, logs and traces to see what broke.' },
+  { id: 'consistency', title: 'Consistency models', track: 'distributed', pitch: 'Strong, eventual and causal: what readers see.' },
 ]

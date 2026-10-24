@@ -55,6 +55,10 @@ export default function BuildPlayer({
   onStep,
   onSolved,
   onFinish,
+  initial,
+  onBoard,
+  onContinue,
+  continueText,
 }: {
   task: BuildTask;
   chapters: { title: string; level: Level }[];
@@ -65,8 +69,14 @@ export default function BuildPlayer({
   onStep?: (step: number, isLastStep: boolean) => void;
   onSolved?: (step: number) => void;
   onFinish?: () => void;
+  // A capstone carries its board from stage to stage: start from it, report changes.
+  initial?: { placed: Placement; settings: Settings };
+  onBoard?: (placed: Placement, settings: Settings) => void;
+  // Replaces what "Next" does and says, e.g. to go on to the next stage.
+  onContinue?: () => void;
+  continueText?: string;
 }) {
-  const [placed, setPlaced] = useState<Placement>({});
+  const [placed, setPlaced] = useState<Placement>(initial?.placed ?? {});
   const [selected, setSelected] = useState<PieceKind | null>(null);
   const selectedRef = useRef(selected);
   selectedRef.current = selected;
@@ -77,6 +87,7 @@ export default function BuildPlayer({
   const [victoryOpen, setVictoryOpen] = useState(false);
   const [briefOpen, setBriefOpen] = useState(!!task.brief);
   const [detailsOpen, setDetailsOpen] = useState(true);
+  const [pinnedOpen, setPinnedOpen] = useState(() => !window.matchMedia(COMPACT).matches);
   const [running, setRunning] = useState(!task.manualStart);
   const [, setFrame] = useState(0);
   const compact = useMedia(COMPACT);
@@ -86,16 +97,17 @@ export default function BuildPlayer({
   const inset = useBottomInset<HTMLDivElement, HTMLDivElement>(side);
   const lastChapter = index === chapters.length - 1;
 
-  const [settings, setSettings] = useState<Settings>(() =>
-    Object.fromEntries((task.settings ?? []).map((s) => [s.id, s.initial])),
-  );
+  const [settings, setSettings] = useState<Settings>(() => ({
+    ...Object.fromEntries((task.settings ?? []).map((s) => [s.id, s.initial])),
+    ...initial?.settings,
+  }));
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
 
   // The live system, rebuilt from scratch whenever the placement or a setting changes.
   const runRef = useRef<Running | null>(null);
   if (!runRef.current)
-    runRef.current = new Running(task.assemble({}, settings));
+    runRef.current = new Running(task.assemble(placed, settings));
   const run = runRef.current;
   const lastTickAt = useRef(0);
   useEffect(() => {
@@ -144,12 +156,14 @@ export default function BuildPlayer({
     placedRef.current = next;
     setPlaced(next);
     restart(next, settingsRef.current);
+    onBoard?.(next, settingsRef.current);
   };
   const changeSetting = (id: string, value: number) => {
     const next = { ...settingsRef.current, [id]: value };
     settingsRef.current = next;
     setSettings(next);
     restart(placedRef.current, next);
+    onBoard?.(placedRef.current, next);
     // Tuning a setting is asking to see what it does: no need to press Start.
     if (task.manualStart) setRunning(true);
   };
@@ -395,8 +409,8 @@ export default function BuildPlayer({
       <p className="mt-1">{problem}</p>
     </div>
   );
-  const continueLabel = lastChapter ? "Finish ✓" : "Next →";
-  const goOn = lastChapter ? onFinish : () => onChapter(index + 1);
+  const continueLabel = continueText ?? (lastChapter ? "Finish ✓" : "Next →");
+  const goOn = onContinue ?? (lastChapter ? onFinish : () => onChapter(index + 1));
   // Solving it pops a card up in the middle of the floor.
   const victoryCard = solved && victoryOpen && (
     <div
@@ -588,6 +602,52 @@ export default function BuildPlayer({
             );
           })}
         </div>
+        {task.requirements && (
+          <div
+            className={`flex gap-1.5 ${compact ? "no-scrollbar pointer-events-auto -mx-3 overflow-x-auto px-3" : "pointer-events-auto flex-wrap"}`}
+            aria-label="Requirements"
+          >
+            {task.requirements.map((r) => {
+              const { text, ok } = r.read(run.flow, m);
+              const state = tick === 0 ? "idle" : ok ? "ok" : "bad";
+              return (
+                <div
+                  key={r.label}
+                  className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[11px] backdrop-blur transition-colors ${
+                    state === "ok"
+                      ? "border-fg bg-fg text-bg"
+                      : state === "bad"
+                        ? "border-danger bg-bg/80 text-danger"
+                        : "border-line bg-bg/80 text-muted"
+                  }`}
+                >
+                  <span aria-hidden>{state === "ok" ? "✓" : state === "bad" ? "✕" : "○"}</span>
+                  <span className="uppercase tracking-widest">{r.label}</span>
+                  <span className="tabular-nums opacity-80">{tick === 0 ? "" : text}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        {task.pinned && (
+          <div className="pointer-events-auto max-w-xs rounded-xl border border-line bg-bg/85 backdrop-blur">
+            <button
+              onClick={() => setPinnedOpen((o) => !o)}
+              aria-expanded={pinnedOpen}
+              className="flex w-full items-center justify-between gap-3 px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-muted"
+            >
+              {task.pinned.title}
+              <span>{pinnedOpen ? "▴" : "▾"}</span>
+            </button>
+            {pinnedOpen && (
+              <div className="space-y-1.5 px-3 pb-2.5 text-xs leading-snug">
+                {task.pinned.lines.map((line) => (
+                  <p key={line}>{line}</p>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         {side && task.brief && (
           <div className="pointer-events-auto flex flex-col items-start gap-2">
             {situationButton}

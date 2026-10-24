@@ -25,6 +25,22 @@ const ground = (u: number, v: number) => ({ x: (u - v) / 2, z: (u + v) / 2 })
 const screen = (u: number, v: number): V3 => [(u - v) / 2, 0, (u + v) / 2]
 
 const THUMBS: Record<string, Thumb> = {
+  // Capstone: visitors, balancer, a cache beside the app, then the database.
+  'url-shortener': {
+    pieces: [
+      { kind: 'database', x: 3, z: 0 },
+      { kind: 'cache', x: 1, z: -1.8 },
+      { kind: 'app', x: -0.8, z: 0.4 },
+      { kind: 'balancer', x: -2.6, z: 0.4 },
+      { kind: 'users', x: -4.8, z: 0.4, active: 8 },
+    ],
+    routes: [
+      [[-3.8, 0, 0.4], [-3.2, 0, 0.4], [-1.9, 0, 0.4], [-0.9, 0, 0.4]],
+      [[-3.8, 0, 0.4], [-3.2, 0, 0.4], [-1.9, 0, 0.4], [-0.9, 0, 0.4]],
+      [[-0.1, 0, 0.4], [0.3, 0, -0.7], [0.9, 0, -1.5]],
+      [[0.4, 0, 0.4], [1.6, 0, 0.1], [2.4, 0, 0]],
+    ],
+  },
   'load-balancing': {
     pieces: [
       { kind: 'server', x: 1.6, z: -1.5 },

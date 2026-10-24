@@ -1,8 +1,6 @@
 import { resetProgress, useProgress } from "../core/progress";
-import { TOPICS, TRACKS, type TopicEntry } from "../topics/registry";
-import { useState } from "react";
+import { PLANNED, TOPICS, TRACKS, type TopicEntry } from "../topics/registry";
 import HeroScene from "./HeroScene";
-import TopicThumb from "./TopicThumb";
 import { ContinueButton, Credit, ViewToggle, type HomeView } from "./parts";
 import {
   actionLabel,
@@ -73,6 +71,23 @@ export default function HomeList({
                     onOpen={() => openTopic(t)}
                   />
                 ))}
+                {PLANNED.filter((t) => t.track === track.id).map((t) => (
+                  <div
+                    key={t.id}
+                    className="rounded-2xl border border-dashed border-line bg-bg p-4"
+                  >
+                    <div className="flex items-center justify-between font-mono text-xs text-muted">
+                      <span>Planned</span>
+                      <span className="rounded-full border border-line px-2 py-0.5 text-[10px] uppercase tracking-widest">
+                        Soon
+                      </span>
+                    </div>
+                    <h3 className="mt-3 font-medium text-muted">{t.title}</h3>
+                    <p className="mt-1 text-sm leading-6 text-muted">
+                      {t.pitch}
+                    </p>
+                  </div>
+                ))}
               </div>
             </section>
           );
@@ -114,14 +129,10 @@ function TopicCard({
   const progress = useProgress();
   const status = statusOf(progress, topic);
   const label = topicNumber(topic);
-  const [live, setLive] = useState(false);
 
   if (status === "soon" || !topic.chapters) {
     return (
       <div className="rounded-2xl border cursor-pointer border-dashed border-line bg-bg p-4">
-        <div className="mb-4 h-28 opacity-70">
-          <TopicThumb topic={topic} live={false} />
-        </div>
         <div className="flex items-center justify-between font-mono text-xs text-muted">
           <span>{label}</span>
           <span className="rounded-full border border-line px-2 py-0.5 text-[10px] uppercase tracking-widest">
@@ -139,17 +150,10 @@ function TopicCard({
   return (
     <button
       onClick={onOpen}
-      onPointerEnter={() => setLive(true)}
-      onPointerLeave={() => setLive(false)}
-      onFocus={() => setLive(true)}
-      onBlur={() => setLive(false)}
       className={`group flex flex-col rounded-2xl border cursor-pointer bg-bg p-4 text-left transition hover:border-fg ${
         isNext || status === "done" ? "border-fg" : "border-line"
       }`}
     >
-      <div className="mb-4 h-44 w-full rounded-xl bg-subtle/60 p-2">
-        <TopicThumb topic={topic} live={live} />
-      </div>
       <div className="flex w-full items-center justify-between font-mono text-xs text-muted">
         <span>{label}</span>
         {status === "done" ? (
