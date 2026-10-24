@@ -73,6 +73,8 @@ export default function BuildPlayer({
   const [drag, setDrag] = useState<Drag | null>(null);
   const [hoverPad, setHoverPad] = useState<string | null>(null);
   const [solved, setSolved] = useState(false);
+  // The victory card stays up until the learner moves on or closes it to look around.
+  const [victoryOpen, setVictoryOpen] = useState(false);
   const [briefOpen, setBriefOpen] = useState(!!task.brief);
   const [detailsOpen, setDetailsOpen] = useState(true);
   const [running, setRunning] = useState(!task.manualStart);
@@ -127,6 +129,7 @@ export default function BuildPlayer({
     runRef.current = new Running(task.assemble(nextPlaced, nextSettings));
     holdStart.current = null;
     setSolved(false);
+    setVictoryOpen(false);
     // Tasks with a Start button wait for it again, so the new build starts from zero.
     if (task.manualStart) setRunning(false);
   };
@@ -171,6 +174,7 @@ export default function BuildPlayer({
       holdStart.current ??= now;
       if (now - holdStart.current >= task.holdSeconds * 1000) {
         setSolved(true);
+        setVictoryOpen(true);
         onSolvedRef.current?.(0);
         onStepRef.current?.(0, true);
         play("success");
@@ -391,18 +395,66 @@ export default function BuildPlayer({
       <p className="mt-1">{problem}</p>
     </div>
   );
+  const continueLabel = lastChapter ? "Finish ✓" : "Next →";
+  const goOn = lastChapter ? onFinish : () => onChapter(index + 1);
+  // Solving it pops a card up in the middle of the floor.
+  const victoryCard = solved && victoryOpen && (
+    <div
+      className={`pointer-events-none absolute inset-y-0 left-0 z-30 flex items-center justify-center p-4 ${side ? "right-88" : "right-0"}`}
+    >
+      <div
+        role="status"
+        className="pointer-events-auto flex max-h-full w-full max-w-md flex-col items-center rounded-2xl border border-line bg-bg p-6 text-center shadow-xl"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          width={44}
+          height={44}
+          aria-hidden
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="12" cy="12" r="10" />
+          <path d="M7.5 12.5l3 3 6-7" />
+        </svg>
+        <div className="mt-3 font-mono text-[10px] uppercase tracking-widest text-muted">
+          Built
+        </div>
+        <p className="mt-2 min-h-0 flex-1 overflow-y-auto text-base">
+          {task.win}
+        </p>
+        <div className="mt-5 flex shrink-0 flex-wrap justify-center gap-2">
+          <button
+            onClick={goOn}
+            className="h-10 rounded-full bg-fg px-6 text-sm font-medium text-bg transition hover:opacity-85"
+          >
+            {continueLabel}
+          </button>
+          <button
+            onClick={() => setVictoryOpen(false)}
+            className="h-10 rounded-full border border-line px-5 text-sm transition hover:border-fg"
+          >
+            Keep looking
+          </button>
+        </div>
+      </div>
+    </div>
+  );
   const hint = selected
     ? `Now tap a pad to place the ${PIECE_NAMES[selected].toLowerCase()}.`
     : !running
       ? "Place your pieces, then press Start requests. Changing anything restarts the run."
       : task.sub;
   // The way on only appears once the goal holds.
-  const finishButton = solved && (
+  const finishButton = solved && !victoryOpen && (
     <button
-      onClick={lastChapter ? onFinish : () => onChapter(index + 1)}
+      onClick={goOn}
       className="pointer-events-auto h-10 shrink-0 animate-pulse rounded-full bg-fg px-6 text-sm font-medium text-bg transition hover:opacity-85"
     >
-      {lastChapter ? "Finish ✓" : "Next →"}
+      {continueLabel}
     </button>
   );
   // Tells the learner a run takes a while to judge, and that any change starts it over.
@@ -602,7 +654,7 @@ export default function BuildPlayer({
           >
             <div className="pointer-events-auto mx-auto flex max-w-md flex-col items-center gap-2 text-center">
               {problemCard}
-              {goalCard}
+              {!victoryOpen && goalCard}
               {finishButton}
             </div>
           </div>
@@ -619,7 +671,7 @@ export default function BuildPlayer({
           <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-5">
             <div className="pointer-events-auto min-w-0">
               {problemCard}
-              {goalCard}
+              {!victoryOpen && goalCard}
               <h2
                 className={`font-semibold tracking-tight ${focus ? "hidden" : ""} ${short ? "text-lg" : "text-xl sm:text-2xl"}`}
               >
@@ -674,6 +726,7 @@ export default function BuildPlayer({
       )}
 
       {briefCard}
+      {victoryCard}
 
       {/* The piece following the pointer while dragging. */}
       {drag?.moved && (
