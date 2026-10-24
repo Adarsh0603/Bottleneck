@@ -3,7 +3,6 @@ import type { Runtime, TopicSpec } from '../../core/types'
 import { CHAPTERS } from './chapters'
 import Controls from './Controls'
 import { CdnSim, type CdnMetrics } from './engine'
-import { REFERENCE } from './reference'
 import Scene from './Scene'
 import Stats from './Stats'
 import type { Beat, CdnState } from './types'
@@ -33,5 +32,4 @@ export const cdn: TopicSpec<CdnState, CdnSim, CdnMetrics, Beat> = {
   Controls,
   feedback: (prev, next) => ({ crash: next.purge > prev.purge, rise: edgeCount(next) > edgeCount(prev) }),
   dropCount: (sim) => sim.flow.stats.dropped,
-  reference: REFERENCE,
 }

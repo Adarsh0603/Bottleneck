@@ -3,7 +3,6 @@ import type { Runtime, TopicSpec } from '../../core/types'
 import { CHAPTERS } from './chapters'
 import Controls from './Controls'
 import { CachingSim, TICKS_PER_SECOND, type CachingMetrics } from './engine'
-import { REFERENCE } from './reference'
 import Scene from './Scene'
 import Stats from './Stats'
 import type { Beat, CachingState } from './types'
@@ -33,5 +32,4 @@ export const caching: TopicSpec<CachingState, CachingSim, CachingMetrics, Beat> 
     rise: (next.cache && !prev.cache) || (!next.cacheDown && prev.cacheDown),
   }),
   dropCount: (sim) => sim.flow.stats.dropped,
-  reference: REFERENCE,
 }

@@ -24,6 +24,7 @@ export default function Viewport({
   label,
   controlsSide = 'right',
   markers = [],
+  bounds,
   children,
 }: {
   target: V3
@@ -33,6 +34,7 @@ export default function Viewport({
   label: string
   controlsSide?: 'left' | 'right'
   markers?: Marker[]
+  bounds?: V3[] // when given, frame all of these points instead of using target and zoom
   children: (frame: Frame) => ReactNode
 }) {
   const [now, setNow] = useState(() => performance.now())
@@ -108,7 +110,8 @@ export default function Viewport({
   const narrow = size.w < 640
   const fs = frameScale(size.w, size.h)
   const k = narrow ? 0.1 : 0.06
-  const fit = fitMarkers(asks, target, zoom, size, fs, k, narrow)
+  const base = bounds ? fitBounds(bounds, size, fs, k, narrow) : { center: project(target), zoom }
+  const fit = fitMarkers(asks, base, size, fs, k, narrow)
   const goalZoom = fit.zoom * userZoom
   const [gx, gy] = fit.center
   const v = (view.current ??= { cx: gx, cy: gy, zoom: goalZoom })
@@ -184,7 +187,8 @@ export default function Viewport({
         moved && (
           <button
             onClick={reset}
-            className="absolute right-3 top-36 z-10 rounded-full border border-line bg-bg/90 px-3 py-1.5 font-mono text-xs backdrop-blur"
+            style={{ bottom: 'calc(var(--bottom-inset, 8rem) + 0.5rem)' }}
+            className="absolute right-3 z-10 rounded-full border border-line bg-bg/90 px-3 py-1.5 font-mono text-xs backdrop-blur"
           >
             ⟲ Reset view
           </button>
@@ -255,20 +259,45 @@ function clearArea(size: { w: number; h: number }, narrow: boolean) {
   return { x0: side, x1: size.w - side, y0: top, y1: Math.max(top + 1, size.h - bottom) }
 }
 
-// Where to point the camera, and how far in, so every answer to an open
-// question sits in the clear part of the screen. Leaves the shot alone when
-// they already do; otherwise recentres on them and zooms out as needed.
-function fitMarkers(
-  asks: Marker[],
-  target: V3,
-  zoom: number,
+// Frames every given point in the clear part of the screen, as close as fits.
+// The padding leaves room for what stands on and above each point (pieces, tags).
+function fitBounds(
+  points: V3[],
   size: { w: number; h: number },
   fs: number,
   k: number,
   narrow: boolean,
 ): { center: [number, number]; zoom: number } {
-  const center = project(target)
-  if (asks.length === 0) return { center, zoom }
+  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity
+  for (const p of points) {
+    const [sx, sy] = project(p)
+    x0 = Math.min(x0, sx - 60)
+    x1 = Math.max(x1, sx + 60)
+    y0 = Math.min(y0, sy - 90)
+    y1 = Math.max(y1, sy + 30)
+  }
+  const area = clearArea(size, narrow)
+  const fitZoom = Math.min((area.x1 - area.x0) / (fs * (x1 - x0)), (area.y1 - area.y0) / (fs * (y1 - y0)))
+  const z = Math.max(0.3, Math.min(1.6, fitZoom))
+  const upp = 1 / (fs * z)
+  const cx = (x0 + x1) / 2 - ((area.x0 + area.x1) / 2) * upp + (size.w * upp) / 2
+  const cy = (y0 + y1) / 2 - ((area.y0 + area.y1) / 2) * upp + (size.h * upp) / 2 - size.h * upp * k
+  return { center: [cx, cy], zoom: z }
+}
+
+// Where to point the camera, and how far in, so every answer to an open
+// question sits in the clear part of the screen. Leaves the shot alone when
+// they already do; otherwise recentres on them and zooms out as needed.
+function fitMarkers(
+  asks: Marker[],
+  base: { center: [number, number]; zoom: number },
+  size: { w: number; h: number },
+  fs: number,
+  k: number,
+  narrow: boolean,
+): { center: [number, number]; zoom: number } {
+  const { center, zoom } = base
+  if (asks.length === 0) return base
 
   // The pins' extent in scene units (see MarkerPin: the tag sits above the point).
   let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity

@@ -107,7 +107,6 @@ export const CHAPTERS: AutoscaleChapter[] = [
         hud: ['traffic', 'servers', 'errors'],
       },
       {
-        caption: 'Your turn.',
         sub: 'A lower target keeps spare servers running. Change it, then wait for the next spike.',
         shot: WIDE,
         tags: ['servers', 'autoscaler'],
@@ -128,7 +127,6 @@ export const CHAPTERS: AutoscaleChapter[] = [
         tags: ['servers'],
         hud: ['traffic', 'servers', 'cost', 'errors'],
       },
-      { caption: 'Ready for the interview.', sub: 'The autoscaling details that come up most.', sheet: true, shot: WIDE },
     ],
   },
   {

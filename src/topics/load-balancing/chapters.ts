@@ -254,7 +254,6 @@ export const CHAPTERS: LbChapter[] = [
         hud: ['latency', 'dropped'],
       },
       {
-        caption: 'Your turn.',
         sub: 'Same servers, same traffic. Pick an algorithm.',
         set: { algorithm: 'round-robin' },
         shot: FLEET,
@@ -343,7 +342,6 @@ export const CHAPTERS: LbChapter[] = [
         shot: FLEET,
         hud: ['latency', 'dropped'],
       },
-      { caption: 'Ready for the interview.', sub: 'The details that come up most.', sheet: true, shot: FLEET },
     ],
   },
   {

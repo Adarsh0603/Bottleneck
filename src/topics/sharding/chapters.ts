@@ -61,7 +61,6 @@ export const CHAPTERS: ShardingChapter[] = [
         hud: ['load', 'errors'],
       },
       {
-        caption: 'Your turn.',
         sub: 'Traffic is up again. Add shards until no one is turned away.',
         set: { rps: 14, shards: 1 },
         shot: ALL_SHARDS,
@@ -117,7 +116,6 @@ export const CHAPTERS: ShardingChapter[] = [
         hud: ['spread', 'errors'],
       },
       {
-        caption: 'Your turn.',
         sub: 'One more option: a hashed id. The app scrambles each user’s id into a random-looking number and splits on that.',
         shot: ALL_SHARDS,
         tags: ['keys'],
@@ -168,7 +166,6 @@ export const CHAPTERS: ShardingChapter[] = [
         tags: ['dbs'],
         hud: ['errors'],
       },
-      { caption: 'Ready for the interview.', sub: 'The sharding details that come up most.', sheet: true, shot: ALL_SHARDS },
     ],
   },
   {

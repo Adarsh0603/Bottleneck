@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import BuildPlayer from "./build/BuildPlayer";
 import { shotAt, stateAt } from "./chapters";
-import { TopBar } from "./chrome";
+import { CHEAT_SHEET, TopBar } from "./chrome";
 import { play } from "./sound";
+import { useBottomInset } from "./useBottomInset";
 import { COMPACT, SHORT, useMedia } from "./useMedia";
-import type { BaseBeat, Marker, Reference, TopicSpec } from "./types";
+import type { BaseBeat, Marker, TopicSpec } from "./types";
 
 interface PlayerProps<S, Sim, M, B extends BaseBeat<S, Sim, M>> {
   topic: TopicSpec<S, Sim, M, B>;
@@ -12,6 +13,7 @@ interface PlayerProps<S, Sim, M, B extends BaseBeat<S, Sim, M>> {
   startStep?: number;
   doneChapters?: number[];
   onChapter: (index: number) => void;
+  onCheatSheet?: () => void;
   onStep?: (step: number, isLastStep: boolean) => void;
   onSolved?: (step: number) => void;
   onFinish?: () => void;
@@ -33,6 +35,7 @@ export default function Player<S, Sim, M, B extends BaseBeat<S, Sim, M>>(
         index={index}
         doneChapters={doneChapters}
         onChapter={props.onChapter}
+        onCheatSheet={props.onCheatSheet}
         onStep={props.onStep}
         onSolved={props.onSolved}
         onFinish={props.onFinish}
@@ -50,6 +53,7 @@ function LessonPlayer<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
   startStep = 0,
   doneChapters = [],
   onChapter,
+  onCheatSheet,
   onStep,
   onSolved,
   onFinish,
@@ -226,9 +230,9 @@ function LessonPlayer<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
     stopRamp: () => setRamping(false),
   };
   const { Scene, Stats, Controls } = topic;
-
+  const inset = useBottomInset<HTMLDivElement, HTMLDivElement>();
   return (
-    <div className="relative h-[calc(100svh-57px)] min-h-[260px] w-full overflow-hidden">
+    <div ref={inset.root} className="relative h-[calc(100svh-57px)] min-h-[260px] w-full overflow-hidden">
       <div className="absolute inset-0">
         <Scene
           simRef={runtime.simRef}
@@ -252,6 +256,7 @@ function LessonPlayer<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
           index={index}
           doneChapters={doneChapters}
           onChapter={onChapter}
+          extra={onCheatSheet && { title: CHEAT_SHEET, onOpen: onCheatSheet }}
         />
 
         {/* Small screens: one row that scrolls sideways (short ones drop the
@@ -267,12 +272,9 @@ function LessonPlayer<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
         </div>
       </div>
 
-      {beat.sheet && topic.reference && (
-        <ReferenceSheet reference={topic.reference} />
-      )}
-
       {/* Bottom: question or challenge, caption, controls and navigation. */}
       <div
+        ref={inset.bottom}
         className={`pointer-events-none absolute inset-x-0 bottom-0 bg-linear-to-t from-bg via-bg/90 to-transparent ${
           short ? "px-3 pb-2 pt-6" : "px-3 pb-4 pt-10 sm:px-4 sm:pb-6 sm:pt-16"
         }`}
@@ -306,19 +308,14 @@ function LessonPlayer<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
               <>
                 {challenge && (
                   <div
-                    className={`max-w-md rounded-xl border transition ${short ? "mb-2 px-3 py-2" : "mb-3 p-3 sm:mb-4"} ${
+                    className={`max-w-md rounded-xl border transition ${short ? "mb-2 px-3 py-2" : "mb-3 px-3 py-2.5 sm:mb-4"} ${
                       solved
                         ? "border-fg bg-fg text-bg"
                         : "border-line bg-bg/80 backdrop-blur"
                     }`}
                   >
-                    <div
-                      className={`font-mono text-[10px] uppercase tracking-widest opacity-70 ${short ? "hidden" : ""}`}
-                    >
-                      {solved ? "✓ Solved" : "Challenge"}
-                    </div>
-                    <div className="mt-1 text-sm font-medium">
-                      {solved ? challenge.win : challenge.goal}
+                    <div className="text-sm font-medium">
+                      {solved ? `✓ ${challenge.win}` : challenge.goal}
                     </div>
                     {!solved && (
                       <div className="mt-2 h-1 overflow-hidden rounded-full bg-line">
@@ -330,13 +327,17 @@ function LessonPlayer<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
                     )}
                   </div>
                 )}
-                <h2
-                  className={`font-semibold tracking-tight ${short ? "text-lg" : "text-xl sm:text-3xl"}`}
-                >
-                  {beat.caption}
-                </h2>
+                {beat.caption && (
+                  <h2
+                    className={`font-semibold tracking-tight ${short ? "text-lg" : "text-xl sm:text-3xl"}`}
+                  >
+                    {beat.caption}
+                  </h2>
+                )}
                 {beat.sub && (
-                  <p className="mt-1 text-sm text-muted sm:text-base">
+                  <p
+                    className={`text-sm text-muted sm:text-base ${beat.caption ? "mt-1" : ""}`}
+                  >
                     {beat.sub}
                   </p>
                 )}
@@ -388,29 +389,6 @@ function LessonPlayer<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function ReferenceSheet({ reference }: { reference: Reference }) {
-  return (
-    <div className="caption-in absolute inset-x-3 top-16 bottom-40 z-10 space-y-3 overflow-y-auto rounded-2xl border border-line bg-bg/95 p-4 backdrop-blur-md sm:inset-x-auto sm:right-4 sm:top-32 sm:bottom-56 sm:w-[min(26rem,calc(100%-2rem))]">
-      <div className="rounded-xl border border-fg p-4">
-        <div className="mb-2 font-mono text-[10px] uppercase tracking-widest text-muted">
-          In an interview
-        </div>
-        <ul className="list-disc space-y-1.5 pl-5 text-sm">
-          {reference.interview.map((i) => (
-            <li key={i}>{i}</li>
-          ))}
-        </ul>
-      </div>
-      {reference.cards.map((a) => (
-        <div key={a.title} className="rounded-xl border border-line p-4">
-          <h3 className="text-sm font-medium">{a.title}</h3>
-          <p className="mt-1 text-sm leading-6 text-muted">{a.body}</p>
-        </div>
-      ))}
     </div>
   );
 }

@@ -42,19 +42,25 @@ export function Segmented<T extends string | number>({
   value,
   options,
   onChange,
+  scroll,
 }: {
   value: T
   options: { value: T; label: string; disabled?: boolean }[]
   onChange: (value: T) => void
+  scroll?: boolean // one line, scrolls sideways when it does not fit
 }) {
   return (
-    <div className="inline-flex flex-wrap gap-1 rounded-xl border border-line bg-bg/80 p-1 backdrop-blur">
+    <div
+      className={`inline-flex gap-1 rounded-xl border border-line bg-bg/80 p-1 backdrop-blur ${
+        scroll ? 'max-w-full min-w-0 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden' : 'flex-wrap'
+      }`}
+    >
       {options.map((o) => (
         <button
           key={o.value}
           disabled={o.disabled}
           onClick={() => onChange(o.value)}
-          className={`rounded-lg px-3 py-1.5 text-sm transition disabled:cursor-not-allowed disabled:opacity-40 ${
+          className={`rounded-lg px-3 py-1.5 text-sm transition disabled:cursor-not-allowed disabled:opacity-40 ${scroll ? 'shrink-0 whitespace-nowrap' : ''} ${
             value === o.value ? 'bg-fg text-bg' : 'hover:bg-subtle'
           }`}
         >

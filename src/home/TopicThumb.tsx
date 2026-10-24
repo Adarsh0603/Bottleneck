@@ -109,6 +109,49 @@ const THUMBS: Record<string, Thumb> = {
     ],
     routes: [-1.7, 2.1].map((z): V3[] => [[-3.6, 0, 0.2], [-2.5, 0, 0.2], [-0.8, 0, 0.2], [0.6, 0, z]]),
   },
+  // Users and an app feed a queue, which feeds a row of workers.
+  queues: {
+    pieces: [
+      { kind: 'server', x: 2.2, z: -1.5 },
+      { kind: 'server', x: 2.2, z: 0 },
+      { kind: 'server', x: 2.2, z: 1.5 },
+      { kind: 'queue', x: -0.6, z: 0 },
+      { kind: 'app', x: -2.6, z: 0 },
+      { kind: 'users', x: -5, z: 0, active: 8 },
+    ],
+    routes: [-1.5, 0, 1.5].map((z): V3[] => [[-3.8, 0, 0], [-3.2, 0, 0], [-1.6, 0, 0], [0.4, 0, 0], [1.2, 0, z]]),
+  },
+  // An order service feeds a channel, which copies every event to three teams.
+  pubsub: {
+    pieces: [
+      { kind: 'server', x: 2.2, z: -1.5 },
+      { kind: 'server', x: 2.2, z: 0 },
+      { kind: 'server', x: 2.2, z: 1.5 },
+      { kind: 'topic', x: -0.6, z: 0 },
+      { kind: 'app', x: -2.8, z: 0 },
+    ],
+    routes: [-1.5, 0, 1.5].map((z): V3[] => [[-1.8, 0, 0], [-1.2, 0, 0], [0.4, 0, 0], [1.2, 0, z]]),
+  },
+  // Three clients feed a limiter, which feeds the API.
+  'rate-limiting': {
+    pieces: [
+      { kind: 'app', x: 2.6, z: 0 },
+      { kind: 'limiter', x: -0.6, z: 0 },
+      { kind: 'users', x: -3.6, z: -1.6, active: 3 },
+      { kind: 'users', x: -3.6, z: 1.6, active: 8 },
+    ],
+    routes: [-1.6, 1.6].map((z): V3[] => [[-2.4, 0, z], [-1.8, 0, 0], [-1.4, 0, 0], [0.8, 0, 0]]),
+  },
+  // Two regions, each with its users and a database, and a link between them.
+  cap: {
+    pieces: [
+      { kind: 'database', x: 1.4, z: -1.7 },
+      { kind: 'database', x: 1.4, z: 1.7 },
+      { kind: 'users', x: -2.8, z: -1.7, active: 6 },
+      { kind: 'users', x: -2.8, z: 1.7, active: 6 },
+    ],
+    routes: [-1.7, 1.7].map((z): V3[] => [[-1.8, 0, z], [0.2, 0, z]]),
+  },
 }
 
 const SOON: Thumb = { pieces: [], routes: [] }

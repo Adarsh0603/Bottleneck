@@ -59,7 +59,15 @@ export default function TopicComplete({ topic, onClose }: { topic: TopicEntry; o
           </div>
         )}
 
-        <div className="mt-6 flex justify-center">
+        <div className="mt-6 flex flex-wrap justify-center gap-2">
+          {topic.reference && (
+            <button
+              onClick={() => navigate({ page: 'topic', topic: topic.id, chapter: chapters.length, step: 0 })}
+              className="rounded-full border border-line px-5 py-2.5 text-sm font-medium transition hover:border-fg"
+            >
+              Cheat sheet
+            </button>
+          )}
           <button
             onClick={() => navigate({ page: 'home' })}
             className="rounded-full bg-fg px-5 py-2.5 text-sm font-medium text-bg transition hover:opacity-85"

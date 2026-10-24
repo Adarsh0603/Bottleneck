@@ -3,7 +3,6 @@ import type { Runtime, TopicSpec } from '../../core/types'
 import { CHAPTERS } from './chapters'
 import Controls from './Controls'
 import { ShardingSim, type ShardingMetrics } from './engine'
-import { REFERENCE } from './reference'
 import Scene from './Scene'
 import Stats from './Stats'
 import type { Beat, ShardingState } from './types'
@@ -31,5 +30,4 @@ export const sharding: TopicSpec<ShardingState, ShardingSim, ShardingMetrics, Be
   Controls,
   feedback: (prev, next) => ({ crash: next.down !== null && prev.down === null, rise: next.shards > prev.shards }),
   dropCount: (sim) => sim.flow.stats.dropped,
-  reference: REFERENCE,
 }

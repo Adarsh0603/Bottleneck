@@ -178,7 +178,6 @@ export const CHAPTERS: ConsistentChapter[] = [
         hud: ['spread', 'errors'],
       },
       {
-        caption: 'Your turn.',
         sub: 'Each server is back to 1 virtual node. Add virtual nodes per server until no server is overloaded.',
         set: { points: 1 },
         shot: RING_SHOT,
@@ -241,7 +240,6 @@ export const CHAPTERS: ConsistentChapter[] = [
         tags: ['servers', 'load'],
         hud: ['spread', 'errors'],
       },
-      { caption: 'Ready for the interview.', sub: 'The consistent hashing points that come up most.', sheet: true, shot: RING_SHOT },
     ],
   },
   {

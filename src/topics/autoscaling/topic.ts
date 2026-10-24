@@ -3,7 +3,6 @@ import type { Runtime, TopicSpec } from '../../core/types'
 import { CHAPTERS } from './chapters'
 import Controls from './Controls'
 import { AutoscaleSim, type AutoscaleMetrics } from './engine'
-import { REFERENCE } from './reference'
 import Scene from './Scene'
 import Stats from './Stats'
 import type { AutoscaleState, Beat } from './types'
@@ -31,5 +30,4 @@ export const autoscaling: TopicSpec<AutoscaleState, AutoscaleSim, AutoscaleMetri
   Controls,
   feedback: (prev, next) => ({ rise: !next.auto && next.servers > prev.servers }),
   dropCount: (sim) => sim.flow.stats.dropped,
-  reference: REFERENCE,
 }

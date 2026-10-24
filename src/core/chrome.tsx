@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { isSoundOn, setSoundOn } from './sound'
 import type { Level } from './types'
 
+export const CHEAT_SHEET = 'Interview cheat sheet'
+
 // The top row shared by every chapter screen: the chapter menu, its level,
 // and the sound toggle.
 export function TopBar({
@@ -9,11 +11,14 @@ export function TopBar({
   index,
   doneChapters,
   onChapter,
+  extra,
 }: {
   chapters: { title: string; level: Level }[]
   index: number
   doneChapters: number[]
   onChapter: (index: number) => void
+  // One more stop after the chapters, e.g. the cheat sheet.
+  extra?: { title: string; onOpen: () => void }
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [sound, setSound] = useState(isSoundOn)
@@ -56,6 +61,20 @@ export function TopBar({
                 </button>
               </li>
             ))}
+            {extra && (
+              <li className="border-t border-line">
+                <button
+                  onClick={() => {
+                    setMenuOpen(false)
+                    extra.onOpen()
+                  }}
+                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-muted transition hover:bg-subtle"
+                >
+                  <span className="font-mono text-xs">{String(chapters.length + 1).padStart(2, '0')}</span>
+                  <span className="flex-1">{extra.title}</span>
+                </button>
+              </li>
+            )}
           </ol>
         )}
       </div>

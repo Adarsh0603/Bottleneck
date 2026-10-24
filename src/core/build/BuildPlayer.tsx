@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { TopBar } from '../chrome'
-import { Stepper } from '../controls'
+import { CHEAT_SHEET, TopBar } from '../chrome'
+import { Segmented, Stepper } from '../controls'
 import { ArrowIcon, Chip, ClockIcon, CrossIcon, GaugeIcon } from '../hud'
 import { play } from '../sound'
 import type { Level } from '../types'
+import { useBottomInset } from '../useBottomInset'
 import { COMPACT, SHORT, useMedia } from '../useMedia'
 import BuildScene from './BuildScene'
 import { PieceIcon } from './pieces'
@@ -33,6 +34,7 @@ export default function BuildPlayer({
   index,
   doneChapters,
   onChapter,
+  onCheatSheet,
   onStep,
   onSolved,
   onFinish,
@@ -42,6 +44,7 @@ export default function BuildPlayer({
   index: number
   doneChapters: number[]
   onChapter: (index: number) => void
+  onCheatSheet?: () => void
   onStep?: (step: number, isLastStep: boolean) => void
   onSolved?: (step: number) => void
   onFinish?: () => void
@@ -59,6 +62,7 @@ export default function BuildPlayer({
   const [, setFrame] = useState(0)
   const compact = useMedia(COMPACT)
   const short = useMedia(SHORT)
+  const inset = useBottomInset<HTMLDivElement, HTMLDivElement>()
   const lastChapter = index === chapters.length - 1
 
   const [settings, setSettings] = useState<Settings>(() =>
@@ -210,12 +214,13 @@ export default function BuildPlayer({
   const activeKind = drag?.moved ? drag.kind : selected
 
   return (
-    <div className="relative h-[calc(100svh-57px)] min-h-[260px] w-full select-none overflow-hidden">
+    <div ref={inset.root} className="relative h-[calc(100svh-57px)] min-h-[260px] w-full select-none overflow-hidden">
       <div className="absolute inset-0">
         <BuildScene
           task={task}
           run={run}
           placed={placed}
+          settings={settings}
           lastTickAt={lastTickAt}
           dragKind={activeKind}
           hoverPad={hoverPad}
@@ -226,7 +231,7 @@ export default function BuildPlayer({
 
       {/* Top: chapter menu, sound and live numbers. */}
       <div className={`pointer-events-none absolute inset-x-0 top-0 z-20 ${short ? 'space-y-1.5 p-2' : 'space-y-2 p-3 sm:space-y-3 sm:p-4'}`}>
-        <TopBar chapters={chapters} index={index} doneChapters={doneChapters} onChapter={onChapter} />
+        <TopBar chapters={chapters} index={index} doneChapters={doneChapters} onChapter={onChapter} extra={onCheatSheet && { title: CHEAT_SHEET, onOpen: onCheatSheet }} />
         <div className={`flex gap-2 ${compact ? 'no-scrollbar pointer-events-auto -mx-3 overflow-x-auto px-3' : 'flex-wrap'}`}>
           <Chip icon={<ArrowIcon />} title="Traffic" value={`${Math.round(rps)} req/s`} />
           <Chip icon={<CrossIcon />} title="Errors" value={`${m.dropRate.toFixed(0)}%`} bad={m.dropRate > 1} />
@@ -247,6 +252,7 @@ export default function BuildPlayer({
 
       {/* Bottom: goal, toolbox and navigation. */}
       <div
+        ref={inset.bottom}
         className={`pointer-events-none absolute inset-x-0 bottom-0 z-20 bg-linear-to-t from-bg via-bg/90 to-transparent ${
           short ? 'px-3 pb-2 pt-6' : 'px-3 pb-4 pt-10 sm:px-4 sm:pb-6 sm:pt-16'
         }`}
@@ -340,17 +346,29 @@ export default function BuildPlayer({
               )}
               {/* Settings appear once the piece they adjust is on the floor. */}
               {(task.settings ?? [])
-                .filter((s) => Object.values(placed).includes(s.when))
+                .filter((s) => Object.values(placed).includes(s.when) || task.fixed.some((f) => f.kind === s.when))
                 .map((s) => (
                   <div key={s.id} className="flex items-center gap-2">
                     <PieceIcon kind={s.when} size={28} />
-                    <Stepper
-                      value={settings[s.id]}
-                      min={s.min}
-                      max={s.max}
-                      label={s.label}
-                      onChange={(v) => changeSetting(s.id, settings[s.id] + (v > settings[s.id] ? s.step : -s.step))}
-                    />
+                    {s.options ? (
+                      <>
+                        <span className="text-sm font-medium">{s.label}</span>
+                        <Segmented
+                          scroll
+                          value={settings[s.id]}
+                          options={s.options.map((label, i) => ({ value: s.min + i * s.step, label }))}
+                          onChange={(v) => changeSetting(s.id, v)}
+                        />
+                      </>
+                    ) : (
+                      <Stepper
+                        value={settings[s.id]}
+                        min={s.min}
+                        max={s.max}
+                        label={s.label}
+                        onChange={(v) => changeSetting(s.id, settings[s.id] + (v > settings[s.id] ? s.step : -s.step))}
+                      />
+                    )}
                   </div>
                 ))}
               {task.manualStart && !solved && (

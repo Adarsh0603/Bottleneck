@@ -3,7 +3,6 @@ import type { Runtime, TopicSpec } from '../../core/types'
 import { CHAPTERS } from './chapters'
 import Controls from './Controls'
 import type { LoadBalancerSim } from './engine'
-import { ADVANCED, INTERVIEW } from './reference'
 import Scene from './Scene'
 import Stats from './Stats'
 import { syncSim } from './sync'
@@ -29,5 +28,4 @@ export const loadBalancing: TopicSpec<CourseState, LoadBalancerSim, Metrics, Bea
     rise: next.servers.length > prev.servers.length || (next.balancer && !prev.balancer) || (next.standby && !prev.standby),
   }),
   dropCount: (sim) => sim.stats.dropped,
-  reference: { interview: INTERVIEW, cards: ADVANCED },
 }

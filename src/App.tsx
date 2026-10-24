@@ -7,6 +7,7 @@ import {
 } from "./core/progress";
 import { navigate, replaceRoute, useRoute } from "./core/router";
 import Home from "./home/Home";
+import CheatSheetPage from "./core/CheatSheetPage";
 import TopicComplete from "./TopicComplete";
 import { TOPICS, type TopicEntry } from "./topics/registry";
 
@@ -102,13 +103,27 @@ function TopicView({
   step: number;
 }) {
   const Play = topic.Play!;
-  const ch = Math.min(chapter, (topic.chapters?.length ?? 1) - 1);
+  // One past the last chapter is the interview cheat sheet.
+  const count = topic.chapters?.length ?? 1;
+  const ch = Math.min(chapter, topic.reference ? count : count - 1);
   const progress = useProgress();
   // Where "Finish" was pressed. The completion card shows only while we're
   // still there, so going on to the next topic (or back to a chapter) closes it.
   const here = `${topic.id}/${ch}/${step}`;
   const [finishedAt, setFinishedAt] = useState<string | null>(null);
   const finished = finishedAt === here;
+
+  if (topic.reference && ch === count) {
+    return (
+      <CheatSheetPage
+        topic={topic}
+        doneChapters={topicProgress(progress, topic.id).done}
+        onChapter={(i) =>
+          navigate({ page: "topic", topic: topic.id, chapter: i, step: 0 })
+        }
+      />
+    );
+  }
 
   return (
     <>
@@ -131,6 +146,12 @@ function TopicView({
         }}
         onSolved={(s) => recordSolved(topic.id, ch, s)}
         onFinish={() => setFinishedAt(here)}
+        onCheatSheet={
+          topic.reference
+            ? () =>
+                navigate({ page: "topic", topic: topic.id, chapter: count, step: 0 })
+            : undefined
+        }
       />
       {finished && (
         <TopicComplete topic={topic} onClose={() => setFinishedAt(null)} />

@@ -3,7 +3,6 @@ import type { Runtime, TopicSpec } from '../../core/types'
 import { CHAPTERS } from './chapters'
 import Controls from './Controls'
 import { ReplicationSim, type ReplicationMetrics } from './engine'
-import { REFERENCE } from './reference'
 import Scene from './Scene'
 import Stats from './Stats'
 import type { Beat, ReplicationState } from './types'
@@ -34,5 +33,4 @@ export const replication: TopicSpec<ReplicationState, ReplicationSim, Replicatio
     rise: next.replicas > prev.replicas || (next.promoted && !prev.promoted),
   }),
   dropCount: (sim) => sim.flow.stats.dropped,
-  reference: REFERENCE,
 }

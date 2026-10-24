@@ -1,12 +1,12 @@
 import { useRef, type PointerEvent, type ReactNode } from 'react'
-import { Worker } from '../flow/nodes'
+import { Source, Worker } from '../flow/nodes'
 import { depth, points } from '../iso/geometry'
-import { FloorPath, IsoBox } from '../iso/primitives'
+import { FloorPath, IsoBox, Tag } from '../iso/primitives'
 import Viewport from '../iso/Viewport'
 import type { V3 } from '../types'
 import { Piece } from './pieces'
 import { MS_PER_TICK, TICKS_PER_SECOND, type Running } from './run'
-import { HALF, type BuildTask, type PieceKind, type Placement } from './types'
+import { HALF, type BuildTask, type PieceKind, type Placement, type Settings } from './types'
 
 const PAD = 1.5
 const CUBE = 0.24
@@ -21,6 +21,7 @@ export default function BuildScene({
   task,
   run,
   placed,
+  settings,
   lastTickAt,
   dragKind,
   hoverPad,
@@ -30,6 +31,7 @@ export default function BuildScene({
   task: BuildTask
   run: Running
   placed: Placement
+  settings: Settings
   lastTickAt: { current: number }
   dragKind: PieceKind | null
   hoverPad: string | null
@@ -48,8 +50,11 @@ export default function BuildScene({
     if (kind) spots.set(pad.id, { kind, x: pad.x, z: pad.z })
   }
 
+  // Frame every fixed piece and every pad, so the view stays put as pieces go down.
+  const bounds: V3[] = [...task.fixed, ...task.pads].map((p) => [p.x, 1.5, p.z])
+
   return (
-    <Viewport target={task.shot.target} zoom={task.shot.zoom} shake={0} panKey={task} label="Build area. Drag pieces onto the pads.">
+    <Viewport target={task.shot.target} zoom={task.shot.zoom} shake={0} panKey={task} label="Build area. Drag pieces onto the pads." bounds={bounds}>
       {({ now }) => {
         const flow = run.flow
         const frac = Math.min(1, Math.max(0, (now - lastTickAt.current) / MS_PER_TICK))
@@ -189,7 +194,7 @@ export default function BuildScene({
               const x = ax + (bx - ax) * p
               const z = az + (bz - az) * p + jitter
               const y = FLY_Y + Math.sin(p * Math.PI) * 0.3
-              return <IsoBox key={t.job.id} x={x} z={z} y={y - CUBE / 2} w={CUBE} d={CUBE} h={CUBE} fill="var(--fg)" />
+              return <IsoBox key={t.job.id} x={x} z={z} y={y - CUBE / 2} w={CUBE} d={CUBE} h={CUBE} fill={task.jobFill ? task.jobFill(t.job, flow) : 'var(--fg)'} />
             })}
 
             {/* Dropped requests tumble and fade where they were turned away. */}
@@ -199,7 +204,8 @@ export default function BuildScene({
               const age = (flow.tick - d.tick + frac) / TICKS_PER_SECOND
               if (age > FALL_SECONDS) return null
               const side = d.jobId % 2 === 0 ? 1 : -1
-              const x0 = d.node === 'users' ? s.x + HALF[s.kind] : s.x - HALF[s.kind] - 0.3 - 8 * QUEUE_GAP
+              // Users who find nowhere to send a request lose it at their edge; anything else at the end of its line.
+              const x0 = flow.node(d.node) instanceof Source ? s.x + HALF[s.kind] : s.x - HALF[s.kind] - 0.3 - 8 * QUEUE_GAP
               return (
                 <IsoBox
                   key={`d${d.jobId}`}
@@ -215,6 +221,11 @@ export default function BuildScene({
               )
             })}
             </g>
+
+            {task.labels?.map((l) => (
+              <Tag key={l.text + l.at.join()} at={l.at} label={l.text} />
+            ))}
+            {task.decorate?.(flow, placed, settings)}
           </>
         )
       }}

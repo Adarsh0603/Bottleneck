@@ -70,7 +70,6 @@ export const CHAPTERS: ReplicationChapter[] = [
         hud: ['mix', 'load'],
       },
       {
-        caption: 'Your turn.',
         sub: 'Traffic is up again. Add replicas until no one is turned away.',
         set: { rps: 14, replicas: 0 },
         shot: ALL_DBS,
@@ -129,7 +128,6 @@ export const CHAPTERS: ReplicationChapter[] = [
         hud: ['stale', 'own'],
       },
       {
-        caption: 'Your turn.',
         sub: 'Choose where reads go. Keep everyone’s own posts visible, without turning anyone away.',
         shot: DBS,
         tags: ['dbs', 'load', 'stale'],
@@ -173,7 +171,6 @@ export const CHAPTERS: ReplicationChapter[] = [
         tags: ['dbs', 'lag'],
         hud: ['errors', 'lost'],
       },
-      { caption: 'Ready for the interview.', sub: 'The replication details that come up most.', sheet: true, shot: ALL_DBS },
     ],
   },
   {

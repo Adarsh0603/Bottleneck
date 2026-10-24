@@ -1,4 +1,5 @@
 import { Cache } from '../flow/cache'
+import { logOf, type Log } from '../flow/log'
 import type { FlowNode } from '../flow/engine'
 import { Worker } from '../flow/nodes'
 import { depth, points, project, S } from '../iso/geometry'
@@ -43,7 +44,129 @@ export function Piece({
       return <Autoscaler x={x} z={z} rise={rise} />
     case 'ring':
       return <HashRing x={x} z={z} rise={rise} />
+    case 'queue':
+      return <QueuePiece x={x} z={z} rise={rise} fifo={waitingOf(node)} />
+    case 'topic':
+      return <TopicPiece x={x} z={z} rise={rise} />
+    case 'stream':
+      return <StreamPiece x={x} z={z} rise={rise} log={logOf(node)} />
+    case 'limiter':
+      return <LimiterPiece x={x} z={z} rise={rise} />
   }
+}
+
+// What is waiting at a node that holds a line of jobs, like a queue.
+const waitingOf = (node?: FlowNode) => {
+  const n = node as { jobs?: unknown[]; capacity?: number } | undefined
+  return n && Array.isArray(n.jobs) && typeof n.capacity === 'number' ? { jobs: n.jobs, capacity: n.capacity } : undefined
+}
+
+// A long low trough with a cell for each job it can hold, filled from the
+// worker end as jobs wait.
+function QueuePiece({ x, z, rise, fifo }: { x: number; z: number; rise: number; fifo?: { jobs: unknown[]; capacity: number } }) {
+  const h = 0.4 * rise
+  const cells = 10
+  const used = fifo ? Math.ceil((fifo.jobs.length / fifo.capacity) * cells) : 0
+  return (
+    <g>
+      <IsoBox x={x} z={z} w={1.6} d={1.1} h={h} />
+      {rise === 1 &&
+        Array.from({ length: cells }, (_, i) => {
+          const cx = x + 0.7 - i * 0.15
+          return (
+            <polygon
+              key={i}
+              points={points([
+                [cx - 0.05, h, z - 0.4],
+                [cx - 0.05, h, z + 0.4],
+                [cx + 0.05, h, z + 0.4],
+                [cx + 0.05, h, z - 0.4],
+              ])}
+              fill={i < used ? 'var(--fg)' : 'var(--subtle)'}
+              stroke="var(--line)"
+              strokeWidth={0.6}
+            />
+          )
+        })}
+    </g>
+  )
+}
+
+// A low box with a broadcast mark on its lid: one event in, a copy out to
+// everyone listening.
+function TopicPiece({ x, z, rise }: { x: number; z: number; rise: number }) {
+  const h = 0.7 * rise
+  const [cx, cy] = project([x, h, z])
+  return (
+    <g>
+      <IsoBox x={x} z={z} w={1.3} d={1.3} h={h} />
+      {rise === 1 && (
+        <g transform={`translate(${cx} ${cy})`} stroke="var(--fg)" strokeWidth={2.5} strokeLinecap="round" fill="none">
+          <circle cx={-9} cy={0} r={2.6} fill="var(--fg)" stroke="none" />
+          <path d="M-2 -6 A 8 8 0 0 1 -2 6 M5 -11 A 14 14 0 0 1 5 11 M12 -16 A 20 20 0 0 1 12 16" />
+        </g>
+      )}
+    </g>
+  )
+}
+
+// A wide box whose lid is a few lanes (partitions) of cells. Events are
+// added on the left and stay put, so the cells fill with what has been kept.
+function StreamPiece({ x, z, rise, log }: { x: number; z: number; rise: number; log?: Log }) {
+  const h = 0.5 * rise
+  const lanes = log?.partitions ?? 3
+  const cells = 8
+  const laneW = 1.5 / lanes
+  return (
+    <g>
+      <IsoBox x={x} z={z} w={1.9} d={1.9} h={h} />
+      {rise === 1 &&
+        Array.from({ length: lanes }, (_, p) => {
+          const kept = log ? log.lanes[p].length : [5, 3, 6][p % 3]
+          const filled = Math.min(cells, Math.ceil(kept / 2))
+          const cz = z - 0.75 + laneW * (p + 0.5)
+          return Array.from({ length: cells }, (_, i) => {
+            const cx = x - 0.75 + i * 0.19
+            return (
+              <polygon
+                key={`${p}-${i}`}
+                points={points([
+                  [cx - 0.07, h, cz - laneW * 0.38],
+                  [cx - 0.07, h, cz + laneW * 0.38],
+                  [cx + 0.07, h, cz + laneW * 0.38],
+                  [cx + 0.07, h, cz - laneW * 0.38],
+                ])}
+                fill={i < filled ? 'var(--fg)' : 'var(--subtle)'}
+                stroke="var(--line)"
+                strokeWidth={0.6}
+              />
+            )
+          })
+        })}
+    </g>
+  )
+}
+
+// A dark box with a funnel on its lid: many requests in, a trickle out.
+function LimiterPiece({ x, z, rise }: { x: number; z: number; rise: number }) {
+  const h = 0.8 * rise
+  const [cx, cy] = project([x, h, z])
+  return (
+    <g>
+      <IsoBox x={x} z={z} w={1.3} d={1.3} h={h} fill="var(--fg)" />
+      {rise === 1 && (
+        <path
+          d="M-12 -9 H12 L3 1 V10 H-3 V1 Z"
+          transform={`translate(${cx} ${cy})`}
+          stroke="var(--bg)"
+          strokeWidth={2.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          fill="none"
+        />
+      )}
+    </g>
+  )
 }
 
 // A low dark disc with a ring on its lid: it places servers on a circle.
@@ -182,7 +305,7 @@ function CachePiece({ x, z, rise, cache }: { x: number; z: number; rise: number;
 
 // A small picture of a piece, for the toolbox and the piece being dragged.
 export function PieceIcon({ kind, size = 40 }: { kind: PieceKind; size?: number }) {
-  const box = kind === 'users' ? '-70 -60 140 110' : kind === 'database' || kind === 'replica' || kind === 'cache' || kind === 'ring' ? '-55 -80 110 110' : '-45 -80 90 100'
+  const box = kind === 'users' ? '-70 -60 140 110' : kind === 'database' || kind === 'replica' || kind === 'cache' || kind === 'ring' || kind === 'queue' || kind === 'topic' || kind === 'stream' || kind === 'limiter' ? '-55 -80 110 110' : '-45 -80 90 100'
   return (
     <svg viewBox={box} width={size} height={size} aria-hidden className="shrink-0">
       <Piece kind={kind} x={0} z={0} active={6} />

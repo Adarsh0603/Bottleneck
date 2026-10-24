@@ -54,14 +54,13 @@ export interface Marker {
 // What every beat has. Topics extend this with their own fields (labels,
 // which stats and controls to show, ...).
 export interface BaseBeat<S, Sim, M> {
-  caption: string
+  caption?: string
   sub?: string
   set?: Partial<S>
   ramp?: Ramp<S>
   shot?: Shot
   challenge?: Challenge<S, Sim, M>
   predict?: Predict
-  sheet?: boolean
 }
 
 export interface Chapter<S, B> {
@@ -128,5 +127,4 @@ export interface TopicSpec<S, Sim, M, B extends BaseBeat<S, Sim, M>> {
   feedback: (prev: S, next: S) => { crash?: boolean; rise?: boolean }
   // Total requests dropped so far, for the drop sound.
   dropCount: (sim: Sim) => number
-  reference?: Reference
 }

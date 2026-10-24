@@ -112,7 +112,6 @@ export const CHAPTERS: CachingChapter[] = [
         hud: ['hitrate', 'dbload', 'latency'],
       },
       {
-        caption: 'Your turn.',
         sub: 'How big does the cache need to be? Solid bars are the items it holds right now.',
         set: { capacity: 3 },
         shot: WIDE,
@@ -186,7 +185,6 @@ export const CHAPTERS: CachingChapter[] = [
         hud: ['stale', 'dbload', 'errors'],
       },
       {
-        caption: 'Your turn.',
         sub: 'Slide the TTL. Fresher answers cost the database more work.',
         set: { ttl: 20 },
         shot: WIDE,
@@ -261,7 +259,6 @@ export const CHAPTERS: CachingChapter[] = [
         hud: ['dbload', 'errors'],
       },
       {
-        caption: 'Your turn.',
         sub: 'Same viral item. The data must stay fresh.',
         set: { coalesce: false },
         shot: WIDE,
@@ -274,7 +271,6 @@ export const CHAPTERS: CachingChapter[] = [
           check: ({ st, sim }) => st.ttl > 0 && st.ttl <= 5 && healthy(sim, 0.9),
         },
       },
-      { caption: 'Ready for the interview.', sub: 'The caching details that come up most.', sheet: true, shot: WIDE },
     ],
   },
   {

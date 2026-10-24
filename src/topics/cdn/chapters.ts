@@ -62,7 +62,6 @@ export const CHAPTERS: CdnChapter[] = [
         hud: ['latency', 'hitrate'],
       },
       {
-        caption: 'Your turn.',
         sub: 'Edges cost money. Put them where they matter.',
         set: { edges: NO_EDGES },
         shot: WIDE,
@@ -99,7 +98,6 @@ export const CHAPTERS: CdnChapter[] = [
         tags: ['origin', 'edges'],
         hud: ['hitrate', 'origin'],
       },
-      { caption: 'Ready for the interview.', sub: 'The CDN details that come up most.', sheet: true, shot: WIDE },
     ],
   },
   {
