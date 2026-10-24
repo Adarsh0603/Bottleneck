@@ -21,6 +21,9 @@ import { REFERENCE as CONSENSUS_REFERENCE } from './consensus/reference'
 import { CHAPTERS as CONSISTENT_HASHING_CHAPTERS } from './consistent-hashing/chapters'
 import ConsistentHashingPlay from './consistent-hashing/Play'
 import { REFERENCE as CONSISTENT_HASHING_REFERENCE } from './consistent-hashing/reference'
+import { CHAPTERS as IDEMPOTENCY_CHAPTERS } from './idempotency/chapters'
+import IdempotencyPlay from './idempotency/Play'
+import { REFERENCE as IDEMPOTENCY_REFERENCE } from './idempotency/reference'
 import { CHAPTERS as LOAD_BALANCING_CHAPTERS } from './load-balancing/chapters'
 import LoadBalancingPlay from './load-balancing/Play'
 import { CHAPTERS as PUBSUB_CHAPTERS } from './pubsub/chapters'
@@ -220,7 +223,17 @@ export const TOPICS: TopicEntry[] = [
     Play: ConsensusPlay,
     reference: CONSENSUS_REFERENCE,
   },
-  { id: 'idempotency', title: 'Idempotency & exactly-once', short: 'Idempotency', track: 'distributed', pitch: 'Retry safely without charging twice.' },
+  {
+    id: 'idempotency',
+    title: 'Idempotency & exactly-once',
+    short: 'Idempotency',
+    track: 'distributed',
+    pitch: 'Retry safely without charging twice.',
+    chapters: IDEMPOTENCY_CHAPTERS.map((c) => c.title),
+    challenges: challengeIds(IDEMPOTENCY_CHAPTERS),
+    Play: IdempotencyPlay,
+    reference: IDEMPOTENCY_REFERENCE,
+  },
   { id: 'sagas', title: 'Distributed transactions', track: 'distributed', pitch: 'Finish or cleanly undo work across services.' },
   { id: 'bloom-filters', title: 'Bloom filters', track: 'distributed', pitch: 'Answer “have I seen this?” in a few bits.' },
 
