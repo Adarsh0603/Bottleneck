@@ -15,6 +15,8 @@ import { REFERENCE as CIRCUIT_BREAKERS_REFERENCE } from './circuit-breakers/refe
 import { CHAPTERS as CDN_CHAPTERS } from './cdn/chapters'
 import CdnPlay from './cdn/Play'
 import { REFERENCE as CDN_REFERENCE } from './cdn/reference'
+import { CHAPTERS as CONSENSUS_CHAPTERS } from './consensus/chapters'
+import ConsensusPlay from './consensus/Play'
 import { CHAPTERS as CONSISTENT_HASHING_CHAPTERS } from './consistent-hashing/chapters'
 import ConsistentHashingPlay from './consistent-hashing/Play'
 import { REFERENCE as CONSISTENT_HASHING_REFERENCE } from './consistent-hashing/reference'
@@ -206,7 +208,16 @@ export const TOPICS: TopicEntry[] = [
     reference: CIRCUIT_BREAKERS_REFERENCE,
   },
 
-  { id: 'consensus', title: 'Leader election & consensus', short: 'Consensus', track: 'distributed', pitch: 'Agree on one leader, even when nodes die.' },
+  {
+    id: 'consensus',
+    title: 'Leader election & consensus',
+    short: 'Consensus',
+    track: 'distributed',
+    pitch: 'Agree on one leader, even when nodes die.',
+    chapters: CONSENSUS_CHAPTERS.map((c) => c.title),
+    challenges: challengeIds(CONSENSUS_CHAPTERS),
+    Play: ConsensusPlay,
+  },
   { id: 'idempotency', title: 'Idempotency & exactly-once', short: 'Idempotency', track: 'distributed', pitch: 'Retry safely without charging twice.' },
   { id: 'sagas', title: 'Distributed transactions', track: 'distributed', pitch: 'Finish or cleanly undo work across services.' },
   { id: 'bloom-filters', title: 'Bloom filters', track: 'distributed', pitch: 'Answer “have I seen this?” in a few bits.' },
