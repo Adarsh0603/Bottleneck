@@ -71,17 +71,25 @@ function buildWins(placed: Placement, seed: number) {
   let streak = 0
   for (let t = 0; t < TICKS_PER_SECOND * 60; t++) {
     run.step()
-    streak = GO_GLOBAL.check(run.metrics(), placed, {}) ? streak + 1 : 0
+    streak = GO_GLOBAL.check(run.metrics(), placed, {}, run.flow) ? streak + 1 : 0
     if (streak >= GO_GLOBAL.holdSeconds * TICKS_PER_SECOND) return true
   }
   return false
 }
 
 describe('go global build', () => {
-  const all: Placement = { 'edge-us': 'cache', 'edge-eu': 'cache', 'edge-asia': 'cache' }
-  it('needs an edge cache in every region', () => {
-    expect(seeds.every((s) => buildWins(all, s))).toBe(true)
-    expect(seeds.every((s) => !buildWins({ 'edge-eu': 'cache', 'edge-asia': 'cache' }, s))).toBe(true)
-    expect(seeds.every((s) => !buildWins({ ...all, 'edge-us': 'server' }, s))).toBe(true)
+  const edge = (...regions: string[]): Placement => Object.fromEntries(regions.map((r) => [`edge-${r}`, 'cache' as const]))
+  it('needs edge caches in the US and Asia', () => {
+    expect(seeds.every((s) => buildWins(edge('us', 'asia'), s))).toBe(true)
+    expect(seeds.every((s) => !buildWins({}, s))).toBe(true)
+  })
+
+  it('an edge in Europe is wasted: its visitors never ask for the same page twice', () => {
+    expect(seeds.every((s) => !buildWins(edge('eu', 'asia'), s))).toBe(true)
+    expect(seeds.every((s) => !buildWins(edge('eu', 'us'), s))).toBe(true)
+  })
+
+  it('a server is just a hop', () => {
+    expect(seeds.every((s) => !buildWins({ ...edge('us'), 'edge-asia': 'server' }, s))).toBe(true)
   })
 })

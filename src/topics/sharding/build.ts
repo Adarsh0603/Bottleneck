@@ -117,6 +117,12 @@ class DataNode extends Worker {
 export const CELEBRITY_LAUNCH: BuildTask = {
   title: 'Build it: the celebrity signs up.',
   sub: 'Lots of writes, and one very popular user. Choose your pieces: a read replica copies the database above it.',
+  brief: [
+    'A celebrity just signed up. Your app handles 18 requests a second, half of them writes, and about a third of everything is about this one user.',
+    'One database can’t keep up. You can split users across several databases (shards), each holding a share of them. A read replica copies a shard and takes some of its reads, but every write still lands on the shard itself.',
+    'A load balancer sends requests to any database at random, and most databases don’t hold that user. A cache in front can answer repeated reads without touching a database.',
+    'Your job: serve all the traffic with under 1% errors and no database over 85% busy. Look at which database gets the celebrity.',
+  ],
   goal: 'Serve 18 req/s with under 1% errors and no database over 85% busy.',
   win: 'Shards share the writes, and a cache takes the one user no shard key can split.',
   holdSeconds: 6,

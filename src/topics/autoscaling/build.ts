@@ -116,6 +116,12 @@ class Autoscaler implements FlowNode {
 export const FLASH_SALE: BuildTask = {
   title: 'Build it: the flash sale.',
   sub: 'Rushes come every few seconds. New servers take 8 seconds to boot.',
+  brief: [
+    'Your shop is running a flash sale. Most of the time 4 requests a second arrive, but every so often a rush of 13 a second hits for about ten seconds.',
+    'You can only keep two servers on the floor, and the rush needs five. An autoscaler can start more, but a new server takes 8 seconds to boot, and the rush is over almost as soon as they are ready.',
+    'The autoscaler has a setting for spare servers: extra ones it keeps running in advance, on top of what the traffic needs right now.',
+    'Your job: get through a rush without turning away a single request.',
+  ],
   goal: `Get through a rush of ${SPIKE.peak} req/s with no errors.`,
   win: 'A load balancer, an autoscaler, and spare servers to hold the rush while new ones boot.',
   holdSeconds: 1,

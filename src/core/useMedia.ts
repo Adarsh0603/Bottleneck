@@ -16,4 +16,5 @@ export function useMedia(query: string): boolean {
 // Phones held upright, and anything short like a phone on its side.
 export const COMPACT = '(max-width: 639px), (max-height: 520px)'
 export const SHORT = '(max-height: 520px)'
+export const SIDE = '(min-width: 1024px) and (min-height: 521px)'
 export const PHONE = '(max-width: 639px)'

@@ -3,23 +3,36 @@ import { Cache } from '../../core/flow/cache'
 import { FlowSim } from '../../core/flow/engine'
 import { Source, Worker } from '../../core/flow/nodes'
 import { pick, zipfTable } from '../../core/flow/popularity'
-import { edgeKey, edgeSpot, ORIGIN, REGIONS, regionOf, TICKS_PER_SECOND, travelTicks, usersKey } from './world'
+import { edgeKey, edgeSpot, ORIGIN, REGIONS, regionOf, TICKS_PER_SECOND, travelTicks, usersKey, type RegionId } from './world'
 
-// Build it: users in three regions, one origin. A pad near each region.
+// Build it: users in three regions, one origin. A pad near each region, but
+// only two edge caches to place.
 //   - Nothing on a pad: those users go all the way to the origin.
 //   - A server there (the decoy): it only adds a hop.
 //   - A cache there: an edge. Popular files are answered next door.
-// Getting everyone under half a second takes an edge in every region.
+// Europe's pages are different for every visitor, so an edge there almost
+// never has what the next visitor wants. The two edges belong in the US and
+// Asia, where everyone asks for the same popular files.
 
 const RPS = 4
 const LIMIT_MS = 500
 const POPULAR = zipfTable(40)
+const PERSONAL = 2000 // distinct pages Europe's visitors ask for
+const PERSONAL_REGION: RegionId = 'eu'
+const GOALS = REGIONS.filter((r) => r.id !== PERSONAL_REGION)
 
 export const GO_GLOBAL: BuildTask = {
   title: 'Build it: go global.',
-  sub: 'Drag edge caches near your users.',
-  goal: `Get every region under ${LIMIT_MS / 1000}s.`,
-  win: 'An edge near every group of users.',
+  sub: 'You only have two edge caches. Choose where they help.',
+  brief: [
+    'Your site has visitors in the US, Europe and Asia, and everything is served from one origin server. The farther away a visitor is, the longer every request takes.',
+    'An edge cache stores popular files close to the visitors who ask for them. You only have two to place.',
+    'But a cache only helps when many people ask for the same file. In the US and Asia, visitors ask for the same popular pages. In Europe, every visitor gets their own personalised page: the next visitor almost never wants what the last one got.',
+    'Your job: get the US and Asia under half a second. Europe is not part of the goal: nothing can cache its pages.',
+  ],
+  manualStart: true,
+  goal: `Get the US and Asia under ${LIMIT_MS / 1000}s.`,
+  win: 'Edges in the regions that share popular files. Europe’s personal pages can’t be cached.',
   holdSeconds: 5,
   rps: RPS * REGIONS.length,
   shot: { target: [-0.9, 0.6, -0.2], zoom: 0.8 },
@@ -29,10 +42,10 @@ export const GO_GLOBAL: BuildTask = {
   ],
   pads: REGIONS.map((r) => ({ id: edgeKey(r.id), ...edgeSpot(r.id), accepts: ['cache' as const, 'server' as const] })),
   toolbox: [
-    { kind: 'cache', count: 3 },
+    { kind: 'cache', count: 2 },
     { kind: 'server', count: 1 },
   ],
-  watch: REGIONS.map((r) => ({ kind: 'latency' as const, key: usersKey(r.id), label: r.name, limitMs: LIMIT_MS })),
+  watch: GOALS.map((r) => ({ kind: 'latency' as const, key: usersKey(r.id), label: r.name, limitMs: LIMIT_MS })),
 
   assemble(placed, _settings, rng) {
     const flow = new FlowSim(rng)
@@ -41,7 +54,7 @@ export const GO_GLOBAL: BuildTask = {
     for (const r of REGIONS) {
       const users = flow.add(new Source(usersKey(r.id)))
       users.rate = RPS / TICKS_PER_SECOND
-      users.keyOf = (rand) => pick(POPULAR, rand())
+      users.keyOf = r.id === PERSONAL_REGION ? (rand) => 100 + Math.floor(rand() * PERSONAL) : (rand) => pick(POPULAR, rand())
       const pad = edgeKey(r.id)
       const spot = edgeSpot(r.id)
       if (placed[pad] === 'cache') {
@@ -65,5 +78,5 @@ export const GO_GLOBAL: BuildTask = {
     return flow
   },
 
-  check: (m) => REGIONS.every((r) => (m.latency[usersKey(r.id)] ?? Infinity) < LIMIT_MS),
+  check: (m) => GOALS.every((r) => (m.latency[usersKey(r.id)] ?? Infinity) < LIMIT_MS),
 }

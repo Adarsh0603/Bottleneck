@@ -72,6 +72,12 @@ class Crash implements FlowNode {
 export const CRASH_DRILL: BuildTask = {
   title: 'Build it: survive a crash.',
   sub: 'A server crashes ten seconds in. A load balancer picks servers with hash % N; a hash ring uses the circle. Pick one, then add servers.',
+  brief: [
+    'Your app caches product pages on up to five cache servers, and a request must reach the server that holds that page. If it reaches the wrong one, it falls through to the database, which can only do about 4 lookups a second.',
+    'A load balancer picks a server with hash % N, where N is how many servers are alive. A hash ring places each server on a circle at several spots, and each page belongs to the next spot around it.',
+    'Ten seconds in, one server crashes. Its pages are gone, and N changes.',
+    'Your job: survive the crash with almost no errors and no server over 85% busy. Watch the database when the crash hits.',
+  ],
   goal: 'Survive the crash with almost no errors and no server over 85% busy.',
   win: 'The ring moved only the crashed server’s items, and several spots per server shared them between all the survivors.',
   holdSeconds: 6,

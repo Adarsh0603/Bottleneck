@@ -12,6 +12,7 @@ export function TopBar({
   doneChapters,
   onChapter,
   extra,
+  title,
 }: {
   chapters: { title: string; level: Level }[]
   index: number
@@ -19,13 +20,15 @@ export function TopBar({
   onChapter: (index: number) => void
   // One more stop after the chapters, e.g. the cheat sheet.
   extra?: { title: string; onOpen: () => void }
+  // Replaces the chapter name in the middle.
+  title?: string
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [sound, setSound] = useState(isSoundOn)
   const chapter = chapters[index]
 
   return (
-    <div className="flex items-center justify-between gap-3">
+    <div className="grid grid-cols-[1fr_auto] items-center gap-3 md:grid-cols-[1fr_auto_1fr]">
       <div className="pointer-events-auto relative flex min-w-0 items-center gap-2">
         <button
           onClick={() => setMenuOpen((o) => !o)}
@@ -78,12 +81,15 @@ export function TopBar({
           </ol>
         )}
       </div>
+      <h1 className="hidden max-w-[40vw] truncate text-center text-lg font-semibold tracking-tight md:block">
+        {title ?? chapter.title}
+      </h1>
       <button
         onClick={() => {
           setSoundOn(!sound)
           setSound(!sound)
         }}
-        className="pointer-events-auto shrink-0 rounded-full border border-line bg-bg/80 px-3 py-1.5 font-mono text-xs text-muted backdrop-blur transition hover:text-fg"
+        className="pointer-events-auto shrink-0 justify-self-end rounded-full border border-line bg-bg/80 px-3 py-1.5 font-mono text-xs text-muted backdrop-blur transition hover:text-fg"
       >
         Sound {sound ? 'on' : 'off'}
       </button>
