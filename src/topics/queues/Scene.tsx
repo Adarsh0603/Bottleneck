@@ -1,6 +1,7 @@
 import { useRef, type ReactNode } from 'react'
 import { depth, points } from '../../core/iso/geometry'
 import { Crowd, FloorPath, IsoBox, Tag } from '../../core/iso/primitives'
+import { crowd, edge, glide } from '../../core/iso/crowd'
 import Viewport from '../../core/iso/Viewport'
 import type { SceneProps, V3 } from '../../core/types'
 import type { QueueSim } from './engine'
@@ -32,6 +33,7 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
       {({ now }) => {
         const flow = sim.flow
         const frac = Math.min(1, Math.max(0, (now - lastTickAt.current) / MS_PER_TICK))
+        const c = crowd(flow.inTransit.length)
         const m = sim.metrics
         const tags = new Set(beat.tags ?? [])
         // New workers rise into place.
@@ -104,17 +106,18 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
               const a = spotOf(t.from, 'out')
               const b = spotOf(t.to, 'in')
               if (!a || !b) return null
-              const p = Math.min(1, t.progress + frac / t.ticks)
+              const p = glide(Math.min(1, t.progress + frac / t.ticks))
               return (
                 <IsoBox
                   key={t.job.id}
                   x={a.x + (b.x - a.x) * p}
                   z={a.z + (b.z - a.z) * p}
                   y={FLY_Y + Math.sin(p * Math.PI) * 0.3}
-                  w={CUBE}
-                  d={CUBE}
-                  h={CUBE}
+                  w={CUBE * c.scale}
+                  d={CUBE * c.scale}
+                  h={CUBE * c.scale}
                   fill="var(--fg)"
+                  opacity={c.opacity * edge(p)}
                 />
               )
             })}

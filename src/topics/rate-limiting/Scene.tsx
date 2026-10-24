@@ -3,6 +3,7 @@ import { Piece } from '../../core/build/pieces'
 import { HALF } from '../../core/build/types'
 import { depth } from '../../core/iso/geometry'
 import { FloorPath, IsoBox, Tag } from '../../core/iso/primitives'
+import { crowd } from '../../core/iso/crowd'
 import Viewport from '../../core/iso/Viewport'
 import type { SceneProps, V3 } from '../../core/types'
 import type { RateSim } from './engine'
@@ -56,6 +57,7 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
         const g = sim.gateway
         const flow = g.flow
         const frac = Math.min(1, Math.max(0, (now - lastTickAt.current) / MS_PER_TICK))
+        const c = crowd(flow.inTransit.length)
         const tags = new Set(beat.tags ?? [])
         const n = st.gateways
         const gates = g.active
@@ -182,7 +184,7 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
                 route = [a, b]
               }
               const [x, , z] = along(route, p)
-              return <IsoBox key={t.job.id} x={x} z={z} y={FLY_Y + Math.sin(p * Math.PI) * 0.3} w={CUBE} d={CUBE} h={CUBE} fill="var(--fg)" />
+              return <IsoBox key={t.job.id} x={x} z={z} y={FLY_Y + Math.sin(p * Math.PI) * 0.3} w={CUBE * c.scale} d={CUBE * c.scale} h={CUBE * c.scale} fill="var(--fg)" opacity={c.opacity} />
             })}
 
             {/* Requests turned away tumble where they were stopped. */}

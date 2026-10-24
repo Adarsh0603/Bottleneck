@@ -1,6 +1,7 @@
 import { useRef, type ReactNode } from 'react'
 import { depth, points, project } from '../../core/iso/geometry'
 import { Crowd, FloorPath, FloorSpot, IsoBox, IsoCylinder, Tag } from '../../core/iso/primitives'
+import { crowd, edge, glide } from '../../core/iso/crowd'
 import Viewport from '../../core/iso/Viewport'
 import type { SceneProps, V3 } from '../../core/types'
 import { FILL_TICKS, MS_PER_TICK, share, TICKS_PER_SECOND, type CachingSim } from './engine'
@@ -54,6 +55,7 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
           return 1 - Math.pow(1 - t, 3)
         }
         const frac = Math.min(1, Math.max(0, (now - lastTickAt.current) / MS_PER_TICK))
+        const c = crowd(sim.flow.inTransit.length)
         const ageOf = (tick: number) => (sim.tick - tick + frac) / TICKS_PER_SECOND
         const tags = new Set(beat.tags ?? [])
         const showCache = st.cache
@@ -154,9 +156,9 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
 
             {/* Requests in flight. */}
             {sim.flow.inTransit.map((t) => {
-              const p = Math.min(1, t.progress + frac / t.ticks)
+              const p = glide(Math.min(1, t.progress + frac / t.ticks))
               const [x, y, z] = flightPoint(t.from, t.to, p, t.job.id)
-              return <ItemCube key={t.job.id} x={x} z={z} y={y - CUBE / 2} item={t.job.key} />
+              return <ItemCube key={t.job.id} x={x} z={z} y={y - CUBE / 2} item={t.job.key} opacity={c.opacity * edge(p)} />
             })}
 
             {/* Hits bounce back from the cache; evicted and expired items pop off its lid. */}

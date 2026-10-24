@@ -1,6 +1,7 @@
 import { useRef, type ReactNode } from 'react'
 import { depth, points, project } from '../../core/iso/geometry'
 import { Crowd, FloorPath, FloorSpot, IsoBox, Tag } from '../../core/iso/primitives'
+import { crowd, edge, glide } from '../../core/iso/crowd'
 import Viewport from '../../core/iso/Viewport'
 import type { SceneProps, V3 } from '../../core/types'
 import type { LoadBalancerSim, Server } from './engine'
@@ -72,6 +73,7 @@ export default function Scene({
         const balancer = sim.algorithm !== 'direct'
         const tags = buildTags(sim, beat)
         const frac = Math.min(1, Math.max(0, (now - lastTickAt.current) / MS_PER_TICK))
+        const c = crowd(sim.inTransit.length)
 
         // Solid objects, painted back to front.
         const solids: { d: number; node: ReactNode }[] = []
@@ -182,10 +184,10 @@ export default function Scene({
 
             {/* Requests in flight. */}
             {sim.inTransit.map((t) => {
-              const p = Math.min(1, t.progress + frac / sim.config.transitTicks)
+              const p = glide(Math.min(1, t.progress + frac / sim.config.transitTicks))
               const at = transitPoint(sim, t, p, lbz)
               if (!at) return null
-              return <IsoBox key={t.job.id} x={at[0]} z={at[2]} y={at[1] - CUBE / 2} w={CUBE} d={CUBE} h={CUBE} fill="var(--fg)" />
+              return <IsoBox key={t.job.id} x={at[0]} z={at[2]} y={at[1] - CUBE / 2} w={CUBE * c.scale} d={CUBE * c.scale} h={CUBE * c.scale} fill="var(--fg)" opacity={c.opacity * edge(p)} />
             })}
 
             {/* Dropped requests tumble and fade. */}

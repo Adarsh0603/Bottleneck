@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CHAPTERS as CAP } from './cap/chapters'
 import { CHAPTERS as CACHING } from './caching/chapters'
+import { CHAPTERS as CIRCUIT_BREAKERS } from './circuit-breakers/chapters'
 import { CHAPTERS as CONSISTENT_HASHING } from './consistent-hashing/chapters'
 import { CHAPTERS as LOAD_BALANCING } from './load-balancing/chapters'
 import { CHAPTERS as PUBSUB } from './pubsub/chapters'
@@ -9,7 +10,7 @@ import { CHAPTERS as QUEUES } from './queues/chapters'
 import { CHAPTERS as REPLICATION } from './replication/chapters'
 import { CHAPTERS as SHARDING } from './sharding/chapters'
 
-const topics = { 'load balancing': LOAD_BALANCING, caching: CACHING, replication: REPLICATION, sharding: SHARDING, 'cap & consistency': CAP, 'message queues': QUEUES, 'pub/sub & streams': PUBSUB, 'rate limiting': RATE_LIMITING, 'consistent hashing': CONSISTENT_HASHING }
+const topics = { 'load balancing': LOAD_BALANCING, caching: CACHING, replication: REPLICATION, sharding: SHARDING, 'cap & consistency': CAP, 'message queues': QUEUES, 'pub/sub & streams': PUBSUB, 'rate limiting': RATE_LIMITING, 'consistent hashing': CONSISTENT_HASHING, 'circuit breakers': CIRCUIT_BREAKERS }
 
 describe.each(Object.entries(topics))('%s questions', (_, chapters) => {
   const questions = chapters.flatMap((c) => c.beats.flatMap((b) => (b.predict ? [b.predict] : [])))

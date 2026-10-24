@@ -9,6 +9,9 @@ import type { PieceKind } from './types'
 // Isometric drawings of every piece the builder can place, matching the
 // look of the lesson scenes.
 
+// How a breaker is set: passing requests, turning them back, or testing the road.
+export type BreakerState = 'closed' | 'open' | 'half'
+
 export function Piece({
   kind,
   x,
@@ -52,6 +55,8 @@ export function Piece({
       return <StreamPiece x={x} z={z} rise={rise} log={logOf(node)} />
     case 'limiter':
       return <LimiterPiece x={x} z={z} rise={rise} />
+    case 'breaker':
+      return <BreakerPiece x={x} z={z} rise={rise} state={(node as { state?: BreakerState } | undefined)?.state} />
   }
 }
 
@@ -164,6 +169,27 @@ function LimiterPiece({ x, z, rise }: { x: number; z: number; rise: number }) {
           strokeLinejoin="round"
           fill="none"
         />
+      )}
+    </g>
+  )
+}
+
+// A dark box with a switch on its lid. Closed, the switch joins its two
+// terminals and requests pass. Open, it lifts away and they are turned back.
+// Half open, it hovers, letting one request through to test the road.
+export function BreakerPiece({ x, z, rise = 1, state = 'closed' }: { x: number; z: number; rise?: number; state?: BreakerState }) {
+  const h = 0.7 * rise
+  const [cx, cy] = project([x, h, z])
+  const lever = state === 'closed' ? 'M-11 0 H11' : state === 'half' ? 'M-11 0 L9 -6' : 'M-11 0 L8 -13'
+  return (
+    <g>
+      <IsoBox x={x} z={z} w={1.3} d={1.3} h={h} fill="var(--fg)" stroke={state === 'open' ? 'var(--danger)' : undefined} />
+      {rise === 1 && (
+        <g transform={`translate(${cx} ${cy})`} stroke={state === 'open' ? 'var(--danger)' : 'var(--bg)'} strokeWidth={2.5} strokeLinecap="round" fill="none">
+          <circle cx={-12} cy={0} r={2.2} fill="var(--bg)" stroke="none" />
+          <circle cx={12} cy={0} r={2.2} fill="var(--bg)" stroke="none" />
+          <path d={lever} strokeDasharray={state === 'half' ? '3 3' : undefined} />
+        </g>
       )}
     </g>
   )
@@ -305,7 +331,7 @@ function CachePiece({ x, z, rise, cache }: { x: number; z: number; rise: number;
 
 // A small picture of a piece, for the toolbox and the piece being dragged.
 export function PieceIcon({ kind, size = 40 }: { kind: PieceKind; size?: number }) {
-  const box = kind === 'users' ? '-70 -60 140 110' : kind === 'database' || kind === 'replica' || kind === 'cache' || kind === 'ring' || kind === 'queue' || kind === 'topic' || kind === 'stream' || kind === 'limiter' ? '-55 -80 110 110' : '-45 -80 90 100'
+  const box = kind === 'users' ? '-70 -60 140 110' : kind === 'database' || kind === 'replica' || kind === 'cache' || kind === 'ring' || kind === 'queue' || kind === 'topic' || kind === 'stream' || kind === 'limiter' || kind === 'breaker' ? '-55 -80 110 110' : '-45 -80 90 100'
   return (
     <svg viewBox={box} width={size} height={size} aria-hidden className="shrink-0">
       <Piece kind={kind} x={0} z={0} active={6} />

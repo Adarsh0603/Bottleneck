@@ -2,6 +2,7 @@ import { useRef, type ReactNode } from 'react'
 import { Piece } from '../../core/build/pieces'
 import { depth } from '../../core/iso/geometry'
 import { Crowd, FloorPath, FloorSpot, IsoBox, Tag } from '../../core/iso/primitives'
+import { crowd, edge, glide } from '../../core/iso/crowd'
 import Viewport from '../../core/iso/Viewport'
 import type { SceneProps, V3 } from '../../core/types'
 import type { AutoscaleSim } from './engine'
@@ -25,6 +26,7 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
       {({ now }) => {
         const flow = sim.flow
         const frac = Math.min(1, Math.max(0, (now - lastTickAt.current) / MS_PER_TICK))
+        const c = crowd(flow.inTransit.length)
         const m = sim.metrics
         const tags = new Set(beat.tags ?? [])
         const riseOf = (key: string) => {
@@ -112,10 +114,10 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
               const a = spotOf(t.from)
               const b = spotOf(t.to)
               if (!a || !b) return null
-              const p = Math.min(1, t.progress + frac / t.ticks)
+              const p = glide(Math.min(1, t.progress + frac / t.ticks))
               const x = a.x + (b.x - a.x) * p
               const z = a.z + (b.z - a.z) * p
-              return <IsoBox key={t.job.id} x={x} z={z} y={FLY_Y + Math.sin(p * Math.PI) * 0.3} w={CUBE} d={CUBE} h={CUBE} fill="var(--fg)" />
+              return <IsoBox key={t.job.id} x={x} z={z} y={FLY_Y + Math.sin(p * Math.PI) * 0.3} w={CUBE * c.scale} d={CUBE * c.scale} h={CUBE * c.scale} fill="var(--fg)" opacity={c.opacity * edge(p)} />
             })}
 
             {/* Turned away: red cubes tumble off the full server. */}

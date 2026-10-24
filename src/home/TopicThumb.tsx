@@ -142,6 +142,18 @@ const THUMBS: Record<string, Thumb> = {
     ],
     routes: [-1.6, 1.6].map((z): V3[] => [[-2.4, 0, z], [-1.8, 0, 0], [-1.4, 0, 0], [0.8, 0, 0]]),
   },
+  // Users call a shop, which reaches two services through a breaker apiece.
+  'circuit-breakers': {
+    pieces: [
+      { kind: 'app', x: 3.2, z: -1.7 },
+      { kind: 'app', x: 3.2, z: 1.7 },
+      { kind: 'breaker', x: 0.6, z: -0.9 },
+      { kind: 'breaker', x: 0.6, z: 0.9 },
+      { kind: 'app', x: -2, z: 0 },
+      { kind: 'users', x: -4.8, z: 0, active: 8 },
+    ],
+    routes: [-1.7, 1.7].map((z): V3[] => [[-4, 0, 0], [-2.6, 0, 0], [-1.2, 0, 0], [0.2, 0, z * 0.5], [2.2, 0, z]]),
+  },
   // Two regions, each with its users and a database, and a link between them.
   cap: {
     pieces: [

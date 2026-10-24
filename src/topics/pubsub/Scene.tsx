@@ -3,6 +3,7 @@ import { Piece } from '../../core/build/pieces'
 import { HALF } from '../../core/build/types'
 import { depth } from '../../core/iso/geometry'
 import { FloorPath, IsoBox, Tag } from '../../core/iso/primitives'
+import { crowd, edge, glide } from '../../core/iso/crowd'
 import Viewport from '../../core/iso/Viewport'
 import type { SceneProps, V3 } from '../../core/types'
 import { TEAMS, TEAM_NAMES, TICKS_PER_SECOND, type Team } from './bus'
@@ -39,6 +40,7 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
         const bus = sim.bus
         const flow = bus.flow
         const frac = Math.min(1, Math.max(0, (now - lastTickAt.current) / MS_PER_TICK))
+        const c = crowd(flow.inTransit.length)
         const tags = new Set(beat.tags ?? [])
         const present = TEAMS.filter((t) => st[t] > 0)
         const consumers = bus.consumers.filter((c) => c.on && present.includes(c.team))
@@ -133,7 +135,7 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
               const a = spotOf(t.from)
               const b = spotOf(t.to)
               if (!a || !b) return null
-              const p = Math.min(1, t.progress + frac / t.ticks)
+              const p = glide(Math.min(1, t.progress + frac / t.ticks))
               const ax = a.x + halfOf(t.from, st.mode)
               const bx = b.x - halfOf(t.to, st.mode) - 0.15
               return (
@@ -142,10 +144,11 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
                   x={ax + (bx - ax) * p}
                   z={a.z + (b.z - a.z) * p}
                   y={FLY_Y + Math.sin(p * Math.PI) * 0.3}
-                  w={CUBE}
-                  d={CUBE}
-                  h={CUBE}
+                  w={CUBE * c.scale}
+                  d={CUBE * c.scale}
+                  h={CUBE * c.scale}
                   fill={fillOf(t.job.key, tags)}
+                  opacity={c.opacity * edge(p)}
                 />
               )
             })}

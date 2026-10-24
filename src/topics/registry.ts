@@ -9,6 +9,9 @@ import { REFERENCE as CACHING_REFERENCE } from './caching/reference'
 import { CHAPTERS as CAP_CHAPTERS } from './cap/chapters'
 import CapPlay from './cap/Play'
 import { REFERENCE as CAP_REFERENCE } from './cap/reference'
+import { CHAPTERS as CIRCUIT_BREAKERS_CHAPTERS } from './circuit-breakers/chapters'
+import CircuitBreakersPlay from './circuit-breakers/Play'
+import { REFERENCE as CIRCUIT_BREAKERS_REFERENCE } from './circuit-breakers/reference'
 import { CHAPTERS as CDN_CHAPTERS } from './cdn/chapters'
 import CdnPlay from './cdn/Play'
 import { REFERENCE as CDN_REFERENCE } from './cdn/reference'
@@ -191,7 +194,17 @@ export const TOPICS: TopicEntry[] = [
     Play: RateLimitingPlay,
     reference: RATE_LIMITING_REFERENCE,
   },
-  { id: 'circuit-breakers', title: 'Timeouts, retries & circuit breakers', short: 'Circuit breakers', track: 'async', pitch: 'Stop one slow dependency taking the site down.' },
+  {
+    id: 'circuit-breakers',
+    title: 'Timeouts, retries & circuit breakers',
+    short: 'Circuit breakers',
+    track: 'async',
+    pitch: 'Stop one slow dependency taking the site down.',
+    chapters: CIRCUIT_BREAKERS_CHAPTERS.map((c) => c.title),
+    challenges: challengeIds(CIRCUIT_BREAKERS_CHAPTERS),
+    Play: CircuitBreakersPlay,
+    reference: CIRCUIT_BREAKERS_REFERENCE,
+  },
 
   { id: 'consensus', title: 'Leader election & consensus', short: 'Consensus', track: 'distributed', pitch: 'Agree on one leader, even when nodes die.' },
   { id: 'idempotency', title: 'Idempotency & exactly-once', short: 'Idempotency', track: 'distributed', pitch: 'Retry safely without charging twice.' },

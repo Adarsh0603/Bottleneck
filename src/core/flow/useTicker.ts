@@ -11,11 +11,16 @@ export function useTicker<Sim extends { step(): void }>(create: () => Sim, ticks
 
   useEffect(() => {
     if (paused) return
+    const interval = 1000 / ticksPerSecond
     const id = setInterval(() => {
       simRef.current!.step()
-      lastTickAt.current = performance.now()
+      // Keep a steady beat: setInterval fires a little early or late, and
+      // stamping the real time would make cubes stall, then jump.
+      const now = performance.now()
+      const beat = lastTickAt.current + interval
+      lastTickAt.current = Math.abs(now - beat) > interval ? now : beat
       setFrame((f) => f + 1)
-    }, 1000 / ticksPerSecond)
+    }, interval)
     return () => clearInterval(id)
   }, [ticksPerSecond, paused])
 
