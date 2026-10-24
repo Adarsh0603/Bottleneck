@@ -95,6 +95,8 @@ export interface ConsensusMetrics {
   leaders: number // servers that think they lead, which should be one
   term: number
   stall: number // seconds with no leader
+  size: number
+  holders: number // servers whose ledger holds the newest booking
 }
 
 export class ConsensusSim {
@@ -107,7 +109,7 @@ export class ConsensusSim {
   confirmTicks: number[] = []
   stallTicks = 0
 
-  private st: ConsensusState = { size: 3, pace: 0, manual: false, again: 0, rule: 'anyone', elections: false, down: [], split: 0, timeout: 3, spread: 0 }
+  private st: ConsensusState = { size: 3, pace: 0, manual: false, again: 0, rule: 'anyone', elections: false, down: [], split: 0, timeout: 3, spread: 0, hasty: [], strand: false }
   private rule: Rule | null = null
   private owners = new Map<number, Set<Client>>()
   private msgId = 0
@@ -118,6 +120,8 @@ export class ConsensusSim {
   private again = 0
   private raceDue = false
   private downKey = ''
+  private hastyKey = ''
+  private stranded: number | null = null // the leader that was cut off alone
 
   private rng: () => number
   constructor(rng: () => number = Math.random) {
@@ -137,6 +141,7 @@ export class ConsensusSim {
   }
 
   private side(id: number) {
+    if (this.stranded !== null) return id === this.stranded ? 1 : 0
     return id >= this.st.size - this.st.split ? 1 : 0
   }
 
@@ -164,6 +169,14 @@ export class ConsensusSim {
         this.resetTimer(n)
       }
       n.alive = up
+    }
+    if (!st.strand) this.stranded = null
+    else if (this.stranded === null) this.stranded = this.leader?.id ?? null
+    const hastyKey = st.hasty.join(',')
+    if (hastyKey !== this.hastyKey) {
+      this.hastyKey = hastyKey
+      // These servers run out of patience at once, so a scene can pick who stands first.
+      if (st.elections) for (const n of this.active) if (n.alive && n.role !== 'leader' && st.hasty.includes(n.id)) n.timer = Math.round(TICKS_PER_SECOND / 2)
     }
     if (st.rule !== this.rule) {
       this.rule = st.rule
@@ -224,8 +237,12 @@ export class ConsensusSim {
       this.requests.set(r.id, r)
       return r
     })
-    const up = this.alive()
-    if (up.length === 0) return
+    const everyone = this.alive()
+    if (everyone.length === 0) return
+    // Customers reach a server on the leader's side of any break in the network.
+    const lead = this.leader
+    const near = lead ? everyone.filter((n) => this.side(n.id) === this.side(lead.id)) : everyone
+    const up = near.length ? near : everyone
     const a = up[Math.floor(this.rng() * up.length)]
     const others = up.filter((n) => n !== a)
     const b = others.length ? others[Math.floor(this.rng() * others.length)] : a
@@ -478,8 +495,16 @@ export class ConsensusSim {
     return leaders.sort((a, b) => b.term - a.term)[0] ?? null
   }
 
+  // The newest booking in any ledger.
+  get newest(): Entry | null {
+    let top: Entry | null = null
+    for (const n of this.active) for (const e of n.log) if (!top || e.req > top.req) top = e
+    return top
+  }
+
   get metrics(): ConsensusMetrics {
     const up = this.alive()
+    const newest = this.newest
     const clashSeats = new Set(this.clashEvents.map((e) => e.seat))
     return {
       confirmed: this.confirmed,
@@ -491,6 +516,8 @@ export class ConsensusSim {
       leaders: up.filter((n) => n.role === 'leader').length,
       term: Math.max(0, ...up.map((n) => n.term)),
       stall: this.stallTicks / TICKS_PER_SECOND,
+      size: this.st.size,
+      holders: newest ? this.active.filter((n) => n.log.some((e) => e.req === newest.req)).length : 0,
     }
   }
 }

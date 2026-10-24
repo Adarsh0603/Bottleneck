@@ -17,6 +17,7 @@ import CdnPlay from './cdn/Play'
 import { REFERENCE as CDN_REFERENCE } from './cdn/reference'
 import { CHAPTERS as CONSENSUS_CHAPTERS } from './consensus/chapters'
 import ConsensusPlay from './consensus/Play'
+import { REFERENCE as CONSENSUS_REFERENCE } from './consensus/reference'
 import { CHAPTERS as CONSISTENT_HASHING_CHAPTERS } from './consistent-hashing/chapters'
 import ConsistentHashingPlay from './consistent-hashing/Play'
 import { REFERENCE as CONSISTENT_HASHING_REFERENCE } from './consistent-hashing/reference'
@@ -217,6 +218,7 @@ export const TOPICS: TopicEntry[] = [
     chapters: CONSENSUS_CHAPTERS.map((c) => c.title),
     challenges: challengeIds(CONSENSUS_CHAPTERS),
     Play: ConsensusPlay,
+    reference: CONSENSUS_REFERENCE,
   },
   { id: 'idempotency', title: 'Idempotency & exactly-once', short: 'Idempotency', track: 'distributed', pitch: 'Retry safely without charging twice.' },
   { id: 'sagas', title: 'Distributed transactions', track: 'distributed', pitch: 'Finish or cleanly undo work across services.' },

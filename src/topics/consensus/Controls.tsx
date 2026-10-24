@@ -1,4 +1,4 @@
-import { Segmented } from '../../core/controls'
+import { Segmented, Slider } from '../../core/controls'
 import type { PanelProps } from '../../core/types'
 import type { ConsensusMetrics, ConsensusSim } from './engine'
 import type { Beat, ConsensusState, Rule } from './types'
@@ -13,6 +13,11 @@ const LEADER: { value: 'up' | 'down'; label: string }[] = [
   { value: 'down', label: 'Leader crashed' },
 ]
 
+const SPLIT: { value: number; label: string }[] = [
+  { value: 0, label: 'Network healthy' },
+  { value: 2, label: 'Network split' },
+]
+
 const Row = ({ children }: { children: React.ReactNode }) => <div className="mt-4">{children}</div>
 
 export default function Controls({ beat, st, sim, update }: PanelProps<ConsensusState, ConsensusSim, ConsensusMetrics, Beat>) {
@@ -22,6 +27,24 @@ export default function Controls({ beat, st, sim, update }: PanelProps<Consensus
       {controls.has('rule') && (
         <Row>
           <Segmented scroll value={st.rule} options={RULES} onChange={(v) => update(() => ({ rule: v }))} />
+        </Row>
+      )}
+      {controls.has('split') && (
+        <Row>
+          <Segmented value={st.split} options={SPLIT} onChange={(v) => update(() => ({ split: v }))} />
+        </Row>
+      )}
+      {controls.has('spread') && (
+        <Row>
+          <Slider
+            label="Timer randomness"
+            value={st.spread}
+            min={0}
+            max={6}
+            unit="s"
+            hint="How much longer each follower may wait before calling an election. At 0 every timer is the same."
+            onChange={(v) => update(() => ({ spread: v }))}
+          />
         </Row>
       )}
       {controls.has('crash') && (

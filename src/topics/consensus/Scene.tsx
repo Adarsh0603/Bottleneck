@@ -77,16 +77,47 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
             labels.push(<Tag key={`cl-${client}`} at={[s.x, 1.5, s.z]} label={CLIENT_NAMES[client]} color={CLIENT_COLOR[client]} />)
           }
         }
-        if (tags.has('nodes') || tags.has('leader')) {
+        if (tags.has('nodes') || tags.has('leader') || tags.has('terms') || tags.has('timers') || tags.has('split')) {
           for (const n of sim.active) {
             const parts: string[] = []
             if (tags.has('nodes')) parts.push(`Server ${n.id + 1}`)
+            const cut = n.id >= st.size - st.split
             const status = !n.alive ? 'Crashed' : leaderMode && n.role === 'leader' ? 'Leader' : n.role === 'candidate' ? 'Candidate' : ''
             if (tags.has('leader') && status) parts.push(status)
-            if (parts.length) labels.push(<Tag key={`t-${n.id}`} at={above(n.id, size, n.role === 'leader' && n.alive ? 1 : 0.7)} label={parts.join(' · ')} danger={!n.alive} />)
+            if (tags.has('terms') && n.alive && n.term > 0) parts.push(`Term ${n.term}`)
+            if (tags.has('timers') && n.alive && n.role === 'follower' && st.elections) parts.push(`${(n.timer / TICKS_PER_SECOND).toFixed(1)} s`)
+            if (tags.has('split') && n.alive && cut) parts.push('Cut off')
+            if (parts.length) labels.push(<Tag key={`t-${n.id}`} at={above(n.id, size, n.role === 'leader' && n.alive ? 1 : 0.7)} label={parts.join(' · ')} danger={!n.alive || (tags.has('split') && cut)} />)
           }
         }
-        for (const m of sim.msgs) {
+        if (tags.has('holders')) {
+          const newest = sim.newest
+          if (newest) {
+            for (const n of sim.active) {
+              if (!n.alive) continue
+              const has = n.log.some((e) => e.req === newest.req)
+              const s = nodeSpot(n.id, size)
+              labels.push(<Tag key={`has-${n.id}`} at={[s.x, 0.25, s.z]} label={has ? 'Has it' : 'Missing it'} danger={!has} />)
+            }
+          }
+        }
+        if (tags.has('votes')) {
+          // One 'Vote for me?' per candidate, so a round of requests reads as one ask.
+          const asked = new Set<number>()
+          for (const m of sim.msgs) {
+            if (m.kind !== 'vote' && m.kind !== 'voteReply') continue
+            if (m.kind === 'vote') {
+              if (asked.has(m.from)) continue
+              asked.add(m.from)
+            }
+            const a = spotOf(m.from, size)
+            const b = spotOf(m.to, size)
+            const p = glide(Math.min(1, (sim.tick - m.sentAt + frac) / (m.arrive - m.sentAt)))
+            const label = m.kind === 'vote' ? 'Vote for me?' : m.granted ? 'Yes' : 'No'
+            labels.push(<Tag key={`vote-${m.id}`} at={[a.x + (b.x - a.x) * p, FLY_Y + Math.sin(p * Math.PI) * 0.4 + 0.3, a.z + (b.z - a.z) * p]} label={label} danger={m.kind === 'voteReply' && !m.granted} />)
+          }
+        }
+        for (const m of beat.noCopyLabel ? [] : sim.msgs) {
           if (m.kind !== 'append' || !m.entries.length) continue
           const a = spotOf(m.from, size)
           const b = spotOf(m.to, size)

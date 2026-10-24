@@ -9,7 +9,7 @@ const seeded = (seed: number) => {
 }
 const seeds = [1, 2, 3, 4, 5]
 
-const BASE: ConsensusState = { size: 3, pace: 0.5, manual: false, again: 0, rule: 'leader', elections: true, down: [], split: 0, timeout: 3, spread: 3 }
+const BASE: ConsensusState = { size: 3, pace: 0.5, manual: false, again: 0, rule: 'leader', elections: true, down: [], split: 0, timeout: 3, spread: 3, hasty: [], strand: false }
 
 function run(st: ConsensusState, seconds: number, seed = 1, sim = new ConsensusSim(seeded(seed))) {
   // The leader is the first server up when the rule starts, so start clean.
@@ -138,6 +138,90 @@ describe('consensus: elections', () => {
       expect(owners.every(([, o]) => o.size === 1)).toBe(true)
       expect(seatsOnce(sim)).toBe(true)
       expect(held.size).toBeGreaterThan(10)
+    }
+  })
+})
+
+describe('consensus: chapter scenes', () => {
+  const FIVE = { ...BASE, size: 5 as const, timeout: 3, spread: 4, manual: true, pace: 0 }
+
+  it('identical timers tie for ever, random ones settle', () => {
+    for (const seed of seeds) {
+      const sim = run({ ...FIVE, spread: 0 }, 3, seed)
+      run({ ...FIVE, spread: 0, down: [0], again: 1 }, 40, seed, sim)
+      expect(sim.metrics.leader).toBeNull()
+      expect(sim.metrics.term).toBeGreaterThan(5)
+      run({ ...FIVE, spread: 5, down: [0], again: 1 }, 60, seed, sim)
+      expect(sim.metrics.leader).not.toBeNull()
+      expect(sim.metrics.leaders).toBe(1)
+    }
+  })
+
+  it('a leader on the cut-off side of 5 stalls, and healing restores one', () => {
+    const sim = run({ ...FIVE, split: 2, down: [0], again: 1 }, 30)
+    expect(sim.metrics.leader).toBeNull()
+    run({ ...FIVE, split: 0, down: [0], again: 1 }, 30, 1, sim)
+    expect(sim.metrics.leader).not.toBeNull()
+  })
+
+  it('repeated crashes change leaders without a clash', () => {
+    for (const seed of seeds) {
+      const st = { ...FIVE, manual: false, pace: 0.6 }
+      const sim = run(st, 8, seed)
+      run({ ...st, down: [0] }, 15, seed, sim)
+      const first = sim.metrics.leader!
+      run({ ...st, down: [] }, 6, seed, sim)
+      run({ ...st, down: [sim.metrics.leader ?? first] }, 40, seed, sim)
+      expect(sim.metrics.term).toBeGreaterThanOrEqual(3)
+      expect(sim.metrics.clashTotal).toBe(0)
+      expect(sim.metrics.leader).not.toBeNull()
+    }
+  })
+})
+
+describe('consensus: safe bookings scene', () => {
+  const FIVE = { ...BASE, size: 5 as const, timeout: 3, spread: 4, manual: true, pace: 0 }
+  const beat2 = { ...FIVE, again: 1 }
+  const beat3 = { ...beat2, split: 2, again: 2 }
+  const beat4 = { ...beat3, down: [0], split: 0, hasty: [3] }
+  const beat5 = { ...beat4, down: [] as number[], hasty: [4], strand: true, again: 3 }
+  const beat6 = { ...beat5, strand: false, hasty: [] as number[], again: 4 }
+
+  it('three of five hold a booking made while two are cut off', () => {
+    for (const seed of seeds) {
+      const sim = run(beat2, 6, seed)
+      expect(sim.metrics.holders).toBe(5)
+      run(beat3, 8, seed, sim)
+      expect(sim.metrics.holders).toBe(3)
+      expect(sim.metrics.confirmed).toBe(2)
+    }
+  })
+
+  it('servers that missed a booking never win, and the booking survives', () => {
+    for (const seed of seeds) {
+      const sim = run(beat2, 6, seed)
+      run(beat3, 8, seed, sim)
+      run(beat4, 30, seed, sim)
+      expect(sim.metrics.leader).not.toBeNull()
+      expect([1, 2]).toContain(sim.metrics.leader)
+      expect(sim.metrics.clashTotal).toBe(0)
+      expect(sim.metrics.holders).toBeGreaterThanOrEqual(4)
+    }
+  })
+
+  it('a cut-off leader keeps an unconfirmed booking until the next one overwrites it', () => {
+    for (const seed of seeds) {
+      const sim = run(beat2, 6, seed)
+      run(beat3, 8, seed, sim)
+      run(beat4, 30, seed, sim)
+      const old = sim.metrics.leader!
+      run(beat5, 12, seed, sim)
+      expect(sim.metrics.leader).not.toBe(old)
+      expect(sim.nodes[old].log.length).toBeGreaterThan(sim.nodes[sim.metrics.leader!].log.length)
+      run(beat6, 20, seed, sim)
+      expect(sim.metrics.leaders).toBe(1)
+      expect(sim.nodes[old].role).toBe('follower')
+      expect(sim.metrics.clashTotal).toBe(0)
     }
   })
 })
