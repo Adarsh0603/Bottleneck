@@ -4,7 +4,7 @@ import { shotAt, stateAt } from "./chapters";
 import { CHEAT_SHEET, TopBar } from "./chrome";
 import { play } from "./sound";
 import { useBottomInset } from "./useBottomInset";
-import { COMPACT, SHORT, useMedia } from "./useMedia";
+import { COMPACT, PHONE, SHORT, useMedia } from "./useMedia";
 import type { BaseBeat, Marker, TopicSpec } from "./types";
 
 interface PlayerProps<S, Sim, M, B extends BaseBeat<S, Sim, M>> {
@@ -231,6 +231,15 @@ function LessonPlayer<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
   };
   const { Scene, Stats, Controls } = topic;
   const inset = useBottomInset<HTMLDivElement, HTMLDivElement>();
+
+  // On a phone the text and controls sit in a sheet that starts as a short
+  // strip. Steps with controls, and open questions, start expanded.
+  const phone = useMedia(PHONE);
+  const beatKey = `${index}-${beatIdx}`;
+  const hasControls = ((beat as { controls?: unknown[] }).controls?.length ?? 0) > 0;
+  const [sheet, setSheet] = useState<{ key: string; open: boolean } | null>(null);
+  const sheetOpen = !phone || (sheet?.key === beatKey ? sheet.open : hasControls || asking);
+  const dragFrom = useRef<number | null>(null);
   return (
     <div ref={inset.root} className="relative h-[calc(100svh-57px)] min-h-[260px] w-full overflow-hidden">
       <div className="absolute inset-0">
@@ -279,6 +288,23 @@ function LessonPlayer<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
           short ? "px-3 pb-2 pt-6" : "px-3 pb-4 pt-10 sm:px-4 sm:pb-6 sm:pt-16"
         }`}
       >
+        {phone && (
+          <button
+            aria-label={sheetOpen ? "Collapse panel" : "Expand panel"}
+            aria-expanded={sheetOpen}
+            onClick={(e) => e.detail === 0 && setSheet({ key: beatKey, open: !sheetOpen })}
+            onPointerDown={(e) => (dragFrom.current = e.clientY)}
+            onPointerUp={(e) => {
+              if (dragFrom.current === null) return;
+              const dy = e.clientY - dragFrom.current;
+              dragFrom.current = null;
+              setSheet({ key: beatKey, open: Math.abs(dy) < 10 ? !sheetOpen : dy < 0 });
+            }}
+            className="pointer-events-auto -mt-4 mb-1 flex h-6 w-full touch-none items-center justify-center"
+          >
+            <span className="h-1 w-10 rounded-full bg-muted/50" />
+          </button>
+        )}
         <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-5">
           <div
             key={`${index}-${beatIdx}-${asking}`}
@@ -336,12 +362,12 @@ function LessonPlayer<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
                 )}
                 {beat.sub && (
                   <p
-                    className={`text-sm text-muted sm:text-base ${beat.caption ? "mt-1" : ""}`}
+                    className={`text-sm text-muted sm:text-base ${beat.caption ? "mt-1" : ""} ${sheetOpen ? "" : "line-clamp-2"}`}
                   >
                     {beat.sub}
                   </p>
                 )}
-                <Controls {...panel} />
+                {sheetOpen && <Controls {...panel} />}
               </>
             )}
           </div>
