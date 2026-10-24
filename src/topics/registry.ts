@@ -3,6 +3,9 @@ import type { Level, Reference } from '../core/types'
 import { CHAPTERS as AUTOSCALING_CHAPTERS } from './autoscaling/chapters'
 import AutoscalingPlay from './autoscaling/Play'
 import { REFERENCE as AUTOSCALING_REFERENCE } from './autoscaling/reference'
+import { CHAPTERS as BLOOM_FILTERS_CHAPTERS } from './bloom-filters/chapters'
+import BloomFiltersPlay from './bloom-filters/Play'
+import { REFERENCE as BLOOM_FILTERS_REFERENCE } from './bloom-filters/reference'
 import { CHAPTERS as CACHING_CHAPTERS } from './caching/chapters'
 import CachingPlay from './caching/Play'
 import { REFERENCE as CACHING_REFERENCE } from './caching/reference'
@@ -248,7 +251,16 @@ export const TOPICS: TopicEntry[] = [
     Play: TransactionsPlay,
     reference: TRANSACTIONS_REFERENCE,
   },
-  { id: 'bloom-filters', title: 'Bloom filters', track: 'distributed', pitch: 'Answer “have I seen this?” in a few bits.' },
+  {
+    id: 'bloom-filters',
+    title: 'Bloom filters',
+    track: 'distributed',
+    pitch: 'Answer “have I seen this?” in a few bits.',
+    chapters: BLOOM_FILTERS_CHAPTERS.map((c) => c.title),
+    challenges: challengeIds(BLOOM_FILTERS_CHAPTERS),
+    Play: BloomFiltersPlay,
+    reference: BLOOM_FILTERS_REFERENCE,
+  },
 
   { id: 'url-shortener', title: 'URL shortener', track: 'capstones', pitch: 'Billions of redirects, mostly reads.' },
   { id: 'news-feed', title: 'News feed', track: 'capstones', pitch: 'Fan out posts to millions of followers.' },
