@@ -200,6 +200,26 @@ function Bubble({ p, state, top, labelDy, zoom, width }: { p: Project; state: Pr
 // How far below its base a castle's number and name sit, by tier.
 const LABEL_DY = [26, 34, 38, 40, 34]
 
+// Where to fly so the castle and its card both stay in view: as close as fits, with the
+// castle and the card together in the middle of the box.
+function focusOn(p: Project, width: number): View {
+  const k = CAPITALS[p.id] ?? 1
+  const tall = castleHeight(p) * k
+  const label = LABEL_DY[p.tier] * k
+  const boxH = (width * H) / W - 24
+  let view = clampView({ z: 1, cx: p.x, cy: p.y - tall / 2 })
+  for (let z = CLOSE_ZOOM; z >= 1; z = Math.round((z - 0.05) * 100) / 100) {
+    const s = W / (width * z) // map units per screen pixel
+    const card = CARD_H * s
+    const baseY = p.y - tall - 16
+    const below = baseY - TOP < CARD_MIN * s
+    const [top, bottom] = below ? [p.y - tall, p.y + label + 26 + card] : [baseY - card, p.y + label]
+    view = clampView({ z, cx: p.x, cy: (top + bottom) / 2 })
+    if ((bottom - top) * ((width * z) / W) <= boxH) break
+  }
+  return view
+}
+
 function RealmName({ tier, name, at, anchor = 'start' }: { tier: string; name: string; at: Pt; anchor?: 'start' | 'middle' | 'end' }) {
   return (
     <g pointerEvents="none">
@@ -363,8 +383,9 @@ export default function RealmMap({
   const openCastle = (p: Project) => {
     onSelect(p.id)
     setOpened(null)
-    const k = CAPITALS[p.id] ?? 1
-    flyTo(clampView({ z: CLOSE_ZOOM, cx: p.x, cy: p.y - (castleHeight(p) * k) / 2 }), () => setOpened(p.id))
+    // Bring the whole map box into the page's view, under the sticky header, so the card is not cut off by the screen.
+    boxRef.current?.scrollIntoView({ block: 'nearest', behavior: reduced() ? 'auto' : 'smooth' })
+    flyTo(focusOn(p, width), () => setOpened(p.id))
   }
   const showAll = () => {
     setOpened(null)
@@ -423,7 +444,7 @@ export default function RealmMap({
   }
 
   return (
-    <div ref={boxRef} className={`relative overflow-hidden ${moving || dragging ? 'realm-moving' : ''}`} style={{ aspectRatio: `${W} / ${H}` }}>
+    <div ref={boxRef} className={`relative overflow-hidden ${moving || dragging ? 'realm-moving' : ''}`} style={{ aspectRatio: `${W} / ${H}`, scrollMarginTop: 72, scrollMarginBottom: 16 }}>
       <svg
         viewBox={`0 ${TOP} ${W} ${H}`}
         className={`absolute left-0 top-0 block select-none ${zoomed ? 'cursor-grab touch-none active:cursor-grabbing' : ''}`}
