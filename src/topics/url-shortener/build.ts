@@ -1,8 +1,9 @@
 import { createElement } from 'react'
 import { Tag } from '../../core/iso/primitives'
+import { PIECE_NAMES } from '../../core/build/types'
 import type { BuildTask, Placement, Requirement, Settings } from '../../core/build/types'
 import type { FlowSim } from '../../core/flow/engine'
-import type { Capstone, Review } from '../../core/capstone/types'
+import type { Capstone, Intro, Review } from '../../core/capstone/types'
 import { CACHE_SIZES, LIMITS, SCHEMES, SCOPES, SECOND, Shortener, type Load, type Profile } from './shortener'
 
 // The design board: sources on the left, the front door, app servers, then
@@ -17,6 +18,8 @@ const CACHE_AT = { x: 2.0, z: -2.8 }
 const QUEUE_AT = { x: 2.0, z: 2.8 }
 const DB_AT = { x: 5.8, z: 0 }
 const REPLICA_Z = [-3.2, 3.2]
+const APP_Z = [-2.8, 2.8]
+const SPARE_AT = [{ x: -3.8, z: -4.2 }, { x: -3.8, z: 4.2 }]
 
 const APP_PADS = ['app-1', 'app-2']
 const REPLICA_PADS = ['rep-0', 'rep-1']
@@ -43,7 +46,26 @@ const PHASES: [number, string][] = [
 ]
 const phaseAt = (tick: number) => PHASES.find(([end]) => tick < end)![1]
 
+// The same day as a strip, by name only: what is coming stays a surprise.
+const TIMELINE: NonNullable<BuildTask['timeline']> = {
+  phases: [
+    { name: 'Calm', from: 0 },
+    { name: 'Reading', from: T(6) },
+    { name: 'Viral link', from: T(22) },
+    { name: 'Bot', from: T(38) },
+  ],
+  end: SCALE_SETTLED,
+}
+
 export const shortenerOf = new WeakMap<FlowSim, Shortener>()
+
+// A small seeded random source, so every run of a design plays out the same.
+const seeded = (seed: number) => () => {
+  let t = (seed += 0x6d2b79f5)
+  t = Math.imul(t ^ (t >>> 15), t | 1)
+  t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+  return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+}
 
 // What the learner has chosen.
 export function chosen(settings: Settings) {
@@ -55,17 +77,75 @@ export function chosen(settings: Settings) {
   }
 }
 
-const placedApps = (placed: Placement) => ['app-0', ...APP_PADS.filter((p) => placed[p])]
-const placedReplicas = (placed: Placement) => REPLICA_PADS.filter((p) => placed[p])
+// A piece can stand on any spot. What it does comes from its kind, not its spot,
+// so the parts are found by kind and named here as the code below knows them.
+const CANON: Partial<Record<string, string>> = { balancer: 'lb', limiter: 'gate', cache: 'cache', queue: 'queue' }
+const POS: Record<string, { x: number; z: number }> = {
+  gate: GATE_AT,
+  lb: LB_AT,
+  'app-0': { x: APP_X, z: 0 },
+  'app-1': { x: APP_X, z: APP_Z[0] },
+  'app-2': { x: APP_X, z: APP_Z[1] },
+  cache: CACHE_AT,
+  queue: QUEUE_AT,
+  'rep-0': { x: DB_AT.x, z: REPLICA_Z[0] },
+  'rep-1': { x: DB_AT.x, z: REPLICA_Z[1] },
+  'spare-0': SPARE_AT[0],
+  'spare-1': SPARE_AT[1],
+}
+// Requests run from the visitors on the left to the database on the right,
+// through whatever stands in their way, in this order. A part that stands ahead of
+// one that should come before it has nothing to work with, and requests stop there.
+const RANK: Partial<Record<string, number>> = { limiter: 0, balancer: 1, app: 2, cache: 3, queue: 3, replica: 4 }
+function outOfOrder(raw: Placement) {
+  const parts = [
+    { id: 'app-0', kind: 'app', rank: 2, x: APP_X, fixed: true },
+    ...Object.entries(raw)
+      .filter(([, kind]) => RANK[kind] !== undefined)
+      .map(([id, kind]) => ({ id, kind, rank: RANK[kind]!, x: POS[id].x, fixed: false })),
+  ]
+  const ahead = parts.flatMap((hi) => parts.filter((lo) => hi.rank > lo.rank && hi.x <= lo.x).map((lo) => ({ hi, lo })))
+  if (ahead.length === 0) return null
+  const name = (k: string) => PIECE_NAMES[k as keyof typeof PIECE_NAMES].toLowerCase()
+  const first = ahead[0]
+  return {
+    ids: [...new Set(ahead.flatMap((a) => [a.hi, a.lo]).filter((p) => !p.fixed).map((p) => p.id))],
+    why: `The ${name(first.hi.kind)} has to come after the ${name(first.lo.kind)}, but here it stands in front of it. Requests travel left to right, so they get stuck at the wrong one.`,
+  }
+}
 
-function assemble(placed: Placement, settings: Settings, profile: Profile, rng?: () => number) {
+// `placed` says which parts exist (balancer as lb, servers as app-1…); `pad` says
+// which real spot each one stands on.
+function layout(raw: Placement) {
+  const placed: Placement = {}
+  const pad: Record<string, string> = {}
+  const apps: string[] = []
+  const replicas: string[] = []
+  for (const [id, kind] of Object.entries(raw)) {
+    if (kind === 'app') apps.push(id)
+    else if (kind === 'replica') replicas.push(id)
+    else if (CANON[kind]) {
+      placed[CANON[kind]!] = kind
+      pad[CANON[kind]!] = id
+    }
+  }
+  apps.forEach((_id, i) => (placed[`app-${i + 1}`] = 'app'))
+  replicas.forEach((_id, i) => (placed[`rep-${i}`] = 'replica'))
+  return { placed, pad, apps: ['app-0', ...apps], replicas, jam: outOfOrder(raw) }
+}
+const decoyOn = (raw: Placement, kind: string) => Object.values(raw).includes(kind as never)
+
+function assemble(raw: Placement, settings: Settings, profile: Profile, rng?: () => number) {
+  const { placed, pad, apps, replicas, jam } = layout(raw)
   const { scheme, cacheSize, limit, scope } = chosen(settings)
-  const s = new Shortener(rng ?? (() => 0.5), {
-    apps: placedApps(placed),
+  const s = new Shortener(rng ?? seeded(7), {
+    keys: { lb: pad.lb, gate: pad.gate, cache: pad.cache, queue: pad.queue },
+    jam: jam?.ids,
+    apps,
     balancer: !!placed.lb,
     gate: placed.gate ? { limit, scope } : undefined,
     cacheSize: placed.cache ? cacheSize : undefined,
-    replicas: placedReplicas(placed),
+    replicas,
     queue: !!placed.queue,
     scheme,
     profile,
@@ -138,6 +218,17 @@ const LABELS = [
   { at: [MAKERS_AT.x, 1.6, MAKERS_AT.z] as [number, number, number], text: 'Link makers' },
   { at: [BOT_AT.x, 1.6, BOT_AT.z] as [number, number, number], text: 'Bot' },
 ]
+const PIECE_HINTS: BuildTask['hints'] = {
+  balancer: 'Spreads requests over the app servers',
+  app: 'An app server: makes codes, looks links up',
+  cache: 'Keeps the popular links in memory',
+  queue: 'Holds clicks to be written later',
+  replica: 'A read-only copy of the database',
+  limiter: 'Turns away clients that ask too often',
+  dedupe: 'Remembers what was sent, blocks repeats',
+  dead: 'Parks messages that ran out of tries',
+}
+
 const SETTINGS = [
   { id: 'scheme', label: 'new codes', when: 'app' as const, min: 0, max: 2, step: 1, initial: 0, options: ['One shared counter', 'Own key range per server', 'Random hash, check first'] },
   { id: 'cache', label: 'holds', when: 'cache' as const, min: 0, max: CACHE_SIZES.length - 1, step: 1, initial: 0, options: CACHE_SIZES.map((n) => `${n} links`) },
@@ -145,15 +236,17 @@ const SETTINGS = [
   { id: 'limit', label: 'limit', when: 'limiter' as const, min: 0, max: LIMITS.length - 1, step: 1, initial: 2, options: LIMITS.map((n) => `${n} / second`) },
 ]
 
-function decorate(flow: FlowSim, placed: Placement) {
+function decorate(flow: FlowSim, raw: Placement) {
   const s = shortenerOf.get(flow)
   if (!s) return null
+  const { placed, pad, jam } = layout(raw)
   const out = [createElement(Tag, { key: 'phase', at: [USERS_AT.x, 2.4, USERS_AT.z], label: phaseAt(flow.tick), danger: flow.tick >= T(38) && flow.tick < SCALE_SETTLED })]
-  if (placed.cache) out.push(createElement(Tag, { key: 'cache', at: [CACHE_AT.x, 1.6, CACHE_AT.z], label: `${Math.round(s.hitRate() * 100)}% from memory` }))
+  for (const id of jam?.ids ?? []) out.push(createElement(Tag, { key: `jam-${id}`, at: [POS[id].x, 1.8, POS[id].z], label: 'Stops here', danger: true }))
+  if (placed.cache && !jam) out.push(createElement(Tag, { key: 'cache', at: [POS[pad.cache].x, 1.6, POS[pad.cache].z], label: `${Math.round(s.hitRate() * 100)}% from memory` }))
   return out
 }
 
-function common(): Pick<BuildTask, 'pinned' | 'manualStart' | 'rps' | 'shot' | 'fixed' | 'labels' | 'decorate'> {
+function common(): Pick<BuildTask, 'pinned' | 'manualStart' | 'rps' | 'shot' | 'fixed' | 'labels' | 'decorate' | 'hints' | 'failFast' | 'anywhere'> {
   return {
     pinned: BRIEF,
     manualStart: true,
@@ -162,6 +255,9 @@ function common(): Pick<BuildTask, 'pinned' | 'manualStart' | 'rps' | 'shot' | '
     fixed: FIXED,
     labels: LABELS,
     decorate,
+    hints: PIECE_HINTS,
+    failFast: true,
+    anywhere: true,
   }
 }
 
@@ -177,7 +273,7 @@ export const FIRST_DESIGN: BuildTask = {
   testSeconds: 30,
   pads: [
     { id: 'lb', ...LB_AT, accepts: ['balancer'] },
-    ...APP_PADS.map((id, i) => ({ id, x: APP_X, z: i === 0 ? -2.8 : 2.8, accepts: ['app' as const] })),
+    ...APP_PADS.map((id, i) => ({ id, x: APP_X, z: APP_Z[i], accepts: ['app' as const] })),
   ],
   toolbox: [
     { kind: 'balancer', count: 1 },
@@ -186,18 +282,21 @@ export const FIRST_DESIGN: BuildTask = {
   settings: [SETTINGS[0]],
   requirements: [noDupes, redirectsWork(3), redirectsFast],
   assemble: (placed, settings, rng) => assemble(placed, settings, FIRST_PROFILE, rng),
-  problem(_m, placed, settings, flow) {
+  problem(_m, raw, settings, flow) {
     const s = shortenerOf.get(flow)
     if (!s) return null
+    const { placed, apps, jam } = layout(raw)
+    if (jam) return jam.why
     const { scheme } = chosen(settings)
     if (s.tally.dupes > 0 && scheme === 'counter') return 'Two different links were given the same short code. Both servers count from one shared counter, and each reads it before the other has written.'
-    if (!placed.lb && placedApps(placed).length > 1) return 'All visitors land on the first server. The others get no traffic.'
+    if (!placed.lb && apps.length > 1) return 'All visitors land on the first server. The others get no traffic.'
     if (s.redirectsFailed() > 3) return 'Redirects are being lost.'
     return null
   },
-  check(_m, placed, _settings, flow) {
+  check(_m, raw, _settings, flow) {
     const s = flow && shortenerOf.get(flow)
-    if (!s || !placed.lb || placedApps(placed).length < 2) return false
+    const { placed, apps, jam } = layout(raw)
+    if (!s || jam || !placed.lb || apps.length < 2) return false
     return flow.tick >= FIRST_SETTLED && s.tally.dupes === 0 && s.redirectsFailed() <= 3 && s.makersFailed() <= 2
   },
 }
@@ -215,10 +314,11 @@ export const SCALE_UP: BuildTask = {
   pads: [
     { id: 'gate', ...GATE_AT, accepts: ['limiter'] },
     { id: 'lb', ...LB_AT, accepts: ['balancer'] },
-    ...APP_PADS.map((id, i) => ({ id, x: APP_X, z: i === 0 ? -2.8 : 2.8, accepts: ['app' as const] })),
+    ...APP_PADS.map((id, i) => ({ id, x: APP_X, z: APP_Z[i], accepts: ['app' as const] })),
     { id: 'cache', ...CACHE_AT, accepts: ['cache'] },
     { id: 'queue', ...QUEUE_AT, accepts: ['queue'] },
     ...REPLICA_PADS.map((id, i) => ({ id, x: DB_AT.x, z: REPLICA_Z[i], accepts: ['replica' as const] })),
+    ...SPARE_AT.map((at, i) => ({ id: `spare-${i}`, ...at, accepts: ['dedupe' as const, 'dead' as const] })),
   ],
   toolbox: [
     { kind: 'limiter', count: 1 },
@@ -227,18 +327,23 @@ export const SCALE_UP: BuildTask = {
     { kind: 'cache', count: 1 },
     { kind: 'queue', count: 1 },
     { kind: 'replica', count: 2 },
+    { kind: 'dedupe', count: 1 },
+    { kind: 'dead', count: 1 },
   ],
+  timeline: TIMELINE,
   settings: SETTINGS,
   watch: [{ kind: 'busy', key: 'db', label: 'Database busy' }],
   requirements: [redirectsWork(8), redirectsFast, noDupes, newLinks, clicksKept],
   assemble: (placed, settings, rng) => assemble(placed, settings, SCALE_PROFILE, rng),
-  problem(m, placed, settings, flow) {
+  problem(m, raw, settings, flow) {
     const s = shortenerOf.get(flow)
     if (!s) return null
     const t = s.tally
     const tick = flow.tick
+    const { placed, apps: appList, replicas, jam } = layout(raw)
+    if (jam) return jam.why
     const { scope, limit } = chosen(settings)
-    const apps = placedApps(placed).length
+    const apps = appList.length
     const dbBusy = m.busy.db ?? 0
 
     if (t.dupes > 0) return 'Two links were given the same short code. The servers share one counter.'
@@ -249,28 +354,31 @@ export const SCALE_UP: BuildTask = {
       if (placed.cache && s.hitRate() < 0.6 && tick >= T(10)) return `Only ${Math.round(s.hitRate() * 100)}% of redirects are answered from memory. The rest reach the database.`
       if ((!placed.lb || apps < 2) && tick >= T(10)) return 'One app server handles about 20 requests a second, and more than that are arriving.'
       if (!placed.queue && dbBusy > 0.8) return 'Every redirect writes a click to the database before it finishes. That is more writing than the database can take.'
-      if (!placedReplicas(placed).length && dbBusy > 0.8) return 'Cache misses and new links all land on one database, and it cannot keep up.'
+      if (replicas.length === 0 && dbBusy > 0.8) return 'Cache misses and new links all land on one database, and it cannot keep up.'
     }
     if (tick >= T(38) && (s.makersFailed() > 2 || dbBusy > 0.9)) {
       if (!placed.gate) return 'A bot is creating links as fast as it can. Every new link is a database write, and real people are being crowded out.'
       if (scope === 'creates' && limit >= 8) return `The bot still gets ${limit} new links a second through. That is too many writes.`
     }
     if (!placed.queue && dbBusy > 0.9) return 'The database is overloaded. Each redirect still writes a click straight to it.'
+    if (decoyOn(raw, 'dedupe')) return 'A dedupe store blocks a message that was already sent. Nothing here is sent twice, so it does nothing. Take it off.'
+    if (decoyOn(raw, 'dead')) return 'A dead-letter queue parks messages that ran out of tries. A click waits on the queue and is written later, so nothing is parked. Take it off.'
     return null
   },
-  check(_m, _placed, _settings, flow) {
+  check(_m, raw, _settings, flow) {
     const s = flow && shortenerOf.get(flow)
-    if (!s || flow.tick < SCALE_SETTLED) return false
+    if (!s || layout(raw).jam || flow.tick < SCALE_SETTLED) return false
     return s.redirectsFailed() <= 8 && s.tally.dupes === 0 && s.makersFailed() <= 2 && s.clicksLost() <= 20
   },
 }
 
 const has = (placed: Placement, id: string) => !!placed[id]
 
-function review(placed: Placement, settings: Settings): Review {
+function review(raw: Placement, settings: Settings): Review {
+  const { placed, apps: appList, replicas: replicaList } = layout(raw)
   const { scheme, scope } = chosen(settings)
-  const apps = placedApps(placed).length
-  const replicas = placedReplicas(placed).length
+  const apps = appList.length
+  const replicas = replicaList.length
   return {
     lines: [
       { label: 'New codes', yours: ['One shared counter', 'Key range per server', 'Random hash'][SCHEMES.indexOf(scheme)], reference: 'Key range per server', why: 'No clash and no extra check. A hash also works, but about 1 in 8 needs a second write.', ok: scheme !== 'counter' },
@@ -278,6 +386,7 @@ function review(placed: Placement, settings: Settings): Review {
       { label: 'Reads', yours: has(placed, 'cache') ? 'Cache' : 'Straight to the database', reference: 'Cache for popular links', why: 'About 100 reads for every write, and a few links get most of them.', ok: has(placed, 'cache') },
       { label: 'Clicks', yours: has(placed, 'queue') ? 'Queue, written later' : 'Written before redirecting', reference: 'Queue, written later', why: 'A redirect should not wait for a click to be counted.', ok: has(placed, 'queue') },
       { label: 'Database', yours: replicas ? `${replicas} read replica${replicas > 1 ? 's' : ''}` : 'One database', reference: 'One primary, read replicas', why: 'Replicas share the reads that miss the cache. Writes stay on the primary.', ok: replicas > 0 },
+      { label: 'Extras', yours: decoyOn(raw, 'dedupe') || decoyOn(raw, 'dead') ? 'A piece that does nothing here' : 'Only what is needed', reference: 'No dedupe store, no dead-letter queue', why: 'A code is made once and a click is just counted, so nothing is sent twice or parked. An extra piece is cost and one more thing to fail.', ok: !decoyOn(raw, 'dedupe') && !decoyOn(raw, 'dead') },
       { label: 'Abuse', yours: has(placed, 'gate') ? (scope === 'creates' ? 'Creates limited per client' : 'One count for all requests') : 'Nothing', reference: 'Creates limited per client', why: 'Limit the expensive action, per client. A global count turns away real visitors.', ok: has(placed, 'gate') && scope === 'creates' },
     ],
     tradeoffs: [
@@ -294,18 +403,57 @@ function review(placed: Placement, settings: Settings): Review {
   }
 }
 
+// The opening: one link made, one link opened. Nothing to place yet.
+const INTRO_PROFILE: Profile = () => ({ users: 0.8, makers: 0.4, bot: 0, hot: 0 })
+const INTRO_FIXED = [
+  { id: 'makers', kind: 'users' as const, x: -6.4, z: -2.4 },
+  { id: 'users', kind: 'users' as const, x: -6.4, z: 2.4 },
+  { id: 'app-0', kind: 'app' as const, x: -2.8, z: 0 },
+  { id: 'db', kind: 'database' as const, x: 1.2, z: 0 },
+]
+export const INTRO: Intro = {
+  task: {
+    title: 'How a short link works',
+    sub: '',
+    goal: '',
+    win: '',
+    holdSeconds: 1,
+    rps: 1,
+    shot: { target: [-2.6, 0.8, 0], zoom: 0.9 },
+    fixed: INTRO_FIXED,
+    pads: [],
+    toolbox: [],
+    assemble: (_placed, _settings, rng) => {
+      const s = new Shortener(rng ?? seeded(3), { apps: ['app-0'], balancer: false, replicas: [], queue: false, scheme: 'range', profile: INTRO_PROFILE })
+      shortenerOf.set(s.flow, s)
+      return s.flow
+    },
+    check: () => false,
+  },
+  steps: [
+    { say: 'Someone has a very long link and wants a short one. They paste it into the shortener.', at: 'makers', label: 'Link maker' },
+    { say: 'The app server picks a short code, like “x7Kq”, and tells the database: this code means that long link.', at: 'app-0', label: 'App server' },
+    { say: 'The database keeps the pair, so the short link keeps working tomorrow.', at: 'db', label: 'Database' },
+    { say: 'Later, a visitor opens the short link. The app looks the code up and sends them on to the long link.', at: 'users', label: 'Visitor' },
+    { say: 'Easy for one link. Now picture a million new links a day, and a hundred visits for every one of them.' },
+  ],
+  start: 'Take the challenge →',
+}
+
 export const URL_SHORTENER: Capstone = {
   id: 'url-shortener',
   title: 'URL shortener',
   stages: ['Requirements', 'First design', 'Where it breaks', 'Final review'],
+  intro: INTRO,
+  goals: ['Redirects · under 2 s', 'Codes never repeat', 'Clicks counted', 'Keep bots out'],
   brief: BRIEF,
   estimate: {
     intro: 'Before drawing anything, work out how big this is. A few quick numbers decide the design.',
     summary: { title: 'About 12 new links and 1,200 redirects a second, around 1 TB.', body: 'Reads dominate, and the data fits on one machine. Those two facts shape everything next.' },
     questions: [
-      { question: '1 million new links a day. About how many new links a second is that?', options: ['About 1', 'About 12', 'About 120'], answer: 1, why: 'A day has about 86,000 seconds. 1,000,000 ÷ 86,000 is about 12.' },
-      { question: 'There are about 100 redirects for every new link. About how many redirects a second?', options: ['About 120', 'About 1,200', 'About 12,000'], answer: 1, why: '12 new links a second × 100 is about 1,200 redirects a second. Reading dominates.' },
-      { question: 'Keep every link for 5 years, about 500 bytes each. About how much storage is that?', options: ['About 1 GB', 'About 1 TB', 'About 1 PB'], answer: 1, why: '1M a day × 365 × 5 is about 1.8 billion links. At 500 bytes each that is close to 1 TB: one big database, not a fleet.' },
+      { question: '1 million new links a day. About how many new links a second is that?', options: ['About 1', 'About 12', 'About 120'], answer: 1, at: 'makers', show: '12 new links / second', why: 'A day has about 86,000 seconds. 1,000,000 ÷ 86,000 is about 12.' },
+      { question: 'There are about 100 redirects for every new link. About how many redirects a second?', options: ['About 120', 'About 1,200', 'About 12,000'], answer: 1, at: 'users', show: '1,200 redirects / second', why: '12 new links a second × 100 is about 1,200 redirects a second. Reading dominates.' },
+      { question: 'Keep every link for 5 years, about 500 bytes each. About how much storage is that?', options: ['About 1 GB', 'About 1 TB', 'About 1 PB'], answer: 1, at: 'db', show: 'About 1 TB', why: '1M a day × 365 × 5 is about 1.8 billion links. At 500 bytes each that is close to 1 TB: one big database, not a fleet.' },
     ],
   },
   first: FIRST_DESIGN,

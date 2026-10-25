@@ -51,11 +51,12 @@ const blankTally = (): Tally => ({ failed: {}, limited: {}, slow: 0, done: {}, d
 // Counts what happened to each kind of request, by where it came from.
 class Net extends FlowSim {
   tally = blankTally()
+  gateKey = 'gate'
 
   drop(job: Job, node: string) {
     super.drop(job, node)
     const from = job.from ?? '?'
-    const bucket = node === 'gate' ? this.tally.limited : this.tally.failed
+    const bucket = node === this.gateKey ? this.tally.limited : this.tally.failed
     bucket[from] = (bucket[from] ?? 0) + 1
   }
 
@@ -64,6 +65,18 @@ class Net extends FlowSim {
     this.tally.done[from] = (this.tally.done[from] ?? 0) + 1
     if (from === 'users' && this.tick - job.createdAt > SLOW_AFTER) this.tally.slow++
     super.complete(job)
+  }
+}
+
+// A part standing where traffic cannot get through: it turns everything away.
+class Jam implements FlowNode {
+  alive = true
+  readonly key: string
+  constructor(key: string) {
+    this.key = key
+  }
+  receive(job: Job, sim: FlowSim) {
+    sim.drop(job, this.key)
   }
 }
 
@@ -123,13 +136,14 @@ class ReadCache extends Cache {
 // Passes requests on, but only so many per second.
 class Gate implements FlowNode {
   alive = true
-  readonly key = 'gate'
+  readonly key: string
   private window = -1
   private total = 0
   private byClient: Record<string, number> = {}
   private limit: number
   private scope: Scope
-  constructor(limit: number, scope: Scope) {
+  constructor(key: string, limit: number, scope: Scope) {
+    this.key = key
     this.limit = limit
     this.scope = scope
   }
@@ -155,7 +169,18 @@ class Gate implements FlowNode {
   }
 }
 
+// Where the parts that have one fixed job stand, by node key. A piece can be
+// dropped on any spot, so these are the keys of the spots they were dropped on.
+export interface Keys {
+  lb: string
+  gate: string
+  cache: string
+  queue: string
+}
+
 export interface Config {
+  keys?: Partial<Keys>
+  jam?: string[] // parts standing in the wrong order: they turn all traffic away
   apps: string[] // keys of the app servers that stand on the floor
   balancer: boolean
   gate?: { limit: number; scope: Scope }
@@ -169,6 +194,7 @@ export interface Config {
 export class Shortener {
   readonly flow: Net
   readonly cfg: Config
+  readonly keys: Keys
   private reads = 0
   private table = zipfTable(CODES)
   private cache?: ReadCache
@@ -176,7 +202,9 @@ export class Shortener {
 
   constructor(rng: () => number, cfg: Config) {
     this.cfg = cfg
+    const keys = (this.keys = { lb: cfg.keys?.lb ?? 'lb', gate: cfg.keys?.gate ?? 'gate', cache: cfg.keys?.cache ?? 'cache', queue: cfg.keys?.queue ?? 'queue' })
     const flow = (this.flow = new Net(rng))
+    flow.gateKey = keys.gate
     const sources = ['users', 'makers', 'bot'].map((k) => flow.add(new Source(k)))
     const [users, makers, bot] = sources
     users.keyOf = (rand) => {
@@ -188,19 +216,37 @@ export class Shortener {
     this.db.workOf = (job) => (job.from === 'click' ? (cfg.queue ? CLICK_QUEUED_WORK : CLICK_SYNC_WORK) : job.from === 'users' ? READ_WORK : WRITE_WORK)
     this.db.onFinish = (job, sim) => this.filled(job, sim)
 
-    const front = cfg.balancer ? 'lb' : cfg.apps[0]
+    const addClock = () =>
+      flow.add(
+        new Clock((tick) => {
+          const l = this.load(tick)
+          users.rate = l.users / SECOND
+          makers.rate = l.makers / SECOND
+          bot.rate = l.bot / SECOND
+        }),
+      )
+
+    if (cfg.jam?.length) {
+      for (const key of cfg.apps) if (!cfg.jam.includes(key)) flow.add(new App(key, this))
+      for (const key of cfg.jam) flow.add(new Jam(key))
+      for (const s of sources) for (const key of cfg.jam) flow.link(s.key, key, 6)
+      addClock()
+      return
+    }
+
+    const front = cfg.balancer ? keys.lb : cfg.apps[0]
     if (cfg.balancer) {
-      flow.add(new Router('lb')).algorithm = 'least-connections'
+      flow.add(new Router(keys.lb)).algorithm = 'least-connections'
     }
     for (const key of cfg.apps) {
       flow.add(new App(key, this))
-      if (cfg.balancer) flow.link('lb', key, 4)
+      if (cfg.balancer) flow.link(keys.lb, key, 4)
     }
     // Where the three kinds of request first go.
-    const door = cfg.gate ? 'gate' : front
+    const door = cfg.gate ? keys.gate : front
     if (cfg.gate) {
-      flow.add(new Gate(cfg.gate.limit, cfg.gate.scope))
-      flow.link('gate', front, 4)
+      flow.add(new Gate(keys.gate, cfg.gate.limit, cfg.gate.scope))
+      flow.link(keys.gate, front, 4)
     }
     for (const s of sources) flow.link(s.key, door, 6)
 
@@ -209,33 +255,26 @@ export class Shortener {
       r.onFinish = (job, sim) => this.filled(job, sim)
     }
     if (cfg.cacheSize) {
-      const c = (this.cache = flow.add(new ReadCache('cache')))
+      const c = (this.cache = flow.add(new ReadCache(keys.cache)))
       c.capacity = cfg.cacheSize
       c.coalesce = true
-      for (const s of ['db', ...cfg.replicas]) flow.link('cache', s, 5)
+      for (const s of ['db', ...cfg.replicas]) flow.link(keys.cache, s, 5)
       // The service has been running a while: the popular links are already in memory.
       for (let k = 0; k < c.capacity; k++) c.fill(k, flow)
     }
     if (cfg.queue) {
-      const fifo = flow.add(new Fifo('queue', 80))
+      const fifo = flow.add(new Fifo(keys.queue, 80))
       fifo.prefetch = 10
-      flow.link('queue', 'db', 3)
+      flow.link(keys.queue, 'db', 3)
     }
     for (const key of cfg.apps) {
-      if (this.cache) flow.link(key, 'cache', 5)
+      if (this.cache) flow.link(key, keys.cache, 5)
       flow.link(key, 'db', 8)
       for (const r of cfg.replicas) flow.link(key, r, 8)
-      if (cfg.queue) flow.link(key, 'queue', 5)
+      if (cfg.queue) flow.link(key, keys.queue, 5)
     }
 
-    flow.add(
-      new Clock((tick) => {
-        const l = this.load(tick)
-        users.rate = l.users / SECOND
-        makers.rate = l.makers / SECOND
-        bot.rate = l.bot / SECOND
-      }),
-    )
+    addClock()
   }
 
   load(tick: number) {
@@ -252,8 +291,8 @@ export class Shortener {
       // Every redirect leaves a click behind: a database write in the way,
       // or a message on a queue for later.
       const click = sim.newJob(0, job.key, 'click')
-      sim.forward(click, app, this.cfg.queue ? 'queue' : 'db')
-      if (this.cache) return sim.forward(job, app, 'cache')
+      sim.forward(click, app, this.cfg.queue ? this.keys.queue : 'db')
+      if (this.cache) return sim.forward(job, app, this.keys.cache)
       const stores = ['db', ...this.cfg.replicas]
       return sim.forward(job, app, stores[this.reads++ % stores.length])
     }
