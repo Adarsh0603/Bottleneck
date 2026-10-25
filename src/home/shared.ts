@@ -1,6 +1,7 @@
 import { topicProgress, type Progress } from '../core/progress'
 import { navigate } from '../core/router'
 import { TOPICS, TRACKS, type TopicEntry } from '../topics/registry'
+import { isBuilt, PROJECTS } from './projects'
 
 // Helpers both home views (map and list) share.
 
@@ -33,3 +34,15 @@ export const trackOf = (topic: TopicEntry) => TRACKS.find((t) => t.id === topic.
 
 export const actionLabel = (status: TopicStatus) =>
   status === 'done' ? 'Review' : status === 'started' ? 'Continue' : 'Start'
+
+// On the realm map a project is built, the next one to take on, or still under mist.
+export type ProjectState = 'done' | 'next' | 'fog'
+
+export function projectStates(progress: Progress): Record<string, ProjectState> {
+  const done = (id: string) => {
+    const topic = TOPICS.find((t) => t.id === id)
+    return !!topic && isBuilt(PROJECTS.find((p) => p.id === id)!) && statusOf(progress, topic) === 'done'
+  }
+  const next = PROJECTS.find((p) => !done(p.id))
+  return Object.fromEntries(PROJECTS.map((p) => [p.id, done(p.id) ? 'done' : p === next ? 'next' : 'fog'])) as Record<string, ProjectState>
+}

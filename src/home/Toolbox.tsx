@@ -1,7 +1,6 @@
 import { resetProgress, useProgress } from "../core/progress";
 import { PLANNED, TOPICS, TRACKS, type TopicEntry } from "../topics/registry";
-import HeroScene from "./HeroScene";
-import { ContinueButton, Credit, ViewToggle, type HomeView } from "./parts";
+import { Credit } from "./parts";
 import {
   actionLabel,
   nextTopic,
@@ -10,45 +9,16 @@ import {
   topicNumber,
 } from "./shared";
 
-export default function HomeList({
-  onView,
-}: {
-  onView: (view: HomeView) => void;
-}) {
+// Every concept, by track. Open any of them whenever you like.
+export default function Toolbox() {
   const progress = useProgress();
   const next = nextTopic(progress);
 
   return (
-    <div className="relative">
-      {/* The scenes' isometric floor, faintly, behind the top of the page. */}
-      <div
-        aria-hidden
-        className="iso-backdrop pointer-events-none absolute inset-x-0 top-0 h-[1000px]"
-      />
-
-      <main className="relative mx-auto max-w-6xl px-4 py-10 sm:py-14">
-        <div className="mb-8 flex justify-end">
-          <ViewToggle view="list" onChange={onView} />
-        </div>
-
-        <section className="grid items-center gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,440px)]">
-          <div className="max-w-2xl">
-            <div className="font-mono text-[11px] uppercase tracking-widest text-muted">
-              System design, visually
-            </div>
-            <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">
-              See why systems break, then build ones that don't.
-            </h1>
-            <p className="mt-3 text-muted">
-              Watch systems overload, fail and recover, then fix them yourself.
-              From your first server to distributed consensus.
-            </p>
-            <ContinueButton className="mt-6" />
-          </div>
-          <div className="hidden lg:block">
-            <HeroScene />
-          </div>
-        </section>
+    <div className="mt-14">
+      <h2 className="font-mono text-[11px] uppercase tracking-widest text-muted">
+        The toolbox: every concept
+      </h2>
 
         {TRACKS.map((track) => {
           const topics = TOPICS.filter((t) => t.track === track.id);
@@ -112,7 +82,6 @@ export default function HomeList({
             )}
           </span>
         </footer>
-      </main>
     </div>
   );
 }

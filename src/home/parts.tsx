@@ -3,8 +3,6 @@ import { navigate } from "../core/router";
 import { TOPICS } from "../topics/registry";
 import { chapterCounts } from "./shared";
 
-export type HomeView = "map" | "list";
-
 // "Continue · Load balancing →", shown once something is started. It opens
 // the topic from its first chapter.
 export function ContinueButton({ className = "" }: { className?: string }) {
@@ -62,32 +60,5 @@ export function Credit({ className = "" }: { className?: string }) {
         Source on GitHub
       </a>
     </span>
-  );
-}
-
-export function ViewToggle({
-  view,
-  onChange,
-}: {
-  view: HomeView;
-  onChange: (view: HomeView) => void;
-}) {
-  return (
-    <div
-      className="inline-flex rounded-full border border-line bg-bg/80 p-0.5 font-mono text-xs backdrop-blur"
-      role="group"
-      aria-label="Home view"
-    >
-      {(["map", "list"] as const).map((v) => (
-        <button
-          key={v}
-          onClick={() => onChange(v)}
-          aria-pressed={view === v}
-          className={`rounded-full px-3 py-1 capitalize transition ${view === v ? "bg-fg text-bg" : "text-muted hover:text-fg"}`}
-        >
-          {v}
-        </button>
-      ))}
-    </div>
   );
 }

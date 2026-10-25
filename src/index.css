@@ -135,3 +135,24 @@ body {
   background-size: 32px 32px;
   background-position: -1px -1px;
 }
+
+/* The realm map on the home page. */
+.realm-pulse {
+  animation: realm-pulse 2.2s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.realm-mist {
+  animation: realm-drift 24s ease-in-out infinite alternate;
+}
+@keyframes realm-pulse {
+  0%, 100% { opacity: 0.35; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.18); }
+}
+@keyframes realm-drift {
+  from { transform: translateX(-14px); }
+  to { transform: translateX(14px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .realm-pulse, .realm-mist { animation: none; }
+}
