@@ -133,6 +133,9 @@ export interface BuildTask {
   labels?: { at: V3; text: string }[]
   pads: Pad[]
   toolbox: { kind: PieceKind; count: number }[]
+  // Names that replace the standard ones, when a piece plays a different part here.
+  // The standard name then shows under it, as the piece's type.
+  names?: Partial<Record<PieceKind, string>>
   // One line per piece: what it does, shown in the toolbox before it is placed.
   hints?: Partial<Record<PieceKind, string>>
   // The run as a strip of named phases (start tick of each), so a long scripted

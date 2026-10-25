@@ -48,6 +48,9 @@ import { REFERENCE as TRANSACTIONS_REFERENCE } from './transactions/reference'
 import NotificationsPlay from './notifications/Play'
 import { NOTIFICATIONS } from './notifications/build'
 import { REFERENCE as NOTIFICATIONS_REFERENCE } from './notifications/reference'
+import WebCrawlerPlay from './web-crawler/Play'
+import { WEB_CRAWLER } from './web-crawler/build'
+import { REFERENCE as WEB_CRAWLER_REFERENCE } from './web-crawler/reference'
 import UrlShortenerPlay from './url-shortener/Play'
 import { URL_SHORTENER } from './url-shortener/build'
 import { REFERENCE as URL_SHORTENER_REFERENCE } from './url-shortener/reference'
@@ -288,6 +291,16 @@ export const TOPICS: TopicEntry[] = [
     challenges: ['0:0', '1:0', '2:0'],
     Play: NotificationsPlay,
     reference: NOTIFICATIONS_REFERENCE,
+  },
+  {
+    id: 'web-crawler',
+    title: 'Web crawler',
+    track: 'capstones',
+    pitch: 'Read a billion pages without being banned.',
+    chapters: [...WEB_CRAWLER.stages],
+    challenges: ['0:0', '1:0', '2:0'],
+    Play: WebCrawlerPlay,
+    reference: WEB_CRAWLER_REFERENCE,
   },
   { id: 'news-feed', title: 'News feed', track: 'capstones', pitch: 'Fan out posts to millions of followers.' },
   { id: 'chat', title: 'Chat app', track: 'capstones', pitch: 'Real-time messages and who’s online.' },

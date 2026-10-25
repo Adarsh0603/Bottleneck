@@ -136,6 +136,9 @@ function subscribe(listener: () => void) {
   }
 }
 
+// The progress as it is right now, for event handlers that are not components.
+export const currentProgress = (): Progress => state
+
 export function useProgress(): Progress {
   return useSyncExternalStore(subscribe, () => state)
 }

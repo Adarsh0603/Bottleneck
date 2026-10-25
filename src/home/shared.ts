@@ -1,4 +1,4 @@
-import { topicProgress, type Progress } from '../core/progress'
+import { currentProgress, topicProgress, type Progress } from '../core/progress'
 import { navigate } from '../core/router'
 import { TOPICS, TRACKS, type TopicEntry } from '../topics/registry'
 import { isBuilt, PROJECTS } from './projects'
@@ -22,10 +22,13 @@ export function nextTopic(progress: Progress) {
   return builtTopics.find((t) => statusOf(progress, t) !== 'done')
 }
 
-// A topic always opens at its first chapter, even when continuing; finished
+// A lesson always opens at its first chapter, even when continuing; finished
 // chapters are ticked in the chapter menu, so the learner can jump ahead.
-export function openTopic(topic: TopicEntry, chapter = 0) {
-  navigate({ page: 'topic', topic: topic.id, chapter, step: 0 })
+// A capstone opens on the stage the learner was last in.
+export function openTopic(topic: TopicEntry, chapter?: number) {
+  const last = topic.track === 'capstones' ? topicProgress(currentProgress(), topic.id).last?.chapter : undefined
+  const at = chapter ?? (last !== undefined && last < (topic.chapters?.length ?? 0) ? last : 0)
+  navigate({ page: 'topic', topic: topic.id, chapter: at, step: 0 })
 }
 
 export const topicNumber = (topic: TopicEntry) => String(TOPICS.indexOf(topic) + 1).padStart(2, '0')

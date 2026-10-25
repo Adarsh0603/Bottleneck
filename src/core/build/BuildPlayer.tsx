@@ -358,6 +358,9 @@ function Builder({
   const tapPadRef = useRef(tapPad);
   tapPadRef.current = tapPad;
 
+  const nameOf = (kind: PieceKind) => task.names?.[kind] ?? PIECE_NAMES[kind];
+  // Under the name: the standard name when the piece is renamed here, then what it does.
+  const sub = (kind: PieceKind) => [task.names?.[kind] && PIECE_NAMES[kind], task.hints?.[kind]].filter(Boolean).join(" · ");
   const left = remaining(task, placed);
   const activeKind = drag?.moved ? drag.kind : selected;
 
@@ -369,7 +372,7 @@ function Builder({
         disabled={count <= 0}
         onPointerDown={(e) => count > 0 && startDrag(kind, undefined, e)}
         aria-pressed={selected === kind}
-        aria-label={`${PIECE_NAMES[kind]}, ${count} left. Drag onto a pad, or tap then tap a pad.`}
+        aria-label={`${nameOf(kind)}, ${count} left. Drag onto a pad, or tap then tap a pad.`}
         className={`flex touch-none items-center gap-2 rounded-xl border bg-bg/90 py-1.5 pl-1.5 pr-3 text-sm backdrop-blur transition disabled:opacity-35 ${
           selected === kind
             ? "border-fg ring-1 ring-fg"
@@ -378,10 +381,8 @@ function Builder({
       >
         <PieceIcon kind={kind} size={34} />
         <span className="min-w-0 text-left">
-          <span className="block">{PIECE_NAMES[kind]}</span>
-          {task.hints?.[kind] && (
-            <span className="block text-[10px] leading-tight text-muted">{task.hints[kind]}</span>
-          )}
+          <span className="block">{nameOf(kind)}</span>
+          {sub(kind) && <span className="block text-[10px] leading-tight text-muted">{sub(kind)}</span>}
         </span>
         <span className="ml-auto font-mono text-xs text-muted">×{count}</span>
       </button>
@@ -536,7 +537,7 @@ function Builder({
     </div>
   );
   const hint = selected
-    ? `Now tap a pad to place the ${PIECE_NAMES[selected].toLowerCase()}.`
+    ? `Now tap a pad to place the ${nameOf(selected).toLowerCase()}.`
     : !running
       ? "Place your pieces, then press Start requests. Changing anything restarts the run."
       : task.sub;
@@ -782,7 +783,7 @@ function Builder({
               <section key={when}>
                 <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted">
                   <PieceIcon kind={when} size={22} />
-                  {PIECE_NAMES[when]}
+                  {nameOf(when)}
                 </div>
                 <div className="mt-2 space-y-2">
                   {shownSettings

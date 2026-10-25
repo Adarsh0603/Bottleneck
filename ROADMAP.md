@@ -35,7 +35,7 @@ Projects are interview-style systems the learner builds, ordered from easy to ha
 **Starter**
 1. URL shortener (built): caching, replication, sharding, bloom filters, rate limiting
 2. Notification system: message queues, pub/sub, rate limiting, idempotency
-3. Web crawler: queues, bloom filters, rate limiting, consistent hashing
+3. Web crawler (built): queues, bloom filters, rate limiting, consistent hashing
 
 **Intermediate**
 4. News feed: caching, fan-out (new), queues, sharding
