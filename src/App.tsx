@@ -40,8 +40,8 @@ export default function App() {
 
   useEffect(() => {
     document.title = topic
-      ? `${topic.title} · Bottleneck`
-      : "Bottleneck · See why systems break, then build ones that don't";
+      ? `${topic.title} · Systemlands`
+      : "Systemlands · See why systems break, then build ones that don't";
   }, [topic]);
 
   // Open every page at the top, not at the scroll position of the page before
@@ -61,10 +61,10 @@ export default function App() {
             <a
               href="#/"
               className="flex items-center gap-2"
-              aria-label="Bottleneck home"
+              aria-label="Systemlands home"
             >
               <img src="/favicon.svg" alt="" className="h-6 w-6" />
-              <span className="font-semibold tracking-tight">Bottleneck</span>
+              <span className="font-semibold tracking-tight">Systemlands</span>
             </a>
             {topic && (
               <>
@@ -129,6 +129,7 @@ function TopicView({
     <>
       <Play
         key={`${topic.id}-${ch}-${step}`}
+        topicId={topic.id}
         chapter={ch}
         step={step}
         doneChapters={topicProgress(progress, topic.id).done}

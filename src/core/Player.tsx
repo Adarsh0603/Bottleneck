@@ -9,6 +9,8 @@ import type { BaseBeat, Marker, TopicSpec } from "./types";
 
 interface PlayerProps<S, Sim, M, B extends BaseBeat<S, Sim, M>> {
   topic: TopicSpec<S, Sim, M, B>;
+  // The topic's registry id: where its Build it chapters are saved.
+  topicId: string;
   index: number;
   startStep?: number;
   doneChapters?: number[];
@@ -31,6 +33,7 @@ export default function Player<S, Sim, M, B extends BaseBeat<S, Sim, M>>(
     return (
       <BuildPlayer
         task={build}
+        saveKey={`${props.topicId}:${index}`}
         chapters={topic.chapters}
         index={index}
         doneChapters={doneChapters}

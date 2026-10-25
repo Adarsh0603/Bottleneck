@@ -2,6 +2,7 @@ import { Cache } from '../flow/cache'
 import { logOf, type Log } from '../flow/log'
 import type { FlowNode } from '../flow/engine'
 import { Worker } from '../flow/nodes'
+import type { Provider } from '../flow/provider'
 import { depth, points, project, S } from '../iso/geometry'
 import { Crowd, IsoBox, IsoCylinder } from '../iso/primitives'
 import type { PieceKind } from './types'
@@ -57,6 +58,12 @@ export function Piece({
       return <LimiterPiece x={x} z={z} rise={rise} />
     case 'breaker':
       return <BreakerPiece x={x} z={z} rise={rise} state={(node as { state?: BreakerState } | undefined)?.state} />
+    case 'provider':
+      return <ProviderPiece x={x} z={z} rise={rise} down={(node as Provider | undefined)?.down} />
+    case 'dead':
+      return <DeadPiece x={x} z={z} rise={rise} fifo={waitingOf(node)} />
+    case 'dedupe':
+      return <DedupePiece x={x} z={z} rise={rise} />
   }
 }
 
@@ -191,6 +198,70 @@ export function BreakerPiece({ x, z, rise = 1, state = 'closed' }: { x: number; 
           <path d={lever} strokeDasharray={state === 'half' ? '3 3' : undefined} />
         </g>
       )}
+    </g>
+  )
+}
+
+// A box with a cloud on its lid: a service somebody else runs. Red in an outage.
+function ProviderPiece({ x, z, rise, down }: { x: number; z: number; rise: number; down?: boolean }) {
+  const h = 0.9 * rise
+  const [cx, cy] = project([x, h, z])
+  return (
+    <g>
+      <IsoBox x={x} z={z} w={1.7} d={1.7} h={h} stroke={down ? 'var(--danger)' : undefined} />
+      {rise === 1 && (
+        <path
+          d="M-14 6 H12 A7 7 0 0 0 12 -8 A9 9 0 0 0 -4 -10 A8 8 0 0 0 -14 6 Z"
+          transform={`translate(${cx} ${cy})`}
+          stroke={down ? 'var(--danger)' : 'var(--fg)'}
+          strokeWidth={2.5}
+          strokeLinejoin="round"
+          fill="none"
+        />
+      )}
+    </g>
+  )
+}
+
+// A low dark trough like a queue, but its cells fill in red: the messages
+// that gave up.
+function DeadPiece({ x, z, rise, fifo }: { x: number; z: number; rise: number; fifo?: { jobs: unknown[]; capacity: number } }) {
+  const h = 0.4 * rise
+  const cells = 8
+  const used = fifo ? Math.ceil((fifo.jobs.length / fifo.capacity) * cells) : 0
+  return (
+    <g>
+      <IsoBox x={x} z={z} w={1.6} d={1.1} h={h} fill="var(--fg)" />
+      {rise === 1 &&
+        Array.from({ length: cells }, (_, i) => {
+          const cx = x - 0.6 + i * 0.17
+          return (
+            <polygon
+              key={i}
+              points={points([
+                [cx - 0.05, h, z - 0.4],
+                [cx - 0.05, h, z + 0.4],
+                [cx + 0.05, h, z + 0.4],
+                [cx + 0.05, h, z - 0.4],
+              ])}
+              fill={i < used ? 'var(--danger)' : 'var(--bg)'}
+              stroke="var(--line)"
+              strokeWidth={0.6}
+            />
+          )
+        })}
+    </g>
+  )
+}
+
+// A low box with a tick on its lid: it remembers what has been sent.
+function DedupePiece({ x, z, rise }: { x: number; z: number; rise: number }) {
+  const h = 0.6 * rise
+  const [cx, cy] = project([x, h, z])
+  return (
+    <g>
+      <IsoBox x={x} z={z} w={1.3} d={1.3} h={h} fill="var(--fg)" />
+      {rise === 1 && <path d="M-10 0 L-3 7 L11 -8" transform={`translate(${cx} ${cy})`} stroke="var(--bg)" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" fill="none" />}
     </g>
   )
 }
@@ -331,7 +402,7 @@ function CachePiece({ x, z, rise, cache }: { x: number; z: number; rise: number;
 
 // A small picture of a piece, for the toolbox and the piece being dragged.
 export function PieceIcon({ kind, size = 40 }: { kind: PieceKind; size?: number }) {
-  const box = kind === 'users' ? '-70 -60 140 110' : kind === 'database' || kind === 'replica' || kind === 'cache' || kind === 'ring' || kind === 'queue' || kind === 'topic' || kind === 'stream' || kind === 'limiter' || kind === 'breaker' ? '-55 -80 110 110' : '-45 -80 90 100'
+  const box = kind === 'users' ? '-70 -60 140 110' : kind === 'database' || kind === 'replica' || kind === 'cache' || kind === 'ring' || kind === 'queue' || kind === 'topic' || kind === 'stream' || kind === 'limiter' || kind === 'breaker' || kind === 'provider' || kind === 'dead' || kind === 'dedupe' ? '-55 -80 110 110' : '-45 -80 90 100'
   return (
     <svg viewBox={box} width={size} height={size} aria-hidden className="shrink-0">
       <Piece kind={kind} x={0} z={0} active={6} />

@@ -45,6 +45,9 @@ import { REFERENCE as REPLICATION_REFERENCE } from './replication/reference'
 import { CHAPTERS as TRANSACTIONS_CHAPTERS } from './transactions/chapters'
 import TransactionsPlay from './transactions/Play'
 import { REFERENCE as TRANSACTIONS_REFERENCE } from './transactions/reference'
+import NotificationsPlay from './notifications/Play'
+import { NOTIFICATIONS } from './notifications/build'
+import { REFERENCE as NOTIFICATIONS_REFERENCE } from './notifications/reference'
 import UrlShortenerPlay from './url-shortener/Play'
 import { URL_SHORTENER } from './url-shortener/build'
 import { REFERENCE as URL_SHORTENER_REFERENCE } from './url-shortener/reference'
@@ -52,7 +55,7 @@ import { CHAPTERS as SHARDING_CHAPTERS } from './sharding/chapters'
 import ShardingPlay from './sharding/Play'
 import { REFERENCE as SHARDING_REFERENCE } from './sharding/reference'
 
-// Every concept Bottleneck teaches, in the recommended order. A topic with no
+// Every concept Systemlands teaches, in the recommended order. A topic with no
 // `Play` yet isn't built and shows as "Soon".
 
 export type TrackId = 'scaling' | 'data' | 'async' | 'distributed' | 'capstones'
@@ -66,6 +69,7 @@ export const TRACKS: { id: TrackId; title: string; level: Level }[] = [
 ]
 
 export interface PlayProps {
+  topicId: string
   chapter: number
   step: number
   doneChapters: number[]
@@ -274,6 +278,16 @@ export const TOPICS: TopicEntry[] = [
     challenges: ['0:0', '1:0', '2:0'],
     Play: UrlShortenerPlay,
     reference: URL_SHORTENER_REFERENCE,
+  },
+  {
+    id: 'notifications',
+    title: 'Notification system',
+    track: 'capstones',
+    pitch: 'Millions of messages, none lost, none twice.',
+    chapters: [...NOTIFICATIONS.stages],
+    challenges: ['0:0', '1:0', '2:0'],
+    Play: NotificationsPlay,
+    reference: NOTIFICATIONS_REFERENCE,
   },
   { id: 'news-feed', title: 'News feed', track: 'capstones', pitch: 'Fan out posts to millions of followers.' },
   { id: 'chat', title: 'Chat app', track: 'capstones', pitch: 'Real-time messages and who’s online.' },

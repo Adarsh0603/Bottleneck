@@ -17,6 +17,10 @@ export interface Job {
   createdAt: number
   key?: number // what is being asked for, e.g. a cache key
   from?: string // the source that sent it, e.g. a user region
+  msg?: number // what the message is, kept across retries (a new job gets its own id)
+  attempts?: number // how many times it has been sent to a provider
+  caller?: string // the node waiting for an answer to a call in flight
+  via?: string // the provider it is meant for
 }
 
 export interface Transit {
@@ -124,7 +128,8 @@ export class FlowSim {
   // --- Moving requests ---------------------------------------------------------
 
   newJob(work: number, key?: number, from?: string): Job {
-    return { id: this.nextJobId++, work, remaining: work, createdAt: this.tick, key, from }
+    const id = this.nextJobId++
+    return { id, work, remaining: work, createdAt: this.tick, key, from, msg: id }
   }
 
   // Send a request along a link. A zero-tick link delivers it right away.

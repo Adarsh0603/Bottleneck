@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import BuildPlayer from '../build/BuildPlayer'
-import type { Placement, Settings } from '../build/types'
+import { getBuild, useBuildsLoaded } from '../build/saved'
 import { CHEAT_SHEET, TopBar } from '../chrome'
 import { play } from '../sound'
+import Board from './Board'
+import IntroScene from './IntroScene'
 import type { Capstone } from './types'
 
 interface CapstoneProps {
@@ -16,11 +18,12 @@ interface CapstoneProps {
   onFinish?: () => void
 }
 
-// The board survives moving between stages (each stage is its own screen).
-const boards = new Map<string, { placed: Placement; settings: Settings }>()
+// Each build stage saves its own board. Where it breaks starts from the
+// finished first design, and Reset takes it back there.
+const stageKey = (capstone: Capstone, stage: number) => `${capstone.id}:${stage}`
 
 // A capstone: four stages. Requirements and the final review are paper; the
-// two middle stages share one design board.
+// two middle stages build on one design.
 export default function CapstonePlayer(props: CapstoneProps) {
   const { capstone, chapter } = props
   const chapters = capstone.stages.map((title) => ({ title, level: 'Advanced' as const }))
@@ -28,13 +31,11 @@ export default function CapstonePlayer(props: CapstoneProps) {
 
   if (chapter === 1 || chapter === 2) {
     const task = chapter === 1 ? capstone.first : capstone.scale
-    const saved = boards.get(capstone.id)
-    const pads = new Set(task.pads.map((p) => p.id))
-    // Pieces on pads this stage doesn't have are kept for later, not shown.
-    const placed = Object.fromEntries(Object.entries(saved?.placed ?? {}).filter(([id]) => pads.has(id)))
     return (
       <BuildPlayer
         task={task}
+        saveKey={stageKey(capstone, chapter)}
+        fallbackKey={chapter === 2 ? stageKey(capstone, 1) : undefined}
         chapters={chapters}
         index={chapter}
         doneChapters={props.doneChapters}
@@ -42,8 +43,6 @@ export default function CapstonePlayer(props: CapstoneProps) {
         onCheatSheet={props.onCheatSheet}
         onStep={props.onStep}
         onSolved={props.onSolved}
-        initial={{ placed, settings: saved?.settings ?? {} }}
-        onBoard={(p, s) => boards.set(capstone.id, { placed: { ...saved?.placed, ...p }, settings: s })}
         onContinue={next}
         continueText="Next stage →"
       />
@@ -51,7 +50,7 @@ export default function CapstonePlayer(props: CapstoneProps) {
   }
   return (
     <Paper chapters={chapters} {...props}>
-      {chapter === 0 ? <Estimate {...props} next={next} /> : <Final {...props} />}
+      {chapter === 0 ? <Requirements {...props} next={next} /> : <Final {...props} />}
     </Paper>
   )
 }
@@ -63,11 +62,14 @@ function Paper({
   doneChapters,
   onChapter,
   onCheatSheet,
+  capstone,
   children,
 }: CapstoneProps & { chapters: { title: string; level: 'Advanced' }[]; children: React.ReactNode }) {
+  // A project with a board on its first screen gets the room for it.
+  const wide = chapter === 0 && !!capstone.intro
   return (
     <div className="blueprint relative h-[calc(100svh-57px)] min-h-[260px] w-full overflow-y-auto">
-      <div className="mx-auto flex min-h-full max-w-2xl flex-col gap-4 p-3 sm:p-4">
+      <div className={`mx-auto flex min-h-full flex-col gap-4 p-3 sm:p-4 ${wide ? "max-w-5xl" : "max-w-2xl"}`}>
         <TopBar
           chapters={chapters}
           index={chapter}
@@ -79,6 +81,27 @@ function Paper({
       </div>
     </div>
   )
+}
+
+// Stage 1. A project with an intro opens on it, once per visit; then the
+// brief and the numbers.
+const introSeen = new Set<string>()
+
+function Requirements(props: CapstoneProps & { next: () => void }) {
+  const { capstone } = props
+  const [intro, setIntro] = useState(!!capstone.intro && !introSeen.has(capstone.id))
+  if (intro && capstone.intro) {
+    return (
+      <IntroScene
+        intro={capstone.intro}
+        onDone={() => {
+          introSeen.add(capstone.id)
+          setIntro(false)
+        }}
+      />
+    )
+  }
+  return <Estimate {...props} />
 }
 
 const Label = ({ children }: { children: React.ReactNode }) => (
@@ -101,7 +124,7 @@ function Brief({ capstone }: { capstone: Capstone }) {
 // Stage 1: work out the numbers. One question at a time; a wrong answer
 // explains itself, and the right one shows the working.
 function Estimate({ capstone, onStep, onSolved, next }: CapstoneProps & { next: () => void }) {
-  const { intro, questions } = capstone.estimate
+  const { intro, questions, summary } = capstone.estimate
   const [q, setQ] = useState(0)
   const [tried, setTried] = useState<number[]>([])
   const [right, setRight] = useState(false)
@@ -120,6 +143,7 @@ function Estimate({ capstone, onStep, onSolved, next }: CapstoneProps & { next: 
   }, [done, onSolved, onStep])
 
   const question = questions[Math.min(q, questions.length - 1)]
+  const onBoard = !!capstone.intro && !!capstone.goals
   const pick = (i: number) => {
     if (right || tried.includes(i)) return
     setTried((t) => [...t, i])
@@ -130,14 +154,27 @@ function Estimate({ capstone, onStep, onSolved, next }: CapstoneProps & { next: 
   }
   return (
     <>
-      <Brief capstone={capstone} />
-      <section className="rounded-2xl border border-line bg-bg/90 p-4 backdrop-blur">
+      {!onBoard && <Brief capstone={capstone} />}
+      <section className="overflow-hidden rounded-2xl border border-line bg-bg/90 backdrop-blur">
+        {onBoard && (
+          <>
+            <div className="flex flex-wrap gap-1.5 p-3 pb-0">
+              {capstone.goals!.map((g) => (
+                <span key={g} className="rounded-full border border-line px-3 py-1 text-xs">
+                  {g}
+                </span>
+              ))}
+            </div>
+            <Board task={capstone.intro!.task} at={done ? undefined : question.at} label={right ? question.show : '?'} className="mt-2 h-[46svh] min-h-[260px]" />
+          </>
+        )}
+        <div className="p-4">
         <Label>Back of the envelope · {Math.min(q + 1, questions.length)} of {questions.length}</Label>
-        <p className="mt-2 text-sm text-muted">{intro}</p>
+        {!onBoard && <p className="mt-2 text-sm text-muted">{intro}</p>}
         {done ? (
           <div className="mt-4">
-            <p className="text-lg font-semibold tracking-tight">About 12 new links and 1,200 redirects a second, around 1 TB.</p>
-            <p className="mt-1 text-sm text-muted">Reads dominate, and the data fits on one machine. Those two facts shape everything next.</p>
+            <p className="text-lg font-semibold tracking-tight">{summary.title}</p>
+            <p className="mt-1 text-sm text-muted">{summary.body}</p>
             <button onClick={next} className="mt-4 h-10 rounded-full bg-fg px-6 text-sm font-medium text-bg transition hover:opacity-85">
               Next stage →
             </button>
@@ -181,6 +218,12 @@ function Estimate({ capstone, onStep, onSolved, next }: CapstoneProps & { next: 
             )}
           </div>
         )}
+        {onBoard && q > 0 && (
+          <p className="mt-4 border-t border-line pt-3 font-mono text-xs text-muted">
+            Found: {questions.slice(0, q).map((x) => x.show).join(' · ')}
+          </p>
+        )}
+        </div>
       </section>
     </>
   )
@@ -188,7 +231,8 @@ function Estimate({ capstone, onStep, onSolved, next }: CapstoneProps & { next: 
 
 // Stage 4: your design next to a reference design, then what to say about it.
 function Final({ capstone, onStep, onFinish }: CapstoneProps) {
-  const saved = boards.get(capstone.id)
+  useBuildsLoaded()
+  const saved = getBuild(stageKey(capstone, 2)) ?? getBuild(stageKey(capstone, 1))
   const review = capstone.review(saved?.placed ?? {}, saved?.settings ?? {})
   useEffect(() => {
     onStep?.(0, true)

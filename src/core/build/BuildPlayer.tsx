@@ -13,7 +13,14 @@ import { useBottomInset } from "../useBottomInset";
 import { COMPACT, SHORT, SIDE, useMedia } from "../useMedia";
 import BuildScene from "./BuildScene";
 import { PieceIcon } from "./pieces";
-import { canDrop, drop, lift, remaining } from "./placement";
+import { canDrop, drop, fit, lift, remaining } from "./placement";
+import {
+  clearBuild,
+  getBuild,
+  saveBuild,
+  useBuildsLoaded,
+  type SavedBuild,
+} from "./saved";
 import { Source } from "../flow/nodes";
 import { MS_PER_TICK, Running, TICKS_PER_SECOND } from "./run";
 import {
@@ -43,23 +50,7 @@ const padAt = (x: number, y: number) =>
     ?.closest("[data-pad]")
     ?.getAttribute("data-pad") ?? null;
 
-// A "Build it" chapter: drag pieces onto the floor while live traffic runs
-// through whatever has been built, until the goal holds.
-export default function BuildPlayer({
-  task,
-  chapters,
-  index,
-  doneChapters,
-  onChapter,
-  onCheatSheet,
-  onStep,
-  onSolved,
-  onFinish,
-  initial,
-  onBoard,
-  onContinue,
-  continueText,
-}: {
+interface BuildPlayerProps {
   task: BuildTask;
   chapters: { title: string; level: Level }[];
   index: number;
@@ -69,14 +60,57 @@ export default function BuildPlayer({
   onStep?: (step: number, isLastStep: boolean) => void;
   onSolved?: (step: number) => void;
   onFinish?: () => void;
-  // A capstone carries its board from stage to stage: start from it, report changes.
-  initial?: { placed: Placement; settings: Settings };
-  onBoard?: (placed: Placement, settings: Settings) => void;
+  // Where this build is saved between visits.
+  saveKey: string;
   // Replaces what "Next" does and says, e.g. to go on to the next stage.
   onContinue?: () => void;
   continueText?: string;
-}) {
-  const [placed, setPlaced] = useState<Placement>(initial?.placed ?? {});
+}
+
+// A "Build it" chapter: drag pieces onto the floor while live traffic runs
+// through whatever has been built, until the goal holds. The build is saved
+// as it changes. `fallbackKey` names the saved build it starts from when its
+// own is empty (and where Reset returns to), e.g. a capstone's earlier stage.
+export default function BuildPlayer({
+  fallbackKey,
+  ...props
+}: BuildPlayerProps & { fallbackKey?: string }) {
+  const ready = useBuildsLoaded();
+  const [round, setRound] = useState(0);
+  if (!ready) return null;
+  return (
+    <Builder
+      key={round}
+      {...props}
+      start={fit(
+        props.task,
+        getBuild(props.saveKey) ?? (fallbackKey ? getBuild(fallbackKey) : undefined),
+      )}
+      onReset={() => {
+        clearBuild(props.saveKey);
+        setRound((r) => r + 1);
+      }}
+    />
+  );
+}
+
+function Builder({
+  task,
+  chapters,
+  index,
+  doneChapters,
+  onChapter,
+  onCheatSheet,
+  onStep,
+  onSolved,
+  onFinish,
+  saveKey,
+  start,
+  onReset,
+  onContinue,
+  continueText,
+}: BuildPlayerProps & { start: SavedBuild; onReset: () => void }) {
+  const [placed, setPlaced] = useState<Placement>(start.placed);
   const [selected, setSelected] = useState<PieceKind | null>(null);
   const selectedRef = useRef(selected);
   selectedRef.current = selected;
@@ -89,6 +123,8 @@ export default function BuildPlayer({
   const [detailsOpen, setDetailsOpen] = useState(true);
   const [pinnedOpen, setPinnedOpen] = useState(() => !window.matchMedia(COMPACT).matches);
   const [running, setRunning] = useState(!task.manualStart);
+  // Set the moment a fail-fast task's requirement breaks: the run freezes there.
+  const [failure, setFailure] = useState<{ title: string; text: string } | null>(null);
   const [, setFrame] = useState(0);
   const compact = useMedia(COMPACT);
   const short = useMedia(SHORT);
@@ -99,7 +135,7 @@ export default function BuildPlayer({
 
   const [settings, setSettings] = useState<Settings>(() => ({
     ...Object.fromEntries((task.settings ?? []).map((s) => [s.id, s.initial])),
-    ...initial?.settings,
+    ...start.settings,
   }));
   const settingsRef = useRef(settings);
   settingsRef.current = settings;
@@ -125,6 +161,7 @@ export default function BuildPlayer({
       task.assemble(placedRef.current, settingsRef.current),
     );
     holdStart.current = null;
+    setFailure(null);
     setRunning(false);
   };
 
@@ -140,6 +177,7 @@ export default function BuildPlayer({
   const restart = (nextPlaced: Placement, nextSettings: Settings) => {
     runRef.current = new Running(task.assemble(nextPlaced, nextSettings));
     holdStart.current = null;
+    setFailure(null);
     setSolved(false);
     setVictoryOpen(false);
     // Tasks with a Start button wait for it again, so the new build starts from zero.
@@ -156,14 +194,14 @@ export default function BuildPlayer({
     placedRef.current = next;
     setPlaced(next);
     restart(next, settingsRef.current);
-    onBoard?.(next, settingsRef.current);
+    saveBuild(saveKey, { placed: next, settings: settingsRef.current });
   };
   const changeSetting = (id: string, value: number) => {
     const next = { ...settingsRef.current, [id]: value };
     settingsRef.current = next;
     setSettings(next);
     restart(placedRef.current, next);
-    onBoard?.(placedRef.current, next);
+    saveBuild(saveKey, { placed: placedRef.current, settings: next });
     // Tuning a setting is asking to see what it does: no need to press Start.
     if (task.manualStart) setRunning(true);
   };
@@ -197,6 +235,16 @@ export default function BuildPlayer({
       holdStart.current = null;
     }
   }, [solved, tick, task, m, placed, settings, run]);
+  // Fail fast: the first requirement to break stops the run on the spot, with the reason.
+  useEffect(() => {
+    if (!task.failFast || !running || solved || failure || tick === 0) return;
+    const broken = task.requirements?.find((r) => !r.read(run.flow, m).ok);
+    if (!broken) return;
+    const { text } = broken.read(run.flow, m);
+    const why = task.problem?.(m, placed, settings, run.flow) ?? broken.says;
+    setFailure({ title: broken.label, text: `${text}. ${why}` });
+    setRunning(false);
+  }, [task, running, solved, failure, tick, m, placed, settings, run]);
   // Traffic right now: it can rise and fall during a build.
   const rps = !running
     ? 0
@@ -221,7 +269,7 @@ export default function BuildPlayer({
     performance.now() - problemSeen.current.since >= PROBLEM_DELAY_MS
       ? raw
       : null;
-  const problem = found;
+  const problem = failure ? failure.text : found;
   // On a small screen the goal and title can be folded away to show more floor.
   const focus = compact && !detailsOpen && !solved;
   const holdProgress =
@@ -329,7 +377,12 @@ export default function BuildPlayer({
         } ${count > 0 ? "cursor-grab active:cursor-grabbing" : ""}`}
       >
         <PieceIcon kind={kind} size={34} />
-        <span>{PIECE_NAMES[kind]}</span>
+        <span className="min-w-0 text-left">
+          <span className="block">{PIECE_NAMES[kind]}</span>
+          {task.hints?.[kind] && (
+            <span className="block text-[10px] leading-tight text-muted">{task.hints[kind]}</span>
+          )}
+        </span>
         <span className="ml-auto font-mono text-xs text-muted">×{count}</span>
       </button>
     );
@@ -356,14 +409,34 @@ export default function BuildPlayer({
   );
   const startButton = task.manualStart && !solved && (
     <button
-      onClick={running ? stop : () => setRunning(true)}
+      onClick={
+        running
+          ? stop
+          : failure
+            ? () => {
+                restart(placedRef.current, settingsRef.current);
+                setRunning(true);
+              }
+            : () => setRunning(true)
+      }
       className={`rounded-xl px-4 py-1.5 text-sm font-medium transition ${side ? "w-full py-2.5" : ""} ${
         running
           ? "border border-line bg-bg/90 backdrop-blur hover:border-fg"
           : "bg-fg text-bg hover:opacity-85"
       }`}
     >
-      {running ? "Stop and edit" : "Start requests"}
+      {running ? "Stop and edit" : failure ? "Try again" : "Start requests"}
+    </button>
+  );
+  const resetButton = (
+    <button
+      onClick={() => {
+        if (window.confirm("Reset this build? Your pieces and settings here will be cleared."))
+          onReset();
+      }}
+      className={`rounded-xl border border-line bg-bg/90 px-4 py-1.5 text-sm backdrop-blur transition hover:border-fg ${side ? "w-full py-2.5" : ""}`}
+    >
+      Reset build
     </button>
   );
   const situationButton = task.brief && (!briefOpen || side) && (
@@ -404,9 +477,14 @@ export default function BuildPlayer({
       role="status"
     >
       <div className="font-mono text-[10px] uppercase tracking-widest text-danger">
-        What’s going wrong
+        {failure ? `Build failed: ${failure.title}` : "What’s going wrong"}
       </div>
       <p className="mt-1">{problem}</p>
+      {failure && (
+        <p className="mt-1 text-xs opacity-70">
+          Change something, or tap Try again to rerun it.
+        </p>
+      )}
     </div>
   );
   const continueLabel = continueText ?? (lastChapter ? "Finish ✓" : "Next →");
@@ -473,11 +551,17 @@ export default function BuildPlayer({
   );
   // Tells the learner a run takes a while to judge, and that any change starts it over.
   const elapsed = Math.floor(tick / TICKS_PER_SECOND);
-  const testNote = task.testSeconds
-    ? elapsed < task.testSeconds
-      ? `Testing your build: ${elapsed}s of about ${task.testSeconds}s. Any change restarts the test.`
-      : "Almost done. The goal has to hold until the bar fills."
-    : `The goal has to hold for ${task.holdSeconds}s. Any change restarts the test.`;
+  const testNote =
+    task.statusNote?.(run.flow) ??
+    (task.testSeconds
+      ? elapsed < task.testSeconds
+        ? `Testing your build: ${elapsed}s of about ${task.testSeconds}s. Any change restarts the test.`
+        : "Almost done. The goal has to hold until the bar fills."
+      : `The goal has to hold for ${task.holdSeconds}s. Any change restarts the test.`);
+  const timeline = task.timeline;
+  const phaseNow = timeline
+    ? timeline.phases.reduce((at, p, i) => (tick >= p.from ? i : at), 0)
+    : 0;
   const goalCard = (
     <div
       className={`max-w-md rounded-xl border transition ${side ? "w-full p-3" : short || focus ? "mb-2 px-3 py-2" : "mb-3 p-3"} ${
@@ -500,6 +584,37 @@ export default function BuildPlayer({
       </div>
       {!solved && running && !focus && (
         <div className="mt-1 text-xs opacity-70">{testNote}</div>
+      )}
+      {!solved && running && !focus && timeline && (
+        <div className="mt-2" aria-label="The day, phase by phase">
+          <div className="relative flex h-1.5 gap-px overflow-hidden rounded-full">
+            {timeline.phases.map((p, i) => {
+              const to = timeline.phases[i + 1]?.from ?? timeline.end;
+              return (
+                <div
+                  key={p.from}
+                  className={i < phaseNow ? "bg-fg" : i === phaseNow ? "bg-fg animate-pulse" : "bg-line"}
+                  style={{ flex: to - p.from }}
+                />
+              );
+            })}
+          </div>
+          <div className="mt-1 flex gap-px text-[9px] leading-tight">
+            {timeline.phases.map((p, i) => {
+              const to = timeline.phases[i + 1]?.from ?? timeline.end;
+              return (
+                <div
+                  key={p.from}
+                  className={`min-w-0 overflow-hidden ${i === phaseNow ? "font-medium" : "opacity-50"}`}
+                  style={{ flex: to - p.from }}
+                  title={p.name}
+                >
+                  <span className="block truncate">{p.name}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
       {!solved && (
         <div
@@ -602,33 +717,6 @@ export default function BuildPlayer({
             );
           })}
         </div>
-        {task.requirements && (
-          <div
-            className={`flex gap-1.5 ${compact ? "no-scrollbar pointer-events-auto -mx-3 overflow-x-auto px-3" : "pointer-events-auto flex-wrap"}`}
-            aria-label="Requirements"
-          >
-            {task.requirements.map((r) => {
-              const { text, ok } = r.read(run.flow, m);
-              const state = tick === 0 ? "idle" : ok ? "ok" : "bad";
-              return (
-                <div
-                  key={r.label}
-                  className={`flex shrink-0 items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[11px] backdrop-blur transition-colors ${
-                    state === "ok"
-                      ? "border-fg bg-fg text-bg"
-                      : state === "bad"
-                        ? "border-danger bg-bg/80 text-danger"
-                        : "border-line bg-bg/80 text-muted"
-                  }`}
-                >
-                  <span aria-hidden>{state === "ok" ? "✓" : state === "bad" ? "✕" : "○"}</span>
-                  <span className="uppercase tracking-widest">{r.label}</span>
-                  <span className="tabular-nums opacity-80">{tick === 0 ? "" : text}</span>
-                </div>
-              );
-            })}
-          </div>
-        )}
         {task.pinned && (
           <div className="pointer-events-auto max-w-xs rounded-xl border border-line bg-bg/85 backdrop-blur">
             <button
@@ -644,6 +732,29 @@ export default function BuildPlayer({
                 {task.pinned.lines.map((line) => (
                   <p key={line}>{line}</p>
                 ))}
+                {task.requirements && (
+                  <>
+                    <div className="pt-1 font-mono text-[10px] uppercase tracking-widest text-muted">It must</div>
+                    <ul className="space-y-1.5">
+                      {task.requirements.map((r) => {
+                        const { text, ok } = running ? r.read(run.flow, m) : { text: "", ok: true };
+                        return (
+                          <li key={r.label} className="flex gap-2">
+                            <span className={`mt-px font-mono ${running && !ok ? "text-danger" : ""}`}>
+                              {running ? (ok ? "✓" : "✕") : "·"}
+                            </span>
+                            <span>
+                              {r.says}
+                              {running && text && (
+                                <span className={`block font-mono text-[11px] ${ok ? "text-muted" : "text-danger"}`}>{text}</span>
+                              )}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </>
+                )}
               </div>
             )}
           </div>
@@ -704,7 +815,10 @@ export default function BuildPlayer({
                 </div>
               </section>
             ))}
-            <div className="mt-auto">{startButton}</div>
+            <div className="mt-auto flex flex-col gap-2">
+              {startButton}
+              {resetButton}
+            </div>
           </aside>
 
           {/* Canvas: goal, hint, situation and what's going wrong. */}
@@ -777,6 +891,7 @@ export default function BuildPlayer({
                   </div>
                 ))}
                 {startButton}
+                {resetButton}
               </div>
             </div>
 

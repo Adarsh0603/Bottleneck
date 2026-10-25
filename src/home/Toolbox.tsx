@@ -16,72 +16,69 @@ export default function Toolbox() {
 
   return (
     <div className="mt-14">
-      <h2 className="font-mono text-[11px] uppercase tracking-widest text-muted">
-        The toolbox: every concept
+      <h2 className="font-mono text-[24px] uppercase tracking-widest text-muted">
+        <b>The arsenal:</b> every concept from server to distributed consensus
       </h2>
 
-        {TRACKS.map((track) => {
-          const topics = TOPICS.filter((t) => t.track === track.id);
-          return (
-            <section key={track.id} className="mt-12">
-              <div className="mb-4 flex items-baseline gap-3">
-                <h2 className="text-lg font-semibold tracking-tight">
-                  {track.title}
-                </h2>
-                <span className="rounded-full border border-line bg-bg px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-muted">
-                  {track.level}
-                </span>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                {topics.map((t) => (
-                  <TopicCard
-                    key={t.id}
-                    topic={t}
-                    isNext={t === next}
-                    onOpen={() => openTopic(t)}
-                  />
-                ))}
-                {PLANNED.filter((t) => t.track === track.id).map((t) => (
-                  <div
-                    key={t.id}
-                    className="rounded-2xl border border-dashed border-line bg-bg p-4"
-                  >
-                    <div className="flex items-center justify-between font-mono text-xs text-muted">
-                      <span>Planned</span>
-                      <span className="rounded-full border border-line px-2 py-0.5 text-[10px] uppercase tracking-widest">
-                        Soon
-                      </span>
-                    </div>
-                    <h3 className="mt-3 font-medium text-muted">{t.title}</h3>
-                    <p className="mt-1 text-sm leading-6 text-muted">
-                      {t.pitch}
-                    </p>
+      {/* The projects live on the map, so their track is left out here. */}
+      {TRACKS.filter((track) => track.id !== "capstones").map((track) => {
+        const topics = TOPICS.filter((t) => t.track === track.id);
+        return (
+          <section key={track.id} className="mt-12">
+            <div className="mb-4 flex items-baseline gap-3">
+              <h2 className="text-lg font-semibold tracking-tight">
+                {track.title}
+              </h2>
+              <span className="rounded-full border border-line bg-bg px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-muted">
+                {track.level}
+              </span>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {topics.map((t) => (
+                <TopicCard
+                  key={t.id}
+                  topic={t}
+                  isNext={t === next}
+                  onOpen={() => openTopic(t)}
+                />
+              ))}
+              {PLANNED.filter((t) => t.track === track.id).map((t) => (
+                <div
+                  key={t.id}
+                  className="rounded-2xl border border-dashed border-line bg-bg p-4"
+                >
+                  <div className="flex items-center justify-between font-mono text-xs text-muted">
+                    <span>Planned</span>
+                    <span className="rounded-full border border-line px-2 py-0.5 text-[10px] uppercase tracking-widest">
+                      Soon
+                    </span>
                   </div>
-                ))}
-              </div>
-            </section>
-          );
-        })}
+                  <h3 className="mt-3 font-medium text-muted">{t.title}</h3>
+                  <p className="mt-1 text-sm leading-6 text-muted">{t.pitch}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        );
+      })}
 
-        <footer className="mt-16 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-6 text-xs text-muted">
-          <Credit />
-          <span className="flex flex-wrap items-center gap-3">
-            <span>Progress is saved in this browser only.</span>
-            {Object.keys(progress).length > 0 && (
-              <button
-                onClick={() => {
-                  if (
-                    window.confirm("Reset all progress? This can’t be undone.")
-                  )
-                    resetProgress();
-                }}
-                className="font-mono underline-offset-4 transition hover:text-fg hover:underline"
-              >
-                Reset progress
-              </button>
-            )}
-          </span>
-        </footer>
+      <footer className="mt-16 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-6 text-xs text-muted">
+        <Credit />
+        <span className="flex flex-wrap items-center gap-3">
+          <span>Progress is saved in this browser only.</span>
+          {Object.keys(progress).length > 0 && (
+            <button
+              onClick={() => {
+                if (window.confirm("Reset all progress? This can’t be undone."))
+                  resetProgress();
+              }}
+              className="font-mono underline-offset-4 transition hover:text-fg hover:underline"
+            >
+              Reset progress
+            </button>
+          )}
+        </span>
+      </footer>
     </div>
   );
 }

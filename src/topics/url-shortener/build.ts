@@ -77,6 +77,7 @@ function assemble(placed: Placement, settings: Settings, profile: Profile, rng?:
 // The checks a finished design must pass. Shown live; the win needs all green.
 const noDupes: Requirement = {
   label: 'Codes',
+  says: 'Every short link gets its own code. Two different links must never share one.',
   read: (flow) => {
     const d = shortenerOf.get(flow)?.tally.dupes ?? 0
     return { text: d === 0 ? 'all unique' : `${d} repeated`, ok: d === 0 }
@@ -84,6 +85,7 @@ const noDupes: Requirement = {
 }
 const redirectsWork = (limit: number): Requirement => ({
   label: 'Redirects',
+  says: `Visitors must land on the long link. No more than ${limit} redirects may be lost or take over 2 seconds.`,
   read: (flow) => {
     const f = shortenerOf.get(flow)?.redirectsFailed() ?? 0
     return { text: `${f} lost`, ok: f <= limit }
@@ -91,6 +93,7 @@ const redirectsWork = (limit: number): Requirement => ({
 })
 const redirectsFast: Requirement = {
   label: 'Speed',
+  says: 'A redirect should feel instant: under 1.6 seconds on average.',
   read: (_flow, m) => {
     const ms = m.latency.users ?? 0
     return { text: `${(ms / 1000).toFixed(1)}s`, ok: ms < 1600 }
@@ -98,6 +101,7 @@ const redirectsFast: Requirement = {
 }
 const newLinks: Requirement = {
   label: 'New links',
+  says: 'People must keep being able to make short links. No more than 2 may fail.',
   read: (flow) => {
     const f = shortenerOf.get(flow)?.makersFailed() ?? 0
     return { text: `${f} lost`, ok: f <= 2 }
@@ -105,6 +109,7 @@ const newLinks: Requirement = {
 }
 const clicksKept: Requirement = {
   label: 'Clicks',
+  says: 'Every redirect counts as a click for the link owner. No more than 20 clicks may be lost.',
   read: (flow) => {
     const f = shortenerOf.get(flow)?.clicksLost() ?? 0
     return { text: `${f} lost`, ok: f <= 20 }
@@ -296,6 +301,7 @@ export const URL_SHORTENER: Capstone = {
   brief: BRIEF,
   estimate: {
     intro: 'Before drawing anything, work out how big this is. A few quick numbers decide the design.',
+    summary: { title: 'About 12 new links and 1,200 redirects a second, around 1 TB.', body: 'Reads dominate, and the data fits on one machine. Those two facts shape everything next.' },
     questions: [
       { question: '1 million new links a day. About how many new links a second is that?', options: ['About 1', 'About 12', 'About 120'], answer: 1, why: 'A day has about 86,000 seconds. 1,000,000 ÷ 86,000 is about 12.' },
       { question: 'There are about 100 redirects for every new link. About how many redirects a second?', options: ['About 120', 'About 1,200', 'About 12,000'], answer: 1, why: '12 new links a second × 100 is about 1,200 redirects a second. Reading dominates.' },

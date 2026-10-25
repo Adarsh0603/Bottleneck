@@ -108,11 +108,11 @@ function merlons(p: Part): Part[] {
     .map(([du, dv]) => ({ u: p.u + du, v: p.v + dv, a: m, b: m, h: m * MERLON_RISE, z: (p.z ?? 0) + p.h }))
 }
 
-function skin(state: ProjectState) {
+function skin(state: ProjectState, selected: boolean) {
   const done = state === 'done'
   return {
     done,
-    stroke: done || state === 'next' ? 'var(--fg)' : 'var(--muted)',
+    stroke: done || selected ? 'var(--fg)' : 'var(--muted)',
     top: done ? 'var(--fg)' : 'var(--iso-top)',
     left: done ? mix(72) : 'var(--iso-left)',
     right: done ? mix(52) : 'var(--iso-right)',
@@ -171,8 +171,8 @@ export function castleHeight(p: Project) {
 }
 
 // scale > 1 draws a realm's capital, bigger than the castles around it.
-export function Castle({ p, state, scale = 1 }: { p: Project; state: ProjectState; scale?: number }) {
-  const s = skin(state)
+export function Castle({ p, state, scale = 1, selected = false }: { p: Project; state: ProjectState; scale?: number; selected?: boolean }) {
+  const s = skin(state, selected)
   const pl = plan(p.tier)
   const reach = Math.max(...pl.parts.map((q) => Math.max(Math.abs(q.u) + q.a, Math.abs(q.v) + q.b)))
   const [fu, fv, fz] = pl.flag
@@ -180,7 +180,7 @@ export function Castle({ p, state, scale = 1 }: { p: Project; state: ProjectStat
   const k = bannerScale(p.tier)
   const topPart = pl.parts.find((q) => (q.z ?? 0) + q.h === fz)
   const lift = topPart?.merlons ? merlonSize(topPart) * MERLON_RISE : 0
-  const flagFill = s.done ? 'var(--danger)' : 'var(--iso-top)'
+  const flagFill = s.done ? 'var(--srv-3)' : 'var(--iso-top)'
   return (
     <g opacity={state === 'fog' ? 0.85 : 1} transform={scale === 1 ? undefined : `translate(${p.x} ${p.y}) scale(${scale}) translate(${-p.x} ${-p.y})`}>
       <polygon
@@ -194,7 +194,7 @@ export function Castle({ p, state, scale = 1 }: { p: Project; state: ProjectStat
       {p.tier === 4 && <line x1={p.x + 6} y1={pole[1] - 2} x2={p.x + 6} y2={pole[1] - 16} stroke={s.stroke} strokeWidth={1.2} />}
       <g transform={`translate(${pole[0]} ${pole[1] - lift}) scale(${k})`}>
         <line x1={0} y1={0} x2={0} y2={-POLE} stroke={s.stroke} strokeWidth={1.3} />
-        <polygon points={`0,-${POLE} 27,-${POLE} 22,-${POLE - 9.5} 27,-${POLE - 19} 0,-${POLE - 19}`} style={{ fill: flagFill, stroke: s.done ? 'var(--danger)' : s.stroke }} strokeWidth={1} strokeLinejoin="round" />
+        <polygon points={`0,-${POLE} 27,-${POLE} 22,-${POLE - 9.5} 27,-${POLE - 19} 0,-${POLE - 19}`} style={{ fill: flagFill, stroke: s.done ? 'var(--srv-3)' : s.stroke }} strokeWidth={1} strokeLinejoin="round" />
         <path
           d={EMBLEM[p.id] ?? ''}
           transform={`translate(11.5 -${POLE - 9.5}) scale(1.1)`}

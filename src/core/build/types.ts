@@ -5,7 +5,7 @@ import type { Shot, V3 } from '../types'
 // "Build it": the learner drags pieces onto pads on the floor, and traffic
 // flows through whatever they've assembled.
 
-export type PieceKind = 'users' | 'balancer' | 'server' | 'app' | 'cache' | 'database' | 'replica' | 'autoscaler' | 'ring' | 'queue' | 'topic' | 'stream' | 'limiter' | 'breaker'
+export type PieceKind = 'users' | 'balancer' | 'server' | 'app' | 'cache' | 'database' | 'replica' | 'autoscaler' | 'ring' | 'queue' | 'topic' | 'stream' | 'limiter' | 'breaker' | 'provider' | 'dead' | 'dedupe'
 
 export const PIECE_NAMES: Record<PieceKind, string> = {
   users: 'Users',
@@ -22,6 +22,9 @@ export const PIECE_NAMES: Record<PieceKind, string> = {
   stream: 'Stream',
   limiter: 'Rate limiter',
   breaker: 'Circuit breaker',
+  provider: 'Provider',
+  dead: 'Dead-letter queue',
+  dedupe: 'Dedupe store',
 }
 
 // Half the footprint of each piece: where requests leave and arrive.
@@ -40,6 +43,9 @@ export const HALF: Record<PieceKind, number> = {
   stream: 0.95,
   limiter: 0.65,
   breaker: 0.65,
+  provider: 0.85,
+  dead: 0.8,
+  dedupe: 0.65,
 }
 
 // A spot on the floor where pieces can be dropped.
@@ -92,9 +98,10 @@ export type Watch =
   // Anything the task tracks itself, read off the running system.
   | { kind: 'note'; label: string; read: (flow: FlowSim) => { text: string; bad: boolean } }
 
-// One line of a capstone's requirement checks: green once it holds.
+// One line of a capstone's requirement checks: the win needs every one to hold.
 export interface Requirement {
   label: string
+  says: string // the requirement in a plain sentence, listed in the brief
   read: (flow: FlowSim, m: BuildMetrics) => { text: string; ok: boolean }
 }
 
@@ -107,6 +114,10 @@ export interface BuildTask {
   sub: string
   // The situation in plain words, one paragraph each, shown before building.
   brief?: string[]
+  // Any piece may go on any pad, and nothing lights up to show where one fits.
+  anywhere?: boolean
+  // Stop the run the moment any requirement breaks, and say which and why.
+  failFast?: boolean
   // Hold traffic back until the learner presses Start, so they can build first.
   manualStart?: boolean
   goal: string
@@ -122,6 +133,14 @@ export interface BuildTask {
   labels?: { at: V3; text: string }[]
   pads: Pad[]
   toolbox: { kind: PieceKind; count: number }[]
+  // One line per piece: what it does, shown in the toolbox before it is placed.
+  hints?: Partial<Record<PieceKind, string>>
+  // The run as a strip of named phases (start tick of each), so a long scripted
+  // run reads as a day with a shape, not as random traffic. Later phases show
+  // by name only.
+  timeline?: { phases: { name: string; from: number }[]; end: number }
+  // Replaces the "Testing your build" line while it returns text, e.g. once the traffic is over.
+  statusNote?: (flow: FlowSim) => string | null
   settings?: BuildSetting[]
   watch?: Watch[]
   // Turn a placement into a running system. Node keys are the fixed pieces'

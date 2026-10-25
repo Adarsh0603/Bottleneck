@@ -25,6 +25,7 @@ export default function Viewport({
   controlsSide = 'right',
   markers = [],
   bounds,
+  grid = true,
   children,
 }: {
   target: V3
@@ -35,6 +36,7 @@ export default function Viewport({
   controlsSide?: 'left' | 'right'
   markers?: Marker[]
   bounds?: V3[] // when given, frame all of these points instead of using target and zoom
+  grid?: boolean // the floor grid; a small display board looks cleaner without it
   children: (frame: Frame) => ReactNode
 }) {
   const [now, setNow] = useState(() => performance.now())
@@ -239,7 +241,7 @@ export default function Viewport({
           }
         }}
       >
-        <IsoGrid />
+        {grid && <IsoGrid />}
         {children({ now, dt })}
         {markers.map((m) => (
           <MarkerPin key={m.label} marker={m} />

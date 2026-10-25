@@ -10,6 +10,7 @@ What is built, and what is still to build. Update this as topics land.
 
 ## Built, awaiting testing
 - **Capstone 1: URL shortener** (branch `url-shortener`)
+- **Capstone 2: Notification system** (branch `notifications`), built on new engine nodes in `src/core/flow`: provider, sender with retries, dedupe store, dead letters, priority queue, pacer, ledger
 
 ## To build: concepts the capstones depend on
 Build these before the remaining capstones.

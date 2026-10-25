@@ -11,7 +11,7 @@ export function remaining(task: BuildTask, placed: Placement): Partial<Record<Pi
 }
 
 const accepts = (task: BuildTask, padId: string, kind: PieceKind) =>
-  !!task.pads.find((p) => p.id === padId)?.accepts.includes(kind)
+  !!task.pads.find((p) => p.id === padId) && (task.anywhere || task.pads.find((p) => p.id === padId)!.accepts.includes(kind))
 
 // Can `kind` go on `padId`, either from the toolbox or moved from `fromPad`?
 export function canDrop(task: BuildTask, placed: Placement, padId: string, kind: PieceKind, fromPad?: string) {
@@ -32,6 +32,19 @@ export function drop(task: BuildTask, placed: Placement, padId: string, kind: Pi
   }
   next[padId] = kind
   return next
+}
+
+// A saved build, cut down to what this task still allows: pads and pieces it
+// no longer has, or more pieces than the toolbox holds, are dropped.
+export function fit(task: BuildTask, saved: { placed: Placement; settings: Record<string, number> } | undefined) {
+  let placed: Placement = {}
+  for (const [pad, kind] of Object.entries(saved?.placed ?? {})) if (canDrop(task, placed, pad, kind)) placed = { ...placed, [pad]: kind }
+  const settings: Record<string, number> = {}
+  for (const s of task.settings ?? []) {
+    const v = saved?.settings[s.id]
+    if (typeof v === 'number') settings[s.id] = Math.min(s.max, Math.max(s.min, v))
+  }
+  return { placed, settings }
 }
 
 // Take a piece off its pad, back into the toolbox.

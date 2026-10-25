@@ -27,6 +27,7 @@ export default function BuildScene({
   hoverPad,
   onPadClick,
   onPieceDown,
+  grid,
 }: {
   task: BuildTask
   run: Running
@@ -37,6 +38,7 @@ export default function BuildScene({
   hoverPad: string | null
   onPadClick: (padId: string) => void
   onPieceDown: (padId: string, e: PointerEvent) => void
+  grid?: boolean
 }) {
   const born = useRef(new Map<string, number>())
 
@@ -54,7 +56,7 @@ export default function BuildScene({
   const bounds: V3[] = [...task.fixed, ...task.pads].map((p) => [p.x, 1.5, p.z])
 
   return (
-    <Viewport target={task.shot.target} zoom={task.shot.zoom} shake={0} panKey={task} label="Build area. Drag pieces onto the pads." bounds={bounds}>
+    <Viewport target={task.shot.target} zoom={task.shot.zoom} shake={0} panKey={task} label="Build area. Drag pieces onto the pads." bounds={bounds} grid={grid}>
       {({ now }) => {
         const flow = run.flow
         const frac = Math.min(1, Math.max(0, (now - lastTickAt.current) / MS_PER_TICK))
@@ -152,7 +154,7 @@ export default function BuildScene({
                 dragged could go. */}
             {task.pads.map((pad) => {
               const r = PAD / 2
-              const fits = dragKind !== null && pad.accepts.includes(dragKind)
+              const fits = !task.anywhere && dragKind !== null && pad.accepts.includes(dragKind)
               const hovered = hoverPad === pad.id && fits
               const empty = !placed[pad.id]
               return (
@@ -166,7 +168,7 @@ export default function BuildScene({
                     [pad.x + r, 0, pad.z - r],
                   ])}
                   fill={hovered ? 'var(--line)' : fits || empty ? 'var(--subtle)' : 'none'}
-                  fillOpacity={dragKind !== null && !fits ? 0.3 : 1}
+                  fillOpacity={dragKind !== null && !fits && !task.anywhere ? 0.3 : 1}
                   stroke={hovered || fits ? 'var(--fg)' : 'var(--muted)'}
                   strokeWidth={hovered ? 2 : 1}
                   strokeDasharray={hovered ? undefined : '6 5'}

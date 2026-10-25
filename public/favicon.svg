@@ -1,4 +1,3 @@
-
 <svg xmlns="http://www.w3.org/2000/svg"
      width="32"
      height="32"
@@ -10,25 +9,11 @@
      stroke-linecap="round"
      stroke-linejoin="round">
 
-    <!-- Upper incoming flow -->
-    <path d="M8 12 H19
-             Q25 12 29 26
-             L32 32"/>
+    <!-- Isometric land -->
+    <path d="M6 44 L32 58 L58 44"/>
 
-    <!-- Middle incoming flow -->
-    <path d="M8 32 H32"/>
-
-    <!-- Lower incoming flow -->
-    <path d="M8 52 H19
-             Q25 52 29 38
-             L32 32"/>
-
-    <!-- Outgoing flow -->
-    <path d="M32 32 H55"/>
-
-    <!-- Arrowhead -->
-    <path d="M44 25 L55 32 L44 39"/>
+    <!-- Keep with battlements -->
+    <path d="M22 42 V12 H28 V19 H36 V12 H42 V42"/>
   </g>
 
 </svg>
-  
