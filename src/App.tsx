@@ -41,7 +41,7 @@ export default function App() {
   useEffect(() => {
     document.title = topic
       ? `${topic.title} · Systemlands`
-      : "Systemlands · See why systems break, then build ones that don't";
+      : "Systemlands · See why systems break at scale, then build ones that don't";
   }, [topic]);
 
   // Open every page at the top, not at the scroll position of the page before
@@ -150,7 +150,12 @@ function TopicView({
         onCheatSheet={
           topic.reference
             ? () =>
-                navigate({ page: "topic", topic: topic.id, chapter: count, step: 0 })
+                navigate({
+                  page: "topic",
+                  topic: topic.id,
+                  chapter: count,
+                  step: 0,
+                })
             : undefined
         }
       />

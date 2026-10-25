@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useId, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { COMPACT, SHORT, useMedia } from '../core/useMedia'
 import ProjectCard from './ProjectCard'
-import { PROJECTS, type Project } from './projects'
+import { PROJECTS, projectNumber, type Project } from './projects'
 import { Castle, castleHeight } from './realmCastle'
 import type { ProjectState } from './shared'
 
@@ -113,7 +113,7 @@ function Isle({ top, under }: ReturnType<typeof isle>) {
 }
 
 // Each realm's capital stands bigger than the castles around it.
-const CAPITALS: Record<string, number> = { 'url-shortener': 1.3, chat: 1.3, payments: 1.3, stripe: 1.3, 'llm-serving': 1.25 }
+const CAPITALS: Record<string, number> = { 'url-shortener': 1.3, chat: 1.3, payments: 1.3, 'google-docs': 1.3, 'llm-serving': 1.25 }
 
 // Extra bends the road takes after a project: [x, y, stairs on the stretch after it].
 // They carry it down off one hill and up the cliff of the next.
@@ -330,7 +330,7 @@ const Scene = memo(function Scene({ states, selected, fog, ls, names, realms, ph
               key={p.id}
               tabIndex={0}
               role="button"
-              aria-label={`${PROJECTS.indexOf(p) + 1}. ${p.name}`}
+              aria-label={`${projectNumber(p)}. ${p.name}`}
               aria-pressed={isSel}
               className="cursor-pointer outline-none [&:focus-visible_.hit]:stroke-danger"
               onClick={() => onOpen(p)}
@@ -366,13 +366,13 @@ const Scene = memo(function Scene({ states, selected, fog, ls, names, realms, ph
           </>
         )}
         <g pointerEvents="none">
-          {PROJECTS.map((p, i) => {
+          {PROJECTS.map((p) => {
             const state = states[p.id] ?? 'fog'
             const dy = LABEL_DY[p.tier] * (CAPITALS[p.id] ?? 1)
             return (
               <g key={p.id}>
                 <text x={p.x} y={p.y + dy} textAnchor="middle" className="fill-muted font-mono" fontSize={10 * ls} fontWeight={600}>
-                  {String(i + 1).padStart(2, '0')}
+                  {String(projectNumber(p)).padStart(2, '0')}
                 </text>
                 {(names || p.id === selected) && (
                   <text x={p.x} y={p.y + dy + 14 * ls} textAnchor="middle" className="fill-fg" fontSize={(p.tier >= 3 ? 11 : 12) * ls} fontWeight={600} opacity={state === 'fog' ? 0.85 : 1}>

@@ -68,16 +68,19 @@ export const PROJECTS: Project[] = [
   { id: 'llm-serving', name: 'ChatGPT-style serving', tier: 4, x: 1400, y: 350, needs: ['LLM serving', 'Autoscaling', 'Message queues', 'Sharding', 'Streaming'] },
   { id: 'multi-agent', name: 'Multi-agent workflow', tier: 4, x: 1320, y: 290, needs: ['Agent loop and tools', 'Sagas', 'Message queues', 'Evals', 'Observability'] },
   { id: 'twitter-timeline', name: 'Twitter timeline', tier: 3, x: 500, y: 330, needs: ['Fan-out', 'Caching', 'Sharding', 'Message queues', 'Consistent hashing'] },
-  { id: 'whatsapp', name: 'WhatsApp', tier: 3, x: 720, y: 355, needs: ['Real-time messaging', 'Pub/sub', 'Replication', 'Idempotency', 'Sharding'] },
+  { id: 'youtube', name: 'YouTube', tier: 3, x: 720, y: 355, needs: ['CDN', 'Autoscaling', 'Message queues', 'Caching', 'Adaptive streaming'] },
   { id: 'dropbox', name: 'Dropbox', tier: 3, x: 920, y: 355, needs: ['Chunking and dedupe', 'CDN', 'Sharding', 'Replication', 'Message queues'] },
-  { id: 'google-docs', name: 'Google Docs', tier: 3, x: 1060, y: 330, needs: ['OT / CRDT', 'Real-time messaging', 'Consensus'] },
+  { id: 'whatsapp', name: 'WhatsApp', tier: 3, x: 1060, y: 330, needs: ['Real-time messaging', 'Pub/sub', 'Replication', 'Idempotency', 'Sharding'] },
   { id: 'ticketmaster', name: 'Ticketmaster', tier: 3, x: 1165, y: 215, needs: ['Locking and concurrency', 'Idempotency', 'Rate limiting', 'Message queues', 'Sagas'] },
   { id: 'uber', name: 'Uber', tier: 3, x: 985, y: 140, needs: ['Geospatial', 'Pub/sub', 'Sharding', 'Consensus', 'Autoscaling'] },
   { id: 'kafka', name: 'Kafka', tier: 3, x: 700, y: 108, needs: ['Replication', 'Consensus', 'Sharding', 'CAP'] },
-  { id: 'youtube', name: 'YouTube', tier: 3, x: 530, y: 150, needs: ['CDN', 'Autoscaling', 'Message queues', 'Caching', 'Adaptive streaming'] },
+  { id: 'stripe', name: 'Stripe', tier: 3, x: 530, y: 150, needs: ['Idempotency', 'Sagas', 'Circuit breakers', 'Consensus', 'Ledger design'] },
   { id: 'google-search', name: 'Google Search', tier: 3, x: 640, y: 255, needs: ['Inverted index', 'Sharding', 'Caching', 'Bloom filters'] },
-  { id: 'stripe', name: 'Stripe', tier: 3, x: 830, y: 232, needs: ['Idempotency', 'Sagas', 'Circuit breakers', 'Consensus', 'Ledger design'] },
+  { id: 'google-docs', name: 'Google Docs', tier: 3, x: 830, y: 232, needs: ['OT / CRDT', 'Real-time messaging', 'Consensus'] },
 ]
+
+// A project's number: its place on the road, counted apart for the mainland (tiers 0-3) and the AI isles.
+export const projectNumber = (p: Project) => PROJECTS.filter((q) => q.tier >= 4 === p.tier >= 4).indexOf(p) + 1
 
 // Projects the learner can open today: the registry has a player for them.
 export const isBuilt = (p: Project) => TOPICS.some((t) => t.id === p.id && t.Play)

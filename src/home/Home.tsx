@@ -24,7 +24,7 @@ export default function Home() {
         <h1 className="mt-3 font-mono text-[24px]">
           <b>The Realm of Systems</b>
           <span className="block text-lg text-muted">
-            See why systems break, then build ones that don't
+            See why systems break at scale, then build ones that don't
           </span>
         </h1>
       </div>

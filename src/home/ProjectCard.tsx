@@ -2,7 +2,7 @@ import { TOPICS } from "../topics/registry";
 import {
   conceptOf,
   isBuilt,
-  PROJECTS,
+  projectNumber,
   TIER_NAMES,
   type Project,
 } from "./projects";
@@ -47,7 +47,7 @@ export default function ProjectCard({
         />
       )}
       <div className="font-mono text-[11px] uppercase tracking-widest text-muted">
-        {TIER_NAMES[project.tier]} · project {PROJECTS.indexOf(project) + 1} ·{" "}
+        {TIER_NAMES[project.tier]} · project {projectNumber(project)} ·{" "}
         <span className={state === "next" ? "text-danger" : ""}>
           {STATE_TEXT[state]}
         </span>
