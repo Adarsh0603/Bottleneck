@@ -23,11 +23,14 @@ export default function ProjectCard({
   state,
   pointer = 0,
   below = false,
+  plain = false,
 }: {
   project: Project;
   state: ProjectState;
   pointer?: number;
   below?: boolean;
+  // No pointer: the card stands on its own, not over a castle.
+  plain?: boolean;
 }) {
   const built = isBuilt(project);
   const topic = TOPICS.find((t) => t.id === project.id);
@@ -36,11 +39,13 @@ export default function ProjectCard({
       className="relative rounded-2xl border border-line bg-bg p-4 shadow-xl"
       aria-live="polite"
     >
-      <span
-        aria-hidden
-        className={`absolute h-3 w-3 -translate-x-1/2 rotate-45 border-line bg-bg ${below ? "-top-1.5 border-l border-t" : "-bottom-1.5 border-b border-r"}`}
-        style={{ left: `calc(50% + ${pointer}px)` }}
-      />
+      {!plain && (
+        <span
+          aria-hidden
+          className={`absolute h-3 w-3 -translate-x-1/2 rotate-45 border-line bg-bg ${below ? "-top-1.5 border-l border-t" : "-bottom-1.5 border-b border-r"}`}
+          style={{ left: `calc(50% + ${pointer}px)` }}
+        />
+      )}
       <div className="font-mono text-[11px] uppercase tracking-widest text-muted">
         {TIER_NAMES[project.tier]} · project {PROJECTS.indexOf(project) + 1} ·{" "}
         <span className={state === "next" ? "text-danger" : ""}>

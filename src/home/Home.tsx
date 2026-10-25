@@ -17,8 +17,20 @@ export default function Home() {
 
   return (
     <main className="pb-10 sm:pb-14">
-      {/* The sea lies under the heading and the map: rows of small waves, drifting slowly. */}
-      <div className="relative pt-10 sm:pt-14">
+      <div className="mx-auto max-w-[2200px] px-6 pt-10 sm:px-10 sm:pt-14 lg:px-16">
+        <div className="font-mono text-[11px] uppercase tracking-widest text-muted">
+          Conquer each system
+        </div>
+        <h1 className="mt-3 font-mono text-[24px]">
+          <b>The Realm of Systems</b>
+          <span className="block text-lg text-muted">
+            See why systems break, then build ones that don't
+          </span>
+        </h1>
+      </div>
+
+      {/* The sea lies under the map: rows of small waves, drifting slowly. */}
+      <div className="relative mt-4">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 overflow-hidden"
@@ -38,16 +50,6 @@ export default function Home() {
           />
         </div>
         <div className="relative mx-auto max-w-[2200px] px-4">
-          <div className="font-mono text-[11px] uppercase tracking-widest text-muted">
-            Conquer each kingdom
-          </div>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight sm:text-5xl">
-            The Realm of Systems
-          </h1>
-          <p className="mb-3 mt-3 max-w-2xl text-muted">
-            Learn how real systems work by breaking and building them, from a
-            link shortener to Stripe to your own AI agent.
-          </p>
           <RealmMap
             states={states}
             selected={project.id}
@@ -56,7 +58,7 @@ export default function Home() {
         </div>
       </div>
 
-      <div className="mx-auto mt-4 max-w-6xl px-4">
+      <div className="mx-auto mt-4 max-w-[2200px] px-6 sm:px-10 lg:px-16">
         <Toolbox />
       </div>
     </main>

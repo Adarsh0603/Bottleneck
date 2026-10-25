@@ -34,14 +34,13 @@ export function ContinueButton({ className = "" }: { className?: string }) {
   );
 }
 
-// "Made by Adarsh Verma · Source on GitHub"
 export function Credit({ className = "" }: { className?: string }) {
   const link = "underline-offset-4 transition hover:text-fg hover:underline";
   return (
     <span className={className}>
-      {/* Made by{" "}
+      Created by{" "}
       <a
-        href="https://github.com/Adarsh0603"
+        href="https://www.linkedin.com/in/adarsh-verma-5b308322b/"
         target="_blank"
         rel="noreferrer"
         className={`text-fg ${link}`}
@@ -50,9 +49,9 @@ export function Credit({ className = "" }: { className?: string }) {
       </a>
       <span className="mx-1.5" aria-hidden>
         ·
-      </span> */}
+      </span>
       <a
-        href="https://github.com/Adarsh0603/Bottleneck"
+        href="https://github.com/Adarsh0603/Systemlands"
         target="_blank"
         rel="noreferrer"
         className={link}

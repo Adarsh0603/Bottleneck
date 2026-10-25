@@ -124,6 +124,7 @@ function Builder({
   const [victoryOpen, setVictoryOpen] = useState(false);
   const [briefOpen, setBriefOpen] = useState(!!task.brief);
   const [detailsOpen, setDetailsOpen] = useState(true);
+  const [openSetting, setOpenSetting] = useState<string | null>(null);
   const [pinnedOpen, setPinnedOpen] = useState(() => !window.matchMedia(COMPACT).matches);
   const [running, setRunning] = useState(!task.manualStart);
   // Set the moment a fail-fast task's requirement breaks: the run freezes there.
@@ -367,6 +368,9 @@ function Builder({
   const left = remaining(task, placed);
   const activeKind = drag?.moved ? drag.kind : selected;
 
+  // Portrait phone: the toolbox is one row you swipe sideways. A swipe along
+  // the row scrolls it; a drag up or down still carries the piece.
+  const rail = compact && !short;
   const toolboxButtons = task.toolbox.map(({ kind }) => {
     const count = left[kind] ?? 0;
     return (
@@ -376,16 +380,17 @@ function Builder({
         onPointerDown={(e) => count > 0 && startDrag(kind, undefined, e)}
         aria-pressed={selected === kind}
         aria-label={`${nameOf(kind)}, ${count} left. Drag onto a pad, or tap then tap a pad.`}
-        className={`flex touch-none items-center gap-2 rounded-xl border bg-bg/90 py-1.5 pl-1.5 pr-3 text-sm backdrop-blur transition disabled:opacity-35 ${
+        className={`flex ${rail ? "shrink-0 touch-pan-x" : "touch-none"} items-center gap-2 rounded-xl border bg-bg/90 py-1.5 pl-1.5 pr-3 text-sm backdrop-blur transition disabled:opacity-35 ${
           selected === kind
             ? "border-fg ring-1 ring-fg"
             : "border-line hover:border-fg"
         } ${count > 0 ? "cursor-grab active:cursor-grabbing" : ""}`}
       >
-        <PieceIcon kind={kind} size={34} />
+        <PieceIcon kind={kind} size={compact ? 26 : 34} />
         <span className="min-w-0 text-left">
           <span className="block">{nameOf(kind)}</span>
-          {sub(kind) && <span className="block text-[10px] leading-tight text-muted">{sub(kind)}</span>}
+          {/* A phone has no room for the one-line description under each name. */}
+          {!compact && sub(kind) && <span className="block text-[10px] leading-tight text-muted">{sub(kind)}</span>}
         </span>
         <span className="ml-auto font-mono text-xs text-muted">×{count}</span>
       </button>
@@ -410,6 +415,64 @@ function Builder({
         )
       }
     />
+  );
+  const settingRow = (s: (typeof shownSettings)[number]) => (
+    <div key={s.id} className="flex items-center gap-2">
+      <PieceIcon kind={s.when} size={28} />
+      {s.options ? (
+        <>
+          <span className="text-sm font-medium">{s.label}</span>
+          <Segmented
+            scroll
+            value={settings[s.id]}
+            options={s.options.map((label, i) => ({
+              value: s.min + i * s.step,
+              label,
+            }))}
+            onChange={(v) => changeSetting(s.id, v)}
+          />
+        </>
+      ) : (
+        settingStepper(s)
+      )}
+    </div>
+  );
+  // On a phone each setting is a chip showing its value; tapping one opens
+  // just that control, so the floor is never buried under a long list.
+  const chipValue = (s: (typeof shownSettings)[number]) =>
+    s.options
+      ? s.options[(settings[s.id] - s.min) / s.step]
+      : `${settings[s.id]} ${s.label}${settings[s.id] === 1 ? "" : "s"}`;
+  const activeSetting = shownSettings.find((s) => s.id === openSetting);
+  const settingChips = compact && shownSettings.length > 0 && (
+    <div className="no-scrollbar pointer-events-auto -mx-3 mt-3 flex gap-2 overflow-x-auto px-3">
+      {shownSettings.map((s) => (
+        <button
+          key={s.id}
+          onClick={() => setOpenSetting(openSetting === s.id ? null : s.id)}
+          aria-expanded={openSetting === s.id}
+          className={`flex max-w-56 shrink-0 items-center gap-1.5 rounded-full border bg-bg/90 py-1 pl-1.5 pr-3 text-sm backdrop-blur transition hover:border-fg ${openSetting === s.id ? "border-fg" : "border-line"}`}
+        >
+          <PieceIcon kind={s.when} size={20} />
+          <span className="truncate">
+            {s.options && <span className="text-muted">{s.label} · </span>}
+            {chipValue(s)}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+  const settingPopover = compact && activeSetting && (
+    <div className="mt-2 flex items-center justify-between gap-2 overflow-x-auto rounded-xl border border-line bg-bg p-2 shadow-lg">
+      {settingRow(activeSetting)}
+      <button
+        onClick={() => setOpenSetting(null)}
+        aria-label="Close"
+        className="shrink-0 rounded-full px-2 font-mono text-xs text-muted transition hover:text-fg"
+      >
+        ✕
+      </button>
+    </div>
   );
   const startButton = task.manualStart && !solved && (
     <button
@@ -851,18 +914,33 @@ function Builder({
               {problemCard}
               {!victoryOpen && goalCard}
               <h2
-                className={`font-semibold tracking-tight ${focus ? "hidden" : ""} ${short ? "text-lg" : "text-xl sm:text-2xl"}`}
+                className={`font-semibold tracking-tight ${focus || short ? "hidden" : ""} text-xl sm:text-2xl`}
               >
                 {task.title}
               </h2>
-              <p className={`mt-1 text-sm text-muted ${focus ? "hidden" : ""}`}>
+              <p className={`mt-1 text-sm text-muted ${focus || short ? "hidden" : ""}`}>
                 {hint}
               </p>
 
+              {settingChips}
+              {settingPopover}
+
               {/* The toolbox. touch-none so a finger drag moves the piece
                   instead of scrolling the page. */}
+              {rail && (
+                <>
+                  <div className="no-scrollbar -mx-3 mt-3 flex gap-2 overflow-x-auto px-3">
+                    {toolboxButtons}
+                  </div>
+                  {selected && sub(selected) && (
+                    <p className="mt-2 rounded-xl border border-line bg-bg/90 px-3 py-2 text-xs leading-snug text-muted backdrop-blur">
+                      <span className="font-medium text-fg">{nameOf(selected)}</span> · {sub(selected)}
+                    </p>
+                  )}
+                </>
+              )}
               <div className="mt-3 flex flex-wrap gap-2">
-                {toolboxButtons}
+                {!rail && toolboxButtons}
                 {compact && !solved && (
                   <button
                     onClick={() => setDetailsOpen((o) => !o)}
@@ -873,27 +951,7 @@ function Builder({
                   </button>
                 )}
                 {situationButton}
-                {shownSettings.map((s) => (
-                  <div key={s.id} className="flex items-center gap-2">
-                    <PieceIcon kind={s.when} size={28} />
-                    {s.options ? (
-                      <>
-                        <span className="text-sm font-medium">{s.label}</span>
-                        <Segmented
-                          scroll
-                          value={settings[s.id]}
-                          options={s.options.map((label, i) => ({
-                            value: s.min + i * s.step,
-                            label,
-                          }))}
-                          onChange={(v) => changeSetting(s.id, v)}
-                        />
-                      </>
-                    ) : (
-                      settingStepper(s)
-                    )}
-                  </div>
-                ))}
+                {!compact && shownSettings.map(settingRow)}
                 {startButton}
                 {resetButton}
               </div>

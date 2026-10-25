@@ -1,4 +1,5 @@
 import { memo, useCallback, useEffect, useId, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { COMPACT, SHORT, useMedia } from '../core/useMedia'
 import ProjectCard from './ProjectCard'
 import { PROJECTS, type Project } from './projects'
 import { Castle, castleHeight } from './realmCastle'
@@ -58,6 +59,16 @@ const HILLS: Hill[] = [
   { c: [770, 565], rx: 240, ry: 100, rise: 26, seed: 2, tier: 'INTERMEDIATE', name: 'The Replica Cities', at: [1030, 600] },
   { c: [330, 670], rx: 250, ry: 75, rise: 12, seed: 1, tier: 'STARTER', name: 'The One-Server Shire', at: [30, 588] },
 ]
+
+// On a phone the writing is much bigger against the map, so each realm name moves to open
+// water beside its hill: left of the Expert and Advanced hills, right of the other two.
+const PHONE_NAMES: Record<string, { at: Pt; anchor?: 'start' | 'end' }> = {
+  EXPERT: { at: [20, 40] },
+  ADVANCED: { at: [10, 258] },
+  INTERMEDIATE: { at: [1040, 610] },
+  STARTER: { at: [600, 745] },
+}
+const PHONE_NAME_LS = 2 // the most the realm names grow on a phone
 
 function HillLand({ h }: { h: Hill }) {
   const top = blob(h.c[0], h.c[1], h.rx, h.ry, 28, h.seed)
@@ -162,11 +173,32 @@ const FIT: View = { z: 1, cx: W / 2, cy: TOP + H / 2 }
 const CLOSE_ZOOM = ZOOM_MAX
 const FLIGHT_MS = 450
 
-// Keep the zoom in range and the view inside the map.
-function clampView(v: View): View {
-  const z = Math.min(Math.max(v.z, 1), ZOOM_MAX)
-  const [w, h] = [W / z, H / z]
-  return { z, cx: Math.min(Math.max(v.cx, w / 2), W - w / 2), cy: Math.min(Math.max(v.cy, TOP + h / 2), TOP + H - h / 2) }
+// How far a box may zoom, and the box's height over its width.
+interface Limits {
+  a: number
+  minZ: number
+  maxZ: number
+}
+
+const DESK: Limits = { a: H / W, minZ: 1, maxZ: ZOOM_MAX }
+
+// Phones start close and pan; a pinch goes out to COMPACT_FAR and in to COMPACT_MAX.
+// The drawing is laid out at the closest zoom.
+const COMPACT_MIN = 2
+const COMPACT_FAR = 1.3
+const COMPACT_MAX = 3.6
+const COMPACT_FOCUS = 2.8
+// On a phone, castle names show from this zoom in; farther out the realm names show instead.
+const LABEL_ZOOM = 2.4
+// The zoom the far writing is sized for.
+const FAR_REF = 1.6
+
+// Keep the zoom in range and the view inside the map. A map smaller than the box stays centred.
+function clampView(v: View, { a, minZ, maxZ }: Limits = DESK): View {
+  const z = Math.min(Math.max(v.z, minZ), maxZ)
+  const inside = (c: number, size: number, from: number, len: number) =>
+    size >= len ? from + len / 2 : Math.min(Math.max(c, from + size / 2), from + len - size / 2)
+  return { z, cx: inside(v.cx, W / z, 0, W), cy: inside(v.cy, (a * W) / z, TOP, H) }
 }
 
 // The chosen project's card, standing over its castle. It keeps one size on screen however
@@ -220,13 +252,13 @@ function focusOn(p: Project, width: number): View {
   return view
 }
 
-function RealmName({ tier, name, at, anchor = 'start' }: { tier: string; name: string; at: Pt; anchor?: 'start' | 'middle' | 'end' }) {
+function RealmName({ tier, name, at, anchor = 'start', ls }: { tier: string; name: string; at: Pt; anchor?: 'start' | 'middle' | 'end'; ls: number }) {
   return (
     <g pointerEvents="none">
-      <text x={at[0]} y={at[1]} textAnchor={anchor} className="fill-muted font-mono" fontSize={10} fontWeight={600} letterSpacing="0.18em">
+      <text x={at[0]} y={at[1]} textAnchor={anchor} className="fill-muted font-mono" fontSize={10 * ls} fontWeight={600} letterSpacing="0.18em">
         {tier}
       </text>
-      <text x={at[0]} y={at[1] + 17} textAnchor={anchor} className="fill-fg" fontSize={13} fontWeight={600}>
+      <text x={at[0]} y={at[1] + 17 * ls} textAnchor={anchor} className="fill-fg" fontSize={13 * ls} fontWeight={600}>
         {name}
       </text>
     </g>
@@ -235,7 +267,9 @@ function RealmName({ tier, name, at, anchor = 'start' }: { tier: string; name: s
 
 // Everything drawn on the map apart from the card. It only redraws when the progress or the
 // chosen castle changes, not on every frame of a fly-in or a drag.
-const Scene = memo(function Scene({ states, selected, fog, onOpen, onBack }: { states: Record<string, ProjectState>; selected: string; fog: string; onOpen: (p: Project) => void; onBack: () => void }) {
+// `ls` grows the writing on a small screen, where the map is shrunk to a fraction of its size.
+// `names` shows every castle's name (the chosen one always shows); `realms` shows the realm titles.
+const Scene = memo(function Scene({ states, selected, fog, ls, names, realms, phone, onOpen, onBack }: { states: Record<string, ProjectState>; selected: string; fog: string; ls: number; names: boolean; realms: boolean; phone: boolean; onOpen: (p: Project) => void; onBack: () => void }) {
   // The road joins the mainland only; the AI isles float apart.
   const road = PROJECTS.filter((p) => p.tier < 4)
   const litUntil = road.findIndex((p) => states[p.id] !== 'done')
@@ -322,22 +356,29 @@ const Scene = memo(function Scene({ states, selected, fog, onOpen, onBack }: { s
         </g>
 
         {/* Names sit above the mist so they stay readable. */}
-        {HILLS.map((h) => (
-          <RealmName key={h.tier} tier={h.tier} name={h.name} at={h.at} anchor={h.anchor} />
-        ))}
-        <RealmName tier="AI" name="The Model Isles" at={[1400, 680]} anchor="middle" />
+        {realms && (
+          <>
+            {HILLS.map((h) => {
+              const p = phone ? PHONE_NAMES[h.tier] : h
+              return <RealmName key={h.tier} tier={h.tier} name={h.name} at={p.at} anchor={p.anchor} ls={phone ? Math.min(ls, PHONE_NAME_LS) : ls} />
+            })}
+            <RealmName tier="AI" name="The Model Isles" at={[1400, 680]} anchor="middle" ls={phone ? Math.min(ls, PHONE_NAME_LS) : ls} />
+          </>
+        )}
         <g pointerEvents="none">
           {PROJECTS.map((p, i) => {
             const state = states[p.id] ?? 'fog'
             const dy = LABEL_DY[p.tier] * (CAPITALS[p.id] ?? 1)
             return (
               <g key={p.id}>
-                <text x={p.x} y={p.y + dy} textAnchor="middle" className="fill-muted font-mono" fontSize={10} fontWeight={600}>
+                <text x={p.x} y={p.y + dy} textAnchor="middle" className="fill-muted font-mono" fontSize={10 * ls} fontWeight={600}>
                   {String(i + 1).padStart(2, '0')}
                 </text>
-                <text x={p.x} y={p.y + dy + 14} textAnchor="middle" className="fill-fg" fontSize={p.tier >= 3 ? 11 : 12} fontWeight={600} opacity={state === 'fog' ? 0.85 : 1}>
-                  {p.name}
-                </text>
+                {(names || p.id === selected) && (
+                  <text x={p.x} y={p.y + dy + 14 * ls} textAnchor="middle" className="fill-fg" fontSize={(p.tier >= 3 ? 11 : 12) * ls} fontWeight={600} opacity={state === 'fog' ? 0.85 : 1}>
+                    {p.name}
+                  </text>
+                )}
               </g>
             )
           })}
@@ -361,7 +402,15 @@ export default function RealmMap({
   // The map opens whole. Tapping a castle flies in on it and opens its card.
   // The drawing is laid out once at the closest zoom and only moved and scaled by CSS, so a
   // fly-in never redraws it: the browser slides one finished picture.
-  const [view, setView] = useState<View>(FIT)
+  // On a phone it opens close, on the chosen castle, and pans; the whole map never fits.
+  const compact = useMedia(COMPACT)
+  // A phone on its side has width to spare: the card lies over the map's right half.
+  const short = useMedia(SHORT)
+  const overlay = compact && short
+  const [view, setView] = useState<View>(() => {
+    const sel = PROJECTS.find((p) => p.id === selected)
+    return compact && sel ? { z: COMPACT_MIN, cx: sel.x, cy: sel.y - 40 } : FIT
+  })
   const [opened, setOpened] = useState<string | null>(null)
   const [moving, setMoving] = useState(false)
   const timer = useRef(0)
@@ -385,11 +434,15 @@ export default function RealmMap({
     setOpened(null)
     // Bring the whole map box into the page's view, under the sticky header, so the card is not cut off by the screen.
     boxRef.current?.scrollIntoView({ block: 'nearest', behavior: reduced() ? 'auto' : 'smooth' })
-    flyTo(focusOn(p, width), () => setOpened(p.id))
+    if (!compact) return flyTo(focusOn(p, width), () => setOpened(p.id))
+    // The card is outside the drawing here, so only the castle needs room: in the left half when the card covers the right.
+    const z = Math.max(view.z, COMPACT_FOCUS)
+    const cx = overlay ? p.x + (0.225 * W) / z : p.x
+    flyTo(clampView({ z, cx, cy: p.y - (castleHeight(p) * (CAPITALS[p.id] ?? 1)) / 2 }, limits), () => setOpened(p.id))
   }
   const showAll = () => {
     setOpened(null)
-    flyTo(FIT)
+    flyTo(compact ? { ...shown, z: limits.minZ } : FIT)
   }
   // The map's parts get steady handlers, so a frame of the fly-in does not redraw them.
   const latest = useRef({ openCastle, showAll })
@@ -400,56 +453,127 @@ export default function RealmMap({
   const back = useCallback(() => latest.current.showAll(), [])
   const boxRef = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(W)
+  const [height, setHeight] = useState(0)
   useEffect(() => {
     const box = boxRef.current
     if (!box) return
-    const watch = new ResizeObserver(() => setWidth(box.getBoundingClientRect().width || W))
+    const watch = new ResizeObserver(() => {
+      const r = box.getBoundingClientRect()
+      setWidth(r.width || W)
+      setHeight(r.height)
+    })
     watch.observe(box)
     return () => watch.disconnect()
   }, [])
-  const drag = useRef<{ x: number; y: number; from: View; moved: boolean } | null>(null)
+  const aspect = width && height ? height / width : H / W
+  const limits: Limits = compact ? { a: aspect, minZ: COMPACT_FAR, maxZ: COMPACT_MAX } : DESK
+  const layoutZoom = compact ? COMPACT_MAX : ZOOM_MAX
+  const shown = clampView(view, limits)
+  // On a phone, far out shows the realm titles and close in shows the castle names, so the two never crowd each other.
+  const near = !compact || shown.z >= LABEL_ZOOM
+  // The writing on the map is grown to stay readable at the zoom its level is seen from.
+  const ls = compact ? Math.min(2.6, Math.max(1, Math.round((11 / (12 * (width / W) * (near ? LABEL_ZOOM : FAR_REF))) * 10) / 10)) : 1
+  const live = useRef({ shown, limits, width, aspect })
+  useEffect(() => {
+    live.current = { shown, limits, width, aspect }
+  })
+  const cardRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (opened && compact && !overlay) cardRef.current?.scrollIntoView({ block: 'nearest', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+  }, [opened, compact, overlay])
+  // One gesture from the first finger down to the last up: `at` and `dist` are where the fingers
+  // started (dist is 0 for one finger), `from` the view then.
+  const drag = useRef<{ at: Pt; dist: number; from: View; moved: boolean } | null>(null)
+  const pointers = useRef(new Map<number, Pt>())
   const [dragging, setDragging] = useState(false)
-  const zoomed = view.z > 1
+  const openedProject = PROJECTS.find((p) => p.id === opened)
+  const zoomed = shown.z > limits.minZ || compact
   // Where the drawing sits so that the view fills the box: its left and top edge in map units, in pixels.
-  const px = (width / W) * view.z
-  const left = view.cx - W / view.z / 2
-  const topEdge = view.cy - H / view.z / 2
-  const place = `translate(${-left * px}px, ${-(topEdge - TOP) * px}px) scale(${view.z / ZOOM_MAX})`
+  const px = (width / W) * shown.z
+  const left = shown.cx - W / shown.z / 2
+  const topEdge = shown.cy - (aspect * W) / shown.z / 2
+  const place = `translate(${-left * px}px, ${-(topEdge - TOP) * px}px) scale(${shown.z / layoutZoom})`
 
-  // Dragging pans the map once it is zoomed in. A drag never counts as a tap on a castle.
+  // One finger pans the map once it is zoomed in; two fingers pinch it, keeping the map under
+  // their midpoint where it was. A drag or pinch never counts as a tap on a castle.
   const onPointerDown = (e: ReactPointerEvent) => {
     if (!zoomed || moving) return
-    drag.current = { x: e.clientX, y: e.clientY, from: view, moved: false }
-    const move = (ev: PointerEvent) => {
+    const down = pointers.current
+    down.set(e.pointerId, [e.clientX, e.clientY])
+    // Start the gesture over from the fingers now down and the view as drawn.
+    const rebase = () => {
       const d = drag.current
       if (!d) return
-      const [dx, dy] = [ev.clientX - d.x, ev.clientY - d.y]
-      if (Math.hypot(dx, dy) > 4 && !d.moved) {
-        d.moved = true
+      const [a, b] = [...down.values()]
+      d.from = live.current.shown
+      d.at = b ? [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2] : a
+      d.dist = b ? Math.hypot(a[0] - b[0], a[1] - b[1]) || 1 : 0
+    }
+    if (down.size > 1) return rebase()
+    const g = { at: [e.clientX, e.clientY] as Pt, dist: 0, from: shown, moved: false }
+    drag.current = g
+    const move = (ev: PointerEvent) => {
+      if (!down.has(ev.pointerId)) return
+      down.set(ev.pointerId, [ev.clientX, ev.clientY])
+      const { limits, width, aspect } = live.current
+      const [a, b] = [...down.values()]
+      const mid: Pt = b ? [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2] : a
+      const dist = b ? Math.hypot(a[0] - b[0], a[1] - b[1]) : 0
+      if (!g.moved && (Math.hypot(mid[0] - g.at[0], mid[1] - g.at[1]) > 4 || Math.abs(dist - g.dist) > 4)) {
+        g.moved = true
         setDragging(true)
       }
-      if (!d.moved) return
-      const k = W / d.from.z / width
-      setView(clampView({ ...d.from, cx: d.from.cx - dx * k, cy: d.from.cy - dy * k }))
+      if (!g.moved) return
+      const f = g.from
+      if (!b || !g.dist) {
+        const k = W / f.z / width
+        setView(clampView({ ...f, cx: f.cx - (mid[0] - g.at[0]) * k, cy: f.cy - (mid[1] - g.at[1]) * k }, limits))
+        return
+      }
+      // The map point under the fingers at the start, kept under their midpoint now.
+      const rect = boxRef.current?.getBoundingClientRect()
+      if (!rect) return
+      const p0 = (width / W) * f.z
+      const ax = f.cx - W / f.z / 2 + (g.at[0] - rect.left) / p0
+      const ay = f.cy - (aspect * W) / f.z / 2 + (g.at[1] - rect.top) / p0
+      const z = Math.min(Math.max((f.z * dist) / g.dist, limits.minZ), limits.maxZ)
+      const p1 = (width / W) * z
+      setView(clampView({ z, cx: ax - (mid[0] - rect.left) / p1 + W / z / 2, cy: ay - (mid[1] - rect.top) / p1 + (aspect * W) / z / 2 }, limits))
     }
-    const up = () => {
+    const up = (ev: PointerEvent) => {
+      if (!down.delete(ev.pointerId)) return
+      // A finger is still down: carry on as a drag from here.
+      if (down.size) return rebase()
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
+      window.removeEventListener('pointercancel', up)
       setDragging(false)
       // Let the click that ends this drag see `moved`, then forget the drag.
-      setTimeout(() => (drag.current = null))
+      setTimeout(() => {
+        if (drag.current === g) drag.current = null
+      })
     }
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
+    window.addEventListener('pointercancel', up)
   }
 
   return (
-    <div ref={boxRef} className={`relative overflow-hidden ${moving || dragging ? 'realm-moving' : ''}`} style={{ aspectRatio: `${W} / ${H}`, scrollMarginTop: 72, scrollMarginBottom: 16 }}>
+    <>
+    <div
+      ref={boxRef}
+      className={`relative overflow-hidden ${moving || dragging ? 'realm-moving' : ''}`}
+      style={{
+        ...(compact ? { height: overlay ? 'calc(100svh - 96px)' : 'clamp(300px, 46svh, 520px)', minHeight: 240 } : { aspectRatio: `${W} / ${H}` }),
+        scrollMarginTop: 72,
+        scrollMarginBottom: 16,
+      }}
+    >
       <svg
         viewBox={`0 ${TOP} ${W} ${H}`}
         className={`absolute left-0 top-0 block select-none ${zoomed ? 'cursor-grab touch-none active:cursor-grabbing' : ''}`}
         style={{
-          width: `${ZOOM_MAX * 100}%`,
+          width: `${layoutZoom * 100}%`,
           aspectRatio: `${W} / ${H}`,
           transformOrigin: '0 0',
           transform: place,
@@ -462,7 +586,7 @@ export default function RealmMap({
         }}
         onClick={(e) => {
           // A tap on the open sea flies back out to the whole map.
-          if (zoomed && !(e.target as Element).closest('[role="button"], foreignObject')) showAll()
+          if (shown.z > limits.minZ && !(e.target as Element).closest('[role="button"], foreignObject')) showAll()
         }}
         role="group" aria-label="Map of the system design projects: a hill for each realm, from the Starter shire to the Expert kingdoms, joined by one road, with the AI isles floating apart.">
         <defs>
@@ -473,16 +597,32 @@ export default function RealmMap({
           </radialGradient>
         </defs>
 
-        <Scene states={states} selected={selected} fog={fog} onOpen={open} onBack={back} />
+        <Scene states={states} selected={selected} fog={fog} ls={ls} names={near} realms={!compact || !near} phone={compact} onOpen={open} onBack={back} />
 
         {/* The chosen project, over its castle. Last, so nothing draws on top of it. */}
         {(() => {
           const sel = PROJECTS.find((p) => p.id === opened)
-          if (!sel) return null
+          if (!sel || compact) return null
           const k = CAPITALS[sel.id] ?? 1
-          return <Bubble p={sel} state={states[sel.id] ?? 'fog'} top={castleHeight(sel) * k} labelDy={LABEL_DY[sel.tier] * k} zoom={view.z} width={width} />
+          return <Bubble p={sel} state={states[sel.id] ?? 'fog'} top={castleHeight(sel) * k} labelDy={LABEL_DY[sel.tier] * k} zoom={shown.z} width={width} />
         })()}
       </svg>
+
+      {overlay && openedProject && (
+        <div className="absolute inset-y-2 right-2 z-10 w-[min(22rem,50%)] overflow-y-auto overscroll-contain">
+          <ProjectCard project={openedProject} state={states[openedProject.id] ?? 'fog'} plain />
+          <button onClick={back} aria-label="Close" className="absolute right-2 top-2 rounded-full border border-line bg-bg px-2 py-0.5 font-mono text-xs text-muted transition hover:text-fg">
+            ✕
+          </button>
+        </div>
+      )}
     </div>
+
+    {compact && !overlay && openedProject && (
+      <div ref={cardRef} className="mt-3 scroll-mb-4">
+        <ProjectCard project={openedProject} state={states[openedProject.id] ?? 'fog'} plain />
+      </div>
+    )}
+    </>
   )
 }
