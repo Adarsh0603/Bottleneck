@@ -45,6 +45,7 @@ export default function CapstonePlayer(props: CapstoneProps) {
         onSolved={props.onSolved}
         onContinue={next}
         continueText="Next stage →"
+        finale={chapter === 2}
       />
     )
   }
@@ -101,7 +102,7 @@ function Requirements(props: CapstoneProps & { next: () => void }) {
       />
     )
   }
-  return <Estimate {...props} />
+  return <Estimate {...props} onReplay={capstone.intro ? () => setIntro(true) : undefined} />
 }
 
 const Label = ({ children }: { children: React.ReactNode }) => (
@@ -123,7 +124,7 @@ function Brief({ capstone }: { capstone: Capstone }) {
 
 // Stage 1: work out the numbers. One question at a time; a wrong answer
 // explains itself, and the right one shows the working.
-function Estimate({ capstone, onStep, onSolved, next }: CapstoneProps & { next: () => void }) {
+function Estimate({ capstone, onStep, onSolved, next, onReplay }: CapstoneProps & { next: () => void; onReplay?: () => void }) {
   const { intro, questions, summary } = capstone.estimate
   const [q, setQ] = useState(0)
   const [tried, setTried] = useState<number[]>([])
@@ -169,7 +170,14 @@ function Estimate({ capstone, onStep, onSolved, next }: CapstoneProps & { next: 
           </>
         )}
         <div className="p-4">
-        <Label>Back of the envelope · {Math.min(q + 1, questions.length)} of {questions.length}</Label>
+        <div className="flex items-center justify-between gap-2">
+          <Label>Back of the envelope · {Math.min(q + 1, questions.length)} of {questions.length}</Label>
+          {onReplay && (
+            <button onClick={onReplay} className="h-7 rounded-full border border-line px-3 text-xs transition hover:bg-line/40">
+              ↺ Replay intro
+            </button>
+          )}
+        </div>
         {!onBoard && <p className="mt-2 text-sm text-muted">{intro}</p>}
         {done ? (
           <div className="mt-4">

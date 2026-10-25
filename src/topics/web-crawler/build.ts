@@ -211,7 +211,7 @@ const LABELS = [
 ]
 const NAMES: BuildTask['names'] = { dedupe: 'Seen-set', queue: 'Frontier', limiter: 'Politeness timer', app: 'Fetcher' }
 const PIECE_HINTS: BuildTask['hints'] = {
-  dedupe: 'says “seen it” or “new”',
+  dedupe: 'a Bloom filter: a row of switches that says “seen it” or “new”',
   queue: 'the to-do list of addresses',
   limiter: 'waits between visits to one site',
   app: 'downloads pages',
@@ -220,7 +220,7 @@ const PIECE_HINTS: BuildTask['hints'] = {
 }
 
 const SETTINGS = [
-  { id: 'bits', label: 'room', when: 'dedupe' as const, min: 0, max: BITS.length - 1, step: 1, initial: 0, options: BITS.map((n) => `${n} switches per page`) },
+  { id: 'bits', label: 'row size', when: 'dedupe' as const, min: 0, max: BITS.length - 1, step: 1, initial: 0, options: BITS.map((n) => `${n} switches per page`) },
   { id: 'budget', label: 'each site may add', when: 'queue' as const, min: 0, max: BUDGETS.length - 1, step: 1, initial: BUDGETS.length - 1, options: BUDGETS.map((n) => (n === Infinity ? 'No limit' : `${n} pages`)) },
   { id: 'keep', label: 'a handed-out address is', when: 'queue' as const, min: 0, max: 1, step: 1, initial: 0, options: ['Forgotten at once', 'Kept until fetched'] },
   { id: 'delay', label: 'waits', when: 'limiter' as const, min: 0, max: DELAYS.length - 1, step: 1, initial: 1, options: ['No time', '0.25 s', '0.5 s', '1 s', '2 s'] },
@@ -263,7 +263,7 @@ export const FIRST_DESIGN: BuildTask = {
   sub: 'Place the seen-set, the frontier and the politeness timer, then set each one. Changing anything restarts the run.',
   goal: 'Download every page you may read, once each, without annoying a site.',
   goalShort: 'Every page once · polite',
-  win: 'A seen-set with room enough, a frontier to wait in, and a pause between visits to one site: every page read once, none forbidden.',
+  win: 'A seen-set with a big enough row of switches, a frontier to wait in, and a pause between visits to one site: every page read once, none forbidden.',
   holdSeconds: 4,
   testSeconds: 40,
   pads: FIRST_SPOTS.map(spot),
@@ -283,11 +283,11 @@ export const FIRST_DESIGN: BuildTask = {
     if (l.jam) return l.jam.why
     const s = chosen(settings)
     const t = c.tally
-    if (c.banned.size > 0) return l.polite ? `A site banned the crawler. The wait of ${s.delay / SECOND} seconds between visits to one site is too short.` : 'A site banned the crawler. One fetcher opened four pages of the same site at once, and sites do not like that. Add the politeness timer.'
-    if (t.robotsBreaks > 0) return 'The crawler read a page that robots.txt forbids. Set the fetcher to read robots.txt first.'
-    if (t.refetch > 5) return 'The same pages are being downloaded again. Pages link to each other in circles, and nothing remembers which ones were seen. Add the seen-set.'
-    if (!l.frontier && c.lost() > 4) return 'Links arrive faster than the fetcher can read them. With no list to wait in, they are thrown away. Add the frontier.'
-    if (l.seen && c.missedByFilter() > 1) return `${c.missedByFilter()} new pages were skipped because the seen-set said “seen it”. Its switches are ${Math.round(c.seen!.fill() * 100)}% on, so it often guesses wrong. Give it more room.`
+    if (c.banned.size > 0) return l.polite ? `A site banned the crawler. The wait of ${s.delay / SECOND} seconds between visits to one site is too short.` : 'A site banned the crawler. One fetcher opened four pages of the same site at once, and sites do not like that.'
+    if (t.robotsBreaks > 0) return 'The crawler read a page that robots.txt forbids.'
+    if (t.refetch > 5) return 'The same pages are being downloaded again. Pages link to each other in circles, and nothing remembers which ones were seen.'
+    if (!l.frontier && c.lost() > 4) return 'Links arrive faster than the fetcher can read them, and the extra ones are thrown away.'
+    if (l.seen && c.missedByFilter() > 1) return `${c.missedByFilter()} new pages were skipped because the seen-set said “seen it”. Its switches are ${Math.round(c.seen!.fill() * 100)}% on, so it often guesses wrong.`
     if (flow.tick >= FIRST_SETTLED && c.got() < Math.ceil(NEED_FIRST * c.wanted)) return `Only ${c.got()} of ${c.wanted} pages were downloaded.`
     return null
   },
@@ -332,23 +332,23 @@ export const SCALE_UP: BuildTask = {
     const t = c.tally
     const tick = flow.tick
     if (c.banned.size > 0) {
-      if (!l.polite) return 'A site banned the crawler. Fetchers open several pages of one site at once. Add the politeness timer.'
-      if (!l.ring && l.apps.length > 1) return 'A site banned the crawler although each fetcher waits between visits. Each timer only knows its own fetcher’s visits, and the fetchers share sites. Give every site to one fetcher with a hash ring.'
+      if (!l.polite) return 'A site banned the crawler. Fetchers open several pages of one site at once.'
+      if (!l.ring && l.apps.length > 1) return 'A site banned the crawler although each fetcher waits between visits. Each timer only knows its own fetcher’s visits, and the fetchers share sites.'
       return `A site banned the crawler. The wait of ${s.delay / SECOND} seconds between visits is too short.`
     }
-    if (t.robotsBreaks > 0) return 'The crawler read a page that robots.txt forbids. Set the fetchers to read robots.txt first.'
-    if (t.refetch > 5) return 'The same pages are being downloaded again. Pages link in circles, and nothing remembers which were seen. Add the seen-set.'
-    if (!l.frontier && c.lost() > 4) return 'Links arrive faster than the fetchers can read them. With no list to wait in, they are thrown away. Add the frontier.'
-    if (t.trapFetched > TRAP_LIMIT) return 'The crawler is lost in an endless calendar: every page links to three newer ones. Limit how many pages one site may add to the frontier.'
-    if (l.seen && c.missedByFilter() > 3) return `${c.missedByFilter()} new pages were skipped because the seen-set said “seen it”. Its switches are ${Math.round(c.seen!.fill() * 100)}% on. Give it more room.`
+    if (t.robotsBreaks > 0) return 'The crawler read a page that robots.txt forbids.'
+    if (t.refetch > 5) return 'The same pages are being downloaded again. Pages link in circles, and nothing remembers which were seen.'
+    if (!l.frontier && c.lost() > 4) return 'Links arrive faster than the fetchers can read them, and the extra ones are thrown away.'
+    if (t.trapFetched > TRAP_LIMIT) return 'The crawler is lost in an endless calendar: every page links to three newer ones.'
+    if (l.seen && c.missedByFilter() > 3) return `${c.missedByFilter()} new pages were skipped because the seen-set said “seen it”. Its switches are ${Math.round(c.seen!.fill() * 100)}% on.`
     if (tick >= CRASH_AT + T(4) && c.lost() > 4) {
-      if (l.frontier && !s.keep) return 'A fetcher died holding addresses it had been handed. The frontier forgot them the moment it handed them out. Keep an address until its fetcher says done.'
+      if (l.frontier && !s.keep) return 'A fetcher died holding addresses it had been handed. The frontier forgot them the moment it handed them out.'
       return `${c.lost()} addresses were thrown away and never read.`
     }
-    if (l.frontier && s.budget < 40 && tick >= T(30)) return `A site with 40 real pages is cut off at ${s.budget}. Allow a little more.`
-    if (l.cache) return 'A cache keeps the answer to a request that comes again. Every page is downloaded once, so nothing is asked twice. Take it off.'
+    if (l.frontier && s.budget < 40 && tick >= T(30)) return `A site with 40 real pages is cut off at ${s.budget}.`
+    if (l.cache) return 'A cache keeps the answer to a request that comes again. Every page is downloaded once, so nothing is asked twice.'
     if (tick >= SCALE_SETTLED && c.got() < Math.ceil(NEED_SCALE * c.wanted)) {
-      if (l.apps.length < 3) return `Only ${c.got()} of ${c.wanted} pages in time. One fetcher reads about 3 pages a second. Add fetchers.`
+      if (l.apps.length < 3) return `Only ${c.got()} of ${c.wanted} pages in time. One fetcher reads about 3 pages a second.`
       if (s.delay > 20) return `Only ${c.got()} of ${c.wanted} pages in time. Waiting ${s.delay / SECOND} seconds between visits to one site is too slow.`
       return `Only ${c.got()} of ${c.wanted} pages in time.`
     }
@@ -433,7 +433,7 @@ export const INTRO: Intro = {
   },
   steps: [
     { say: 'You search for a page. The search engine can only find it if it has already read it. So first, something has to go and read the web.', at: 'seeds', label: 'A few known links' },
-    { say: 'Each new address is checked first: have we met this one before? If not, it goes on the list.', at: 'seen', label: 'Seen-set' },
+    { say: 'Each new address is checked first: have we met this one before? If not, it goes on the list. Remembering billions of addresses in full would not fit in memory, so this is the Bloom filter: a row of switches.', at: 'seen', label: 'Seen-set' },
     { say: 'The list holds the addresses still to visit, in order.', at: 'frontier', label: 'Frontier' },
     { say: 'A fetcher takes one address, downloads the page and hands it over to be saved.', at: 'app-0', label: 'Fetcher' },
     { say: 'The page is saved. And every link on it goes back through the seen-set, so the crawl keeps growing by itself.', at: 'db', label: 'Page store' },
@@ -455,7 +455,7 @@ export const WEB_CRAWLER: Capstone = {
     questions: [
       { question: 'The crawler must read 1 billion pages a month. About how many pages a second is that?', options: ['About 40', 'About 400', 'About 4,000'], answer: 1, at: 'app-0', show: '400 pages / second', why: 'A month has about 2.6 million seconds. 1,000,000,000 ÷ 2,600,000 is about 400.' },
       { question: 'An average page is about 500 KB. About how much data arrives every second?', options: ['About 20 MB', 'About 200 MB', 'About 2 GB'], answer: 1, at: 'db', show: '200 MB / second', why: '400 pages × 500 KB is about 200 MB a second, more than one ordinary machine takes in.' },
-      { question: 'Each page links to about 50 others. About how many “have I seen this?” checks a second?', options: ['About 400', 'About 4,000', 'About 20,000'], answer: 2, at: 'seen', show: '20,000 checks / second', why: '400 pages a second × 50 links is 20,000 checks a second. Far too many to ask a disk.' },
+      { question: 'Each page links to about 50 others. About how many “have I seen this?” checks a second?', options: ['About 400', 'About 4,000', 'About 20,000'], answer: 2, at: 'seen', show: '20,000 checks / second', why: '400 pages a second × 50 links is 20,000 checks a second. Far too many to ask a disk. Keeping every address in full would not fit in memory either, so the seen-set is a Bloom filter: a few switches per page instead of the whole address.' },
       { question: 'Keep every page for a month. About how much storage is that?', options: ['About 5 TB', 'About 50 TB', 'About 500 TB'], answer: 2, why: '1 billion pages × 500 KB is 500 TB. It lives in blob storage, spread over many machines.' },
     ],
   },

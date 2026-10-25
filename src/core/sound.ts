@@ -3,6 +3,8 @@
 export type Sound =
   | 'crash'
   | 'success'
+  | 'built' // a build that runs clean
+  | 'conquered' // a capstone's final build
   | 'drop'
   | 'rise'
   | 'right' // a question answered right
@@ -66,6 +68,27 @@ export function play(sound: Sound) {
       tone(660, 0, 0.12, 'sine', 0.07)
       tone(880, 0.1, 0.12, 'sine', 0.07)
       tone(1320, 0.2, 0.3, 'sine', 0.06)
+      break
+    case 'built':
+      tone(523, 0, 0.14, 'triangle', 0.06)
+      tone(659, 0.12, 0.14, 'triangle', 0.06)
+      tone(784, 0.24, 0.14, 'triangle', 0.06)
+      tone(1047, 0.36, 0.7, 'triangle', 0.06)
+      tone(1319, 0.36, 0.7, 'sine', 0.04)
+      tone(262, 0.36, 0.7, 'sine', 0.05)
+      break
+    case 'conquered':
+      tone(392, 0, 0.16, 'triangle', 0.06)
+      tone(523, 0.14, 0.16, 'triangle', 0.06)
+      tone(659, 0.28, 0.16, 'triangle', 0.06)
+      tone(784, 0.42, 0.16, 'triangle', 0.06)
+      tone(1047, 0.56, 0.3, 'triangle', 0.06)
+      tone(784, 0.84, 0.14, 'triangle', 0.06)
+      tone(1047, 0.96, 0.14, 'triangle', 0.06)
+      tone(1319, 1.08, 1.1, 'triangle', 0.06)
+      tone(1568, 1.08, 1.1, 'sine', 0.04)
+      tone(523, 1.08, 1.1, 'sine', 0.05)
+      tone(262, 1.08, 1.1, 'sine', 0.05)
       break
     case 'drop':
       tone(320, 0, 0.08, 'triangle', 0.025, 160)

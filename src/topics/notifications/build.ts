@@ -3,6 +3,7 @@ import { Tag } from '../../core/iso/primitives'
 import { PIECE_NAMES } from '../../core/build/types'
 import type { BuildTask, Placement, Requirement, Settings } from '../../core/build/types'
 import type { FlowSim } from '../../core/flow/engine'
+import { PriorityQueue } from '../../core/flow/priority'
 import type { Capstone, Intro, Review } from '../../core/capstone/types'
 import { ATTEMPTS, KINDS, Notifier, PACES, SECOND, type Config, type Kind, type Profile, type World } from './notifier'
 
@@ -217,12 +218,18 @@ const SETTINGS = [
   { id: 'pace', label: 'marketing pace', when: 'limiter' as const, min: 0, max: PACES.length - 1, step: 1, initial: PACES.length - 1, options: PACES.map((n) => `${n} / second`) },
 ]
 
+// Turns away work once a line is full: the whole queue, or any one lane of it.
+function nearlyFull(q: NonNullable<Notifier['queue']>) {
+  if (q instanceof PriorityQueue) return q.lanes.some((l) => l.length >= q.laneCapacity * 0.8)
+  return q.load() >= q.capacity * 0.8
+}
+
 function decorate(flow: FlowSim, raw: Placement) {
   const { placed, pad, jam } = layout(raw)
   const n = notifierOf.get(flow)
   if (!n) return null
-  const out = [createElement(Tag, { key: 'phase', at: [API_AT.x, 2.6, API_AT.z], label: phaseAt(flow.tick), danger: n.providers.push.down })]
-  if (placed.q && (n.queue?.load() ?? 0) >= 100) out.push(createElement(Tag, { key: 'full', at: [POS[pad.q].x, 1.8, POS[pad.q].z], label: 'Almost full', danger: true }))
+  const out = [createElement(Tag, { key: 'phase', at: [SOURCE_X, 2.6, API_AT.z], label: phaseAt(flow.tick), danger: n.providers.push.down })]
+  if (placed.q && n.queue && nearlyFull(n.queue)) out.push(createElement(Tag, { key: 'full', at: [POS[pad.q].x, 1.8, POS[pad.q].z], label: 'Almost full', danger: true }))
   for (const id of jam?.ids ?? []) out.push(createElement(Tag, { key: `jam-${id}`, at: [POS[id].x, 1.8, POS[id].z], label: 'Stops here', danger: true }))
   if (n.providers.push.down) out.push(createElement(Tag, { key: 'down', at: [PROVIDER_X, 3.0, Z[1]], label: 'Down', danger: true }))
   if (placed.dead) out.push(createElement(Tag, { key: 'dead', at: [POS[pad.dead].x, 1.4, POS[pad.dead].z], label: `${n.dead?.jobs.length ?? 0} parked` }))

@@ -68,8 +68,12 @@ export function Piece({
 }
 
 // What is waiting at a node that holds a line of jobs, like a queue.
+// A queue with lanes turns work away when one lane is full, so it shows its fullest lane.
 const waitingOf = (node?: FlowNode) => {
-  const n = node as { jobs?: unknown[]; capacity?: number } | undefined
+  const n = node as { jobs?: unknown[]; capacity?: number; lanes?: unknown[][]; laneCapacity?: number } | undefined
+  if (n && Array.isArray(n.lanes) && typeof n.laneCapacity === 'number') {
+    return { jobs: n.lanes.reduce((a, l) => (l.length > a.length ? l : a), [] as unknown[]), capacity: n.laneCapacity }
+  }
   return n && Array.isArray(n.jobs) && typeof n.capacity === 'number' ? { jobs: n.jobs, capacity: n.capacity } : undefined
 }
 

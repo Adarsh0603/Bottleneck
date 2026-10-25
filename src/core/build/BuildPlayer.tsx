@@ -65,6 +65,8 @@ interface BuildPlayerProps {
   // Replaces what "Next" does and says, e.g. to go on to the next stage.
   onContinue?: () => void;
   continueText?: string;
+  // The last build of a capstone: a bigger sound and word when it holds.
+  finale?: boolean;
 }
 
 // A "Build it" chapter: drag pieces onto the floor while live traffic runs
@@ -109,6 +111,7 @@ function Builder({
   onReset,
   onContinue,
   continueText,
+  finale,
 }: BuildPlayerProps & { start: SavedBuild; onReset: () => void }) {
   const [placed, setPlaced] = useState<Placement>(start.placed);
   const [selected, setSelected] = useState<PieceKind | null>(null);
@@ -229,12 +232,12 @@ function Builder({
         setVictoryOpen(true);
         onSolvedRef.current?.(0);
         onStepRef.current?.(0, true);
-        play("success");
+        play(finale ? "conquered" : "built");
       }
     } else {
       holdStart.current = null;
     }
-  }, [solved, tick, task, m, placed, settings, run]);
+  }, [solved, tick, task, m, placed, settings, run, finale]);
   // Fail fast: the first requirement to break stops the run on the spot, with the reason.
   useEffect(() => {
     if (!task.failFast || !running || solved || failure || tick === 0) return;
@@ -514,7 +517,7 @@ function Builder({
           <path d="M7.5 12.5l3 3 6-7" />
         </svg>
         <div className="mt-3 font-mono text-[10px] uppercase tracking-widest text-muted">
-          Built
+          {finale ? "Conquered!" : "Built"}
         </div>
         <p className="mt-2 min-h-0 flex-1 overflow-y-auto text-base">
           {task.win}

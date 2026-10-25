@@ -16,8 +16,9 @@ export default function Toolbox() {
 
   return (
     <div className="mt-14">
-      <h2 className="font-mono text-[24px] text-muted">
-        <b>The arsenal:</b> every concept from server to distributed consensus
+      <h2 className="font-mono text-[24px] ">
+        <b>The Arsenal</b>
+        <p className="text-lg text-muted">Learn individual tactics</p>
       </h2>
 
       {/* The projects live on the map, so their track is left out here. */}
