@@ -3,17 +3,17 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --bg: #fafafa;
-  --fg: #0a0a0a;
+  --bg: #f1f1ef;
+  --fg: #262626;
   --muted: #6e6e6e;
-  --line: #e0e0e0;
-  --subtle: #efefef;
-  --card: rgb(255 255 255 / 0.78);
+  --line: #d9d9d6;
+  --subtle: #e6e6e3;
+  --card: rgb(247 247 245 / 0.78);
   --danger: #d92d20;
-  --iso-top: #ffffff;
-  --iso-left: #f0f0f0;
-  --iso-right: #dedede;
-  --iso-idle: #d2d2d2;
+  --iso-top: #f7f7f5;
+  --iso-left: #e8e8e5;
+  --iso-right: #d6d6d3;
+  --iso-idle: #cacac7;
   --srv-1: #2563eb;
   --srv-2: #ea580c;
   --srv-3: #16a34a;
@@ -24,17 +24,17 @@
 }
 
 .dark {
-  --bg: #0a0a0a;
-  --fg: #f2f2f2;
+  --bg: #151515;
+  --fg: #d6d6d6;
   --muted: #8c8c8c;
-  --line: #2a2a2a;
-  --subtle: #1c1c1c;
-  --card: rgb(16 16 16 / 0.78);
+  --line: #2f2f2f;
+  --subtle: #222222;
+  --card: rgb(27 27 27 / 0.78);
   --danger: #ff6b5e;
-  --iso-top: #2a2a2a;
-  --iso-left: #1c1c1c;
-  --iso-right: #121212;
-  --iso-idle: #333333;
+  --iso-top: #313131;
+  --iso-left: #242424;
+  --iso-right: #1a1a1a;
+  --iso-idle: #3b3b3b;
   --srv-1: #60a5fa;
   --srv-2: #fb923c;
   --srv-3: #4ade80;
@@ -124,16 +124,6 @@ body {
   .marker-pulse {
     animation: none;
   }
-}
-
-/* Capstone pages: a faint blueprint grid, to feel like a design sheet. */
-.blueprint {
-  background-color: var(--bg);
-  background-image:
-    linear-gradient(var(--line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--line) 1px, transparent 1px);
-  background-size: 32px 32px;
-  background-position: -1px -1px;
 }
 
 /* The realm map on the home page. */

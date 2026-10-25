@@ -203,6 +203,13 @@ export const CHAPTERS: IdempotencyChapter[] = [
         hud: ['paid', 'charges', 'replays'],
       },
       {
+        caption: 'That notebook is a dedupe store.',
+        sub: 'Notifications has the same trouble: a queue redelivers, and “Your order shipped” reaches you twice. So each message gets an ID, and a dedupe store remembers the IDs it has handled. Seen before? Drop it, or send back the saved answer.',
+        shot: WIDE,
+        tags: ['parties', 'status', 'keys', 'replay'],
+        hud: ['paid', 'charges', 'replays'],
+      },
+      {
         sub: 'Turn keys on, then pay a few times with replies getting lost.',
         set: { keys: 'none', lose: 'reply', tap: 0 },
         shot: WIDE,

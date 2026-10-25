@@ -55,7 +55,7 @@ export default function CapstonePlayer(props: CapstoneProps) {
   )
 }
 
-// A plain page with the usual top bar, on a faint blueprint grid.
+// A plain page with the usual top bar.
 function Paper({
   chapters,
   chapter,
@@ -68,7 +68,7 @@ function Paper({
   // A project with a board on its first screen gets the room for it.
   const wide = chapter === 0 && !!capstone.intro
   return (
-    <div className="blueprint relative h-[calc(100svh-57px)] min-h-[260px] w-full overflow-y-auto">
+    <div className="relativeh-[calc(100svh-57px)] min-h-[260px] w-full overflow-y-auto">
       <div className={`mx-auto flex min-h-full flex-col gap-4 p-3 sm:p-4 ${wide ? "max-w-5xl" : "max-w-2xl"}`}>
         <TopBar
           chapters={chapters}

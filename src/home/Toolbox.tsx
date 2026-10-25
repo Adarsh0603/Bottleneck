@@ -16,7 +16,7 @@ export default function Toolbox() {
 
   return (
     <div className="mt-14">
-      <h2 className="font-mono text-[24px] uppercase tracking-widest text-muted">
+      <h2 className="font-mono text-[24px] text-muted">
         <b>The arsenal:</b> every concept from server to distributed consensus
       </h2>
 

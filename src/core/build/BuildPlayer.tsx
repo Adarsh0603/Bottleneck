@@ -633,7 +633,7 @@ function Builder({
   return (
     <div
       ref={inset.root}
-      className="relative h-[calc(100svh-57px)] min-h-[260px] w-full select-none overflow-hidden"
+      className="relative h-[calc(100svh-57px)] min-h-[260px] w-full select-none overflow-hidden bg-black/[0.03] dark:bg-transparent"
     >
       <div
         className={`absolute inset-y-0 left-0 ${side ? "right-88" : "right-0"}`}
