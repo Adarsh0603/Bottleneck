@@ -1,3 +1,4 @@
+import { openSignIn, useSession } from "../core/cloud/session";
 import { resetProgress, useProgress } from "../core/progress";
 import { PLANNED, TOPICS, TRACKS, type TopicEntry } from "../topics/registry";
 import { Credit } from "./parts";
@@ -14,6 +15,7 @@ import {
 export default function Toolbox() {
   const progress = useProgress();
   const next = nextTopic(progress);
+  const { user } = useSession();
 
   return (
     <div className="mt-14">
@@ -82,7 +84,19 @@ export default function Toolbox() {
       <footer className="mt-16 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-6 text-xs text-muted">
         <Credit />
         <span className="flex flex-wrap items-center gap-3">
-          <span>Progress is saved in this browser only.</span>
+          {user ? (
+            <span>Progress is saved to your account.</span>
+          ) : (
+            <span>
+              Progress is saved in this browser only.{" "}
+              <button
+                onClick={openSignIn}
+                className="font-mono underline underline-offset-4 transition hover:text-fg"
+              >
+                Sign in to sync across devices
+              </button>
+            </span>
+          )}
           {Object.keys(progress).length > 0 && (
             <button
               onClick={() => {

@@ -97,6 +97,27 @@ export function parse(raw: string | null): Progress {
   }
 }
 
+// Two devices' progress, combined: nothing either one has done is lost.
+export function mergeProgress(a: Progress, b: Progress): Progress {
+  const out: Progress = {}
+  for (const topic of new Set([...Object.keys(a), ...Object.keys(b)])) {
+    const x = a[topic]
+    const y = b[topic]
+    if (!x || !y) {
+      out[topic] = (x ?? y)!
+      continue
+    }
+    const newer = y.updatedAt > x.updatedAt ? y : x
+    out[topic] = {
+      done: [...new Set([...x.done, ...y.done])].sort((m, n) => m - n),
+      solved: [...new Set([...x.solved, ...y.solved])],
+      last: newer.last ?? x.last ?? y.last,
+      updatedAt: Math.max(x.updatedAt, y.updatedAt),
+    }
+  }
+  return out
+}
+
 // --- Store -----------------------------------------------------------------
 
 function read(): Progress {
@@ -149,6 +170,18 @@ export function recordStep(topic: string, chapter: number, step: number, isLastS
 
 export function recordSolved(topic: string, chapter: number, step: number) {
   commit(withSolved(state, topic, chapter, step, Date.now()))
+}
+
+// For cloud sync: swap in merged progress, and hear about every change.
+export function replaceProgress(next: Progress) {
+  commit(fitted(next, SHAPES))
+}
+
+export function onProgressChange(listener: () => void) {
+  listeners.add(listener)
+  return () => {
+    listeners.delete(listener)
+  }
 }
 
 export function resetProgress() {

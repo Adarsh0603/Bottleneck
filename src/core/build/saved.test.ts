@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { FlowSim } from '../flow/engine'
 import { fit } from './placement'
-import { parse } from './saved'
+import { mergeBuilds, parse } from './saved'
 import type { BuildTask } from './types'
 
 const task: BuildTask = {
@@ -41,5 +41,15 @@ describe('saved builds', () => {
     const saved = { placed: { a: 'server', b: 'server', gone: 'server' } as const, settings: {} }
     expect(fit(task, saved).placed).toEqual({ a: 'server' })
     expect(fit(task, undefined)).toEqual({ placed: {}, settings: {} })
+  })
+})
+
+describe('mergeBuilds', () => {
+  it('keeps every build and the newer copy of a shared one', () => {
+    const old = { placed: { a: 'server' as const }, settings: {}, updatedAt: 1 }
+    const fresh = { placed: { a: 'cache' as const }, settings: {}, updatedAt: 2 }
+    const m = mergeBuilds({ x: old, only: old }, { x: fresh, other: old })
+    expect(m.x).toBe(fresh)
+    expect(Object.keys(m).sort()).toEqual(['only', 'other', 'x'])
   })
 })

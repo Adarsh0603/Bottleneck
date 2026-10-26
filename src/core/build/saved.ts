@@ -9,6 +9,7 @@ import { PIECE_NAMES } from './types'
 export interface SavedBuild {
   placed: Placement
   settings: Settings
+  updatedAt?: number // when it was last saved, so two devices' copies can be compared
 }
 
 export interface BuildBackend {
@@ -34,7 +35,7 @@ export function parse(raw: string | null): Record<string, SavedBuild> {
       for (const [pad, kind] of Object.entries(b.placed)) if (kind in PIECE_NAMES) placed[pad] = kind as PieceKind
       const settings: Settings = {}
       for (const [id, v] of Object.entries(b.settings ?? {})) if (typeof v === 'number' && Number.isFinite(v)) settings[id] = v
-      out[key] = { placed, settings }
+      out[key] = typeof b.updatedAt === 'number' ? { placed, settings, updatedAt: b.updatedAt } : { placed, settings }
     }
     return out
   } catch {
@@ -103,15 +104,52 @@ void load()
 
 export const getBuild = (key: string): SavedBuild | undefined => cache[key]
 
+const changeListeners = new Set<() => void>()
+
 export function saveBuild(key: string, build: SavedBuild) {
-  cache = { ...cache, [key]: build }
-  void backend.save(key, build).catch(() => {})
+  const stamped = { ...build, updatedAt: Date.now() }
+  cache = { ...cache, [key]: stamped }
+  void backend.save(key, stamped).catch(() => {})
+  changeListeners.forEach((l) => l())
 }
 
 export function clearBuild(key: string) {
   cache = { ...cache }
   delete cache[key]
   void backend.remove(key).catch(() => {})
+  changeListeners.forEach((l) => l())
+}
+
+// --- Cloud sync ------------------------------------------------------------
+
+export const whenBuildsLoaded = () => load()
+
+export const allBuilds = (): Record<string, SavedBuild> => cache
+
+export function onBuildsChange(listener: () => void) {
+  changeListeners.add(listener)
+  return () => {
+    changeListeners.delete(listener)
+  }
+}
+
+// The newer copy of each build wins.
+export function mergeBuilds(a: Record<string, SavedBuild>, b: Record<string, SavedBuild>): Record<string, SavedBuild> {
+  const out = { ...a }
+  for (const [key, build] of Object.entries(b)) {
+    const mine = out[key]
+    if (!mine || (build.updatedAt ?? 0) > (mine.updatedAt ?? 0)) out[key] = build
+  }
+  return out
+}
+
+// Swap in merged builds (kept in the backend too) without counting it as a change.
+export function replaceBuilds(next: Record<string, SavedBuild>) {
+  for (const key of Object.keys(cache)) if (!(key in next)) void backend.remove(key).catch(() => {})
+  for (const [key, build] of Object.entries(next)) void backend.save(key, build).catch(() => {})
+  cache = next
+  loaded = true
+  listeners.forEach((l) => l())
 }
 
 // False until the saved builds have arrived; with local storage that is

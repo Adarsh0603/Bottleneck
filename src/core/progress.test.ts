@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { continueTarget, fitted, parse, topicProgress, withSolved, withStep } from './progress'
+import { continueTarget, fitted, mergeProgress, parse, topicProgress, withSolved, withStep } from './progress'
 
 describe('withStep', () => {
   it('remembers where the learner is', () => {
@@ -62,5 +62,15 @@ describe('fitted', () => {
     const out = fitted(p, { sharding: { chapters: 4, challenges: ['1:2', '2:3'] } })
     expect(out.sharding).toEqual({ done: [0, 1], solved: ['1:2'], last: undefined, updatedAt: 1 })
     expect(out.other).toEqual(p.other)
+  })
+})
+
+describe('mergeProgress', () => {
+  it('keeps what either device has done', () => {
+    const a = { lb: { done: [0, 1], solved: ['0:1'], last: { chapter: 1, step: 0 }, updatedAt: 100 }, cdn: { done: [0], solved: [], updatedAt: 5 } }
+    const b = { lb: { done: [1, 2], solved: ['2:0'], last: { chapter: 2, step: 3 }, updatedAt: 200 } }
+    const m = mergeProgress(a, b)
+    expect(m.lb).toEqual({ done: [0, 1, 2], solved: ['0:1', '2:0'], last: { chapter: 2, step: 3 }, updatedAt: 200 })
+    expect(m.cdn).toEqual(a.cdn)
   })
 })

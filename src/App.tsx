@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import AccountButton from "./core/cloud/AccountButton";
+import SignInDialog from "./core/cloud/SignInDialog";
 import {
   recordSolved,
   recordStep,
@@ -75,15 +77,19 @@ export default function App() {
               </>
             )}
           </div>
-          <button
-            onClick={toggle}
-            className="rounded-full border border-line px-3 py-1 font-mono text-xs text-muted transition hover:text-fg"
-            aria-label="Toggle theme"
-          >
-            {dark ? "Light" : "Dark"}
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <AccountButton />
+            <button
+              onClick={toggle}
+              className="rounded-full border border-line px-3 py-1 font-mono text-xs text-muted transition hover:text-fg"
+              aria-label="Toggle theme"
+            >
+              {dark ? "Light" : "Dark"}
+            </button>
+          </div>
         </div>
       </header>
+      <SignInDialog />
       {topic && route.page === "topic" ? (
         <TopicView topic={topic} chapter={route.chapter} step={route.step} />
       ) : (
