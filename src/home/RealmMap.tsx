@@ -182,9 +182,8 @@ interface Limits {
 
 const DESK: Limits = { a: H / W, minZ: 1, maxZ: ZOOM_MAX }
 
-// Phones start close and pan; a pinch goes out to COMPACT_FAR and in to COMPACT_MAX.
+// Phones start zoomed out at COMPACT_FAR and pan; a pinch goes in to COMPACT_MAX.
 // The drawing is laid out at the closest zoom.
-const COMPACT_MIN = 2
 const COMPACT_FAR = 1.3
 const COMPACT_MAX = 3.6
 const COMPACT_FOCUS = 2.8
@@ -402,14 +401,14 @@ export default function RealmMap({
   // The map opens whole. Tapping a castle flies in on it and opens its card.
   // The drawing is laid out once at the closest zoom and only moved and scaled by CSS, so a
   // fly-in never redraws it: the browser slides one finished picture.
-  // On a phone it opens close, on the chosen castle, and pans; the whole map never fits.
+  // On a phone it opens at its farthest zoom, on the chosen castle, and pans; the whole map never fits.
   const compact = useMedia(COMPACT)
   // A phone on its side has width to spare: the card lies over the map's right half.
   const short = useMedia(SHORT)
   const overlay = compact && short
   const [view, setView] = useState<View>(() => {
     const sel = PROJECTS.find((p) => p.id === selected)
-    return compact && sel ? { z: COMPACT_MIN, cx: sel.x, cy: sel.y - 40 } : FIT
+    return compact && sel ? { z: COMPACT_FAR, cx: sel.x, cy: sel.y - 40 } : FIT
   })
   const [opened, setOpened] = useState<string | null>(null)
   const [moving, setMoving] = useState(false)

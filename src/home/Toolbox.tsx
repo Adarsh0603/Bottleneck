@@ -26,7 +26,7 @@ export default function Toolbox() {
         </div>
         <h1 className="mt-3 font-mono text-[24px]">
           <b>The Arsenal</b>
-          <span className="block text-lg text-muted">
+          <span className="block text-lg leading-snug tracking-tighter text-muted">
             From single server to distributed consensus, learn the tactics that
             make systems work
           </span>

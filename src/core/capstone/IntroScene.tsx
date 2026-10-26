@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import ArrowText from './ArrowText'
 import Board from './Board'
 import type { Intro } from './types'
 
@@ -13,23 +14,32 @@ export default function IntroScene({ intro, onDone }: { intro: Intro; onDone: ()
     <section className="rounded-2xl border border-line bg-bg/90 backdrop-blur">
       <Board task={intro.task} at={s.at} label={s.label} className="h-[60svh] min-h-[280px] rounded-t-2xl" />
       <div className="flex flex-col gap-3 border-t border-line p-4">
-        <p key={step} className="text-lg font-semibold tracking-tight sm:text-xl">
-          {s.say}
-        </p>
-        <div className="flex items-center gap-3">
-          {step > 0 && (
-            <button
-              onClick={() => setStep(step - 1)}
-              className="h-10 rounded-full border border-line px-5 text-sm font-medium transition hover:border-fg"
+        {/* Every caption sits in one grid cell, so the tallest sets the height and the buttons never move between steps. */}
+        <div className="grid">
+          {intro.steps.map((c, i) => (
+            <p
+              key={i}
+              aria-hidden={i !== step}
+              className={`col-start-1 row-start-1 text-lg font-semibold tracking-tight sm:text-xl ${i === step ? '' : 'invisible'}`}
             >
-              ← Back
-            </button>
-          )}
+              {c.say}
+            </p>
+          ))}
+        </div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setStep(step - 1)}
+            disabled={step === 0}
+            tabIndex={step === 0 ? -1 : undefined}
+            className={`h-10 rounded-full border border-line px-5 text-sm font-medium transition hover:border-fg ${step === 0 ? 'invisible' : ''}`}
+          >
+            <ArrowText>← Back</ArrowText>
+          </button>
           <button
             onClick={() => (last ? onDone() : setStep(step + 1))}
             className="h-10 rounded-full bg-fg px-6 text-sm font-medium text-bg transition hover:opacity-85"
           >
-            {last ? intro.start : 'Next →'}
+            <ArrowText>{last ? intro.start : 'Next →'}</ArrowText>
           </button>
           <div className="flex gap-1.5" aria-hidden>
             {intro.steps.map((_, i) => (

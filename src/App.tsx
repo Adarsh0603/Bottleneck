@@ -63,11 +63,14 @@ export default function App() {
           <div className="flex min-w-0 items-center gap-3">
             <a
               href="#/"
-              className="flex items-center gap-2"
+              className="flex shrink-0 items-center gap-2"
               aria-label="Systemlands home"
             >
               <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className="h-6 w-6" />
-              <span className="font-semibold tracking-tight">Systemlands</span>
+              {/* On a phone the topic name needs the room, so the logo stands alone there. */}
+              <span className={`font-semibold tracking-tight ${topic ? "hidden sm:inline" : ""}`}>
+                Systemlands
+              </span>
             </a>
             {topic && (
               <>

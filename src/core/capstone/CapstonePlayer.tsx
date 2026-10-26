@@ -4,6 +4,7 @@ import { getBuild, useBuildsLoaded } from '../build/saved'
 import { CHEAT_SHEET, TopBar } from '../chrome'
 import { play } from '../sound'
 import Board from './Board'
+import ArrowText from './ArrowText'
 import IntroScene from './IntroScene'
 import type { Capstone } from './types'
 
@@ -184,7 +185,7 @@ function Estimate({ capstone, onStep, onSolved, next, onReplay }: CapstoneProps 
             <p className="text-lg font-semibold tracking-tight">{summary.title}</p>
             <p className="mt-1 text-sm text-muted">{summary.body}</p>
             <button onClick={next} className="mt-4 h-10 rounded-full bg-fg px-6 text-sm font-medium text-bg transition hover:opacity-85">
-              Next stage →
+              <ArrowText>Next stage →</ArrowText>
             </button>
           </div>
         ) : (
@@ -220,7 +221,7 @@ function Estimate({ capstone, onStep, onSolved, next, onReplay }: CapstoneProps 
                   }}
                   className="mt-4 h-10 rounded-full bg-fg px-6 text-sm font-medium text-bg transition hover:opacity-85"
                 >
-                  {q + 1 >= questions.length ? 'Done' : 'Next number →'}
+                  <ArrowText>{q + 1 >= questions.length ? 'Done' : 'Next number →'}</ArrowText>
                 </button>
               </>
             )}

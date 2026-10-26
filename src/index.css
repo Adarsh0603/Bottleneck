@@ -142,6 +142,22 @@ body {
   animation: sea-drift 18s linear infinite;
   will-change: transform;
 }
+/* A boat crosses the whole sea; its hull rocks on the swell. */
+@keyframes boat-sail {
+  from { transform: translate3d(-12vw, 0, 0); }
+  to { transform: translate3d(112vw, 0, 0); }
+}
+@keyframes boat-rock {
+  0%, 100% { transform: translateY(0) rotate(-3deg); }
+  50% { transform: translateY(-3px) rotate(3deg); }
+}
+.sea-boat {
+  animation: boat-sail 90s linear infinite;
+  will-change: transform;
+}
+.sea-boat > svg {
+  animation: boat-rock 4s ease-in-out infinite;
+}
 .realm-moving .realm-mist, .realm-moving .realm-pulse { animation-play-state: paused; }
 @keyframes realm-pulse {
   0%, 100% { opacity: 0.35; transform: scale(1); }
@@ -153,4 +169,5 @@ body {
 }
 @media (prefers-reduced-motion: reduce) {
   .realm-pulse, .realm-mist, .sea-drift { animation: none; }
+  .sea-boat { display: none; }
 }
