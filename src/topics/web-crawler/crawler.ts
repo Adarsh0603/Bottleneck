@@ -400,6 +400,7 @@ export class Crawler {
   readonly frontier?: Frontier
   readonly fetchers: Fetcher[] = []
   rotate = 0
+  private started: number[] = [] // ticks of the visits begun in the last second
   private stages: string[] = []
   private violations = new Map<number, number>()
   private siteLast = new Map<number, number>()
@@ -410,6 +411,7 @@ export class Crawler {
     this.cfg = cfg
     this.web = cfg.web
     const flow = (this.flow = new Net(rng))
+    flow.traffic = () => this.started.filter((t) => flow.tick - t < SECOND).length
     const { keys } = cfg
     const late = cfg.web.spec.lateSeed !== undefined ? { u: cfg.web.trapEntry(), at: cfg.web.spec.lateSeed } : undefined
     flow.add(new Seeds(this, cfg.web.seeds(), late))
@@ -494,6 +496,8 @@ export class Crawler {
 
   // The site's side of a visit: does it mind?
   visit(job: Job, sim: FlowSim) {
+    this.started = this.started.filter((t) => sim.tick - t < SECOND)
+    this.started.push(sim.tick)
     const u = job.key!
     const h = this.web.hostOf(u)
     if (!this.cfg.robots && this.web.isPrivate(u)) this.tally.robotsBreaks++

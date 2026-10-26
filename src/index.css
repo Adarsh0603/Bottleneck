@@ -9,10 +9,10 @@
   --line: #d9d9d6;
   --subtle: #e6e6e3;
   --card: rgb(247 247 245 / 0.78);
-  --danger: #d92d20;
-  --iso-top: #f7f7f5;
-  --iso-left: #e8e8e5;
-  --iso-right: #d6d6d3;
+  --danger: #c4261b;
+  --iso-top: #fbfbf9;
+  --iso-left: #e2e2df;
+  --iso-right: #c8c8c4;
   --iso-idle: #cacac7;
   --srv-1: #2563eb;
   --srv-2: #ea580c;
@@ -31,9 +31,9 @@
   --subtle: #222222;
   --card: rgb(27 27 27 / 0.78);
   --danger: #ff6b5e;
-  --iso-top: #313131;
-  --iso-left: #242424;
-  --iso-right: #1a1a1a;
+  --iso-top: #424242;
+  --iso-left: #2b2b2b;
+  --iso-right: #1d1d1d;
   --iso-idle: #3b3b3b;
   --srv-1: #60a5fa;
   --srv-2: #fb923c;

@@ -74,6 +74,8 @@ export class FlowSim {
   readonly rng: () => number
   // Called as each request is answered, e.g. to track response time per region.
   onComplete?: (job: Job, latencyTicks: number) => void
+  // Requests per second arriving right now, for systems whose traffic does not come from `Source` nodes.
+  traffic?: () => number
 
   private nodes = new Map<string, FlowNode>()
   private links = new Map<string, Link[]>()

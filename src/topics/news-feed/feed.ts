@@ -254,6 +254,10 @@ export class Feed {
     this.cfg = cfg
     const flow = (this.flow = new Net(rng))
     flow.onLoss = (job) => this.lose(job)
+    flow.traffic = () => {
+      const phase = [...cfg.phases].reverse().find((p) => p.from <= flow.tick)
+      return phase ? phase.opens + phase.posts : 0
+    }
     flow.add(new Traffic(this, true))
     flow.add(new Traffic(this, false))
     if (cfg.cache) flow.add(cfg.jam?.includes(cfg.keys.cache) ? new Jam(cfg.keys.cache) : new Cache(cfg.keys.cache, this))

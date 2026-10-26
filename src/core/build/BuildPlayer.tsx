@@ -252,13 +252,14 @@ function Builder({
   // Traffic right now: it can rise and fall during a build.
   const rps = !running
     ? 0
-    : run.flow
+    : (run.flow.traffic?.() ??
+      run.flow
         .all()
         .reduce(
           (sum, n) =>
             sum + (n instanceof Source ? n.rate * TICKS_PER_SECOND : 0),
           0,
-        );
+        ));
   const raw =
     solved || tick === 0
       ? null
