@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { closeSignIn, useSession } from './session'
+import { closeNotice, closeSignIn, useSession } from './session'
 
 const GoogleG = () => (
   <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden>
@@ -13,15 +13,43 @@ const GoogleG = () => (
 // Opens from the header's Sign in button and the footer note: keep going in
 // this browser, or sign in to sync across devices.
 export default function SignInDialog() {
-  const { dialog } = useSession()
+  const { dialog, notice } = useSession()
 
   useEffect(() => {
-    if (!dialog) return
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && closeSignIn()
+    if (!dialog && !notice) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && (notice ? closeNotice() : closeSignIn())
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [dialog])
+  }, [dialog, notice])
 
+  if (notice) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={closeNotice}>
+        <div
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="notice-title"
+          aria-describedby="notice-body"
+          onClick={(e) => e.stopPropagation()}
+          className="w-full max-w-sm rounded-2xl border border-line bg-bg p-5 shadow-xl"
+        >
+          <h2 id="notice-title" className="text-lg font-semibold tracking-tight">
+            {notice.title}
+          </h2>
+          <p id="notice-body" className="mt-2 text-sm text-muted">
+            {notice.body}
+          </p>
+          <button
+            autoFocus
+            onClick={closeNotice}
+            className="mt-4 h-10 w-full rounded-full bg-fg px-4 text-sm font-medium text-bg transition hover:opacity-85"
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    )
+  }
   if (!dialog) return null
   const google = () => void import('./cloud').then((m) => m.signIn())
   return (

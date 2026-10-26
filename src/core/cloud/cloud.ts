@@ -2,7 +2,7 @@ import { initializeApp } from 'firebase/app'
 import { GoogleAuthProvider, getAuth, onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth'
 import { doc, getDoc, getFirestore, setDoc } from 'firebase/firestore'
 import { allBuilds, mergeBuilds, onBuildsChange, parse as parseBuilds, replaceBuilds, whenBuildsLoaded } from '../build/saved'
-import type { CloudUser } from './session'
+import { showNotice, type CloudUser } from './session'
 import { currentProgress, mergeProgress, onProgressChange, parse as parseProgress, replaceProgress } from '../progress'
 
 // Sign in with Google and keep progress and builds in Firestore, one document
@@ -22,6 +22,9 @@ const db = getFirestore(app)
 
 const PUSH_DELAY = 1500
 
+// Set when the learner signs in by hand, so a session restored on page load stays quiet.
+let announce = false
+
 let stopSync: (() => void) | null = null
 // Sends any change still waiting out its delay.
 let flushSync: (() => Promise<void>) | null = null
@@ -39,6 +42,15 @@ async function startSync(uid: string, alive: () => boolean) {
     setDoc(ref, { progress: JSON.stringify(currentProgress()), builds: JSON.stringify(allBuilds()), updatedAt: Date.now() })
   await push()
   if (!alive()) return
+  if (announce) {
+    announce = false
+    const had = Object.keys(currentProgress()).length > 0 || Object.keys(allBuilds()).length > 0
+    showNotice(
+      had
+        ? { title: 'Progress synced', body: 'Your progress and builds are saved to your account and will follow you across devices.' }
+        : { title: 'You are signed in', body: 'Your progress will be saved to your account as you learn.' },
+    )
+  }
 
   let timer: ReturnType<typeof setTimeout> | undefined
   const schedule = () => {
@@ -65,7 +77,14 @@ export function watchUser(onUser: (user: CloudUser | null) => void): () => void 
     stopSync?.()
     stopSync = null
     onUser(user ? { name: user.displayName ?? 'Signed in', email: user.email ?? '', photo: user.photoURL } : null)
-    if (user) void startSync(user.uid, () => mine === session).catch(() => {})
+    if (user) void startSync(user.uid, () => mine === session).catch(() => {
+        if (!announce) return
+        announce = false
+        showNotice({
+          title: 'Could not sync',
+          body: 'You are signed in, but your progress could not reach your account. It is still saved in this browser. Check your connection and reload.',
+        })
+      })
   })
   return () => {
     session++
@@ -76,12 +95,14 @@ export function watchUser(onUser: (user: CloudUser | null) => void): () => void 
 }
 
 export async function signIn() {
+  announce = true
   try {
     await signInWithPopup(auth, new GoogleAuthProvider())
   } catch (e) {
+    announce = false
     const code = (e as { code?: string }).code
     if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return
-    window.alert('Sign in failed. Please try again.')
+    showNotice({ title: 'Sign in failed', body: 'Something went wrong signing in. Please try again.' })
   }
 }
 
