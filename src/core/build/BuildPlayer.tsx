@@ -795,7 +795,9 @@ function Builder({
               <span>{pinnedOpen ? "▴" : "▾"}</span>
             </button>
             {pinnedOpen && (
-              <div className="space-y-1.5 px-3 pb-2.5 text-xs leading-snug">
+              <div
+                className={`space-y-1.5 px-3 pb-2.5 text-xs leading-snug ${compact ? "h-[28svh] overflow-y-auto overscroll-contain" : ""}`}
+              >
                 {task.pinned.lines.map((line) => (
                   <p key={line}>{line}</p>
                 ))}
