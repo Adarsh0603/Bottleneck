@@ -1,3 +1,4 @@
+import { askConfirm } from "../core/ConfirmDialog";
 import { openSignIn, useSession } from "../core/cloud/session";
 import { resetProgress, useProgress } from "../core/progress";
 import { PLANNED, TOPICS, TRACKS, type TopicEntry } from "../topics/registry";
@@ -99,9 +100,15 @@ export default function Toolbox() {
           )}
           {Object.keys(progress).length > 0 && (
             <button
-              onClick={() => {
-                if (window.confirm("Reset all progress? This can’t be undone."))
-                  resetProgress();
+              onClick={async () => {
+                const ok = await askConfirm({
+                  title: "Reset all progress?",
+                  body: user
+                    ? "You are signed in, so the progress saved in your account will be reset too. This can’t be undone."
+                    : "This can’t be undone.",
+                  confirm: "Reset progress",
+                });
+                if (ok) resetProgress();
               }}
               className="font-mono underline-offset-4 transition hover:text-fg hover:underline"
             >

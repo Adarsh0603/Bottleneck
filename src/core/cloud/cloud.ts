@@ -23,6 +23,8 @@ const db = getFirestore(app)
 const PUSH_DELAY = 1500
 
 let stopSync: (() => void) | null = null
+// Sends any change still waiting out its delay.
+let flushSync: (() => Promise<void>) | null = null
 
 async function startSync(uid: string, alive: () => boolean) {
   const ref = doc(db, 'users', uid)
@@ -47,6 +49,11 @@ async function startSync(uid: string, alive: () => boolean) {
   stopSync = () => {
     clearTimeout(timer)
     offs.forEach((off) => off())
+    flushSync = null
+  }
+  flushSync = () => {
+    clearTimeout(timer)
+    return push()
   }
 }
 
@@ -78,4 +85,18 @@ export async function signIn() {
   }
 }
 
-export const logOut = () => signOut(auth)
+// Signing out leaves nothing of the account on this device. The cloud copy is
+// sent first; if that fails, stay signed in rather than lose the latest changes.
+export async function logOut() {
+  try {
+    await flushSync?.()
+  } catch {
+    window.alert('Could not save your latest progress. Check your connection and try again.')
+    return
+  }
+  stopSync?.()
+  stopSync = null
+  replaceProgress({})
+  replaceBuilds({})
+  await signOut(auth)
+}

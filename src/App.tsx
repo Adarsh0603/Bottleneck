@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ConfirmHost } from "./core/ConfirmDialog";
 import AccountButton from "./core/cloud/AccountButton";
 import SignInDialog from "./core/cloud/SignInDialog";
 import {
@@ -90,6 +91,7 @@ export default function App() {
         </div>
       </header>
       <SignInDialog />
+      <ConfirmHost />
       {topic && route.page === "topic" ? (
         <TopicView topic={topic} chapter={route.chapter} step={route.step} />
       ) : (

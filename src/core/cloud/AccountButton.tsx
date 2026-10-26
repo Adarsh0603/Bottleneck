@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { askConfirm } from '../ConfirmDialog'
 import { openSignIn, setUser, useSession } from './session'
 
 type Cloud = typeof import('./cloud')
@@ -53,9 +54,14 @@ export default function AccountButton() {
           <div className="truncate text-xs text-muted">{user.email}</div>
           <p className="mt-2 text-xs text-muted">Your progress and builds are saved to your account.</p>
           <button
-            onClick={() => {
+            onClick={async () => {
               setOpen(false)
-              void cloud.logOut()
+              const ok = await askConfirm({
+                title: 'Sign out?',
+                body: 'This clears the progress and builds on this device. They stay saved in your account.',
+                confirm: 'Sign out',
+              })
+              if (ok) void cloud.logOut()
             }}
             className="mt-3 w-full rounded-lg border border-line px-3 py-1.5 text-xs transition hover:border-fg"
           >
