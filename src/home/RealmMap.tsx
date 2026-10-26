@@ -188,7 +188,7 @@ const COMPACT_MIN = 2
 const COMPACT_FAR = 1.3
 const COMPACT_MAX = 3.6
 const COMPACT_FOCUS = 2.8
-// On a phone, castle names show from this zoom in; farther out the realm names show instead.
+// On a phone, full castle names show from this zoom in; farther out they shorten (Project.short) and the realm names show too.
 const LABEL_ZOOM = 2.4
 // The zoom the far writing is sized for.
 const FAR_REF = 1.6
@@ -374,9 +374,9 @@ const Scene = memo(function Scene({ states, selected, fog, ls, names, realms, ph
                 <text x={p.x} y={p.y + dy} textAnchor="middle" className="fill-muted font-mono" fontSize={10 * ls} fontWeight={600}>
                   {String(projectNumber(p)).padStart(2, '0')}
                 </text>
-                {(names || p.id === selected) && (
+                {(names || p.id === selected || phone) && (
                   <text x={p.x} y={p.y + dy + 14 * ls} textAnchor="middle" className="fill-fg" fontSize={(p.tier >= 3 ? 11 : 12) * ls} fontWeight={600} opacity={state === 'fog' ? 0.85 : 1}>
-                    {p.name}
+                    {names || p.id === selected ? p.name : p.short}
                   </text>
                 )}
               </g>
@@ -469,7 +469,7 @@ export default function RealmMap({
   const limits: Limits = compact ? { a: aspect, minZ: COMPACT_FAR, maxZ: COMPACT_MAX } : DESK
   const layoutZoom = compact ? COMPACT_MAX : ZOOM_MAX
   const shown = clampView(view, limits)
-  // On a phone, far out shows the realm titles and close in shows the castle names, so the two never crowd each other.
+  // On a phone, far out shows the realm titles and short castle names; close in shows the full names.
   const near = !compact || shown.z >= LABEL_ZOOM
   // The writing on the map is grown to stay readable at the zoom its level is seen from.
   const ls = compact ? Math.min(2.6, Math.max(1, Math.round((11 / (12 * (width / W) * (near ? LABEL_ZOOM : FAR_REF))) * 10) / 10)) : 1

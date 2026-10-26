@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useProgress } from "../core/progress";
+import { PHONE, useMedia } from "../core/useMedia";
 import { PROJECTS } from "./projects";
 import RealmMap from "./RealmMap";
 import { projectStates } from "./shared";
@@ -8,7 +9,27 @@ import Toolbox from "./Toolbox";
 // One tile of small waves, drawn in black: only its shape is used, as a mask.
 const WAVES = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='36'%3E%3Cg fill='none' stroke='black' stroke-width='1.2' stroke-linecap='round'%3E%3Cpath d='M0 9q10-7 20 0t20 0 20 0 20 0'/%3E%3Cpath d='M-40 27q10-7 20 0t20 0 20 0 20 0 20 0 20 0' opacity='.7'/%3E%3C/g%3E%3C/svg%3E")`;
 
+const NOTE_KEY = "bottleneck.desktop-note";
+
+function readDismissed() {
+  try {
+    return localStorage.getItem(NOTE_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export default function Home() {
+  const phone = useMedia(PHONE);
+  const [noteGone, setNoteGone] = useState(readDismissed);
+  const dismissNote = () => {
+    setNoteGone(true);
+    try {
+      localStorage.setItem(NOTE_KEY, "1");
+    } catch {
+      /* the banner just comes back next visit */
+    }
+  };
   const progress = useProgress();
   const states = projectStates(progress);
   const next = PROJECTS.find((p) => states[p.id] === "next") ?? PROJECTS[0];
@@ -18,6 +39,21 @@ export default function Home() {
   return (
     <main className="pb-10 sm:pb-14">
       <div className="mx-auto max-w-[2200px] px-6 pt-10 sm:px-10 sm:pt-14 lg:px-16">
+        {phone && !noteGone && (
+          <div
+            role="note"
+            className="mb-4 flex items-start justify-between gap-3 rounded-xl border border-line bg-bg px-3 py-2 text-sm"
+          >
+            <p>Building systems is easier with a mouse. Try a desktop for the best view.</p>
+            <button
+              onClick={dismissNote}
+              aria-label="Dismiss"
+              className="shrink-0 rounded-full px-2 font-mono text-xs text-muted transition hover:text-fg"
+            >
+              ✕
+            </button>
+          </div>
+        )}
         <div className="font-mono text-[11px] uppercase tracking-widest text-muted">
           Conquer each system
         </div>
