@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 import type { Marker, V3 } from '../types'
 import { frameScale, project, VIEW_H, VIEW_W } from './geometry'
 import { IsoGrid, MarkerPin } from './primitives'
@@ -26,6 +26,7 @@ export default function Viewport({
   markers = [],
   bounds,
   grid = true,
+  tight = false,
   children,
 }: {
   target: V3
@@ -37,6 +38,7 @@ export default function Viewport({
   markers?: Marker[]
   bounds?: V3[] // when given, frame all of these points instead of using target and zoom
   grid?: boolean // the floor grid; a small display board looks cleaner without it
+  tight?: boolean // nothing is laid over the scene, so frame it using the whole box
   children: (frame: Frame) => ReactNode
 }) {
   const [now, setNow] = useState(() => performance.now())
@@ -51,6 +53,18 @@ export default function Viewport({
   // Track the on-screen size so the scene can be framed for it.
   const boxRef = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState({ w: VIEW_W, h: VIEW_H })
+  const view = useRef<{ cx: number; cy: number; zoom: number } | null>(null)
+  // Measure before the first paint and start the camera on that frame, so a
+  // freshly mounted board does not glide in from a frame sized for the default.
+  useLayoutEffect(() => {
+    const el = boxRef.current
+    if (!el) return
+    const { width, height } = el.getBoundingClientRect()
+    if (width > 0 && height > 0) {
+      view.current = null
+      setSize({ w: width, h: height })
+    }
+  }, [])
   useEffect(() => {
     const el = boxRef.current
     if (!el) return
@@ -62,7 +76,6 @@ export default function Viewport({
     return () => observer.disconnect()
   }, [])
 
-  const view = useRef<{ cx: number; cy: number; zoom: number } | null>(null)
   const lastFrame = useRef(now)
   const shakeUntil = useRef(0)
   useEffect(() => {
@@ -111,9 +124,9 @@ export default function Viewport({
 
   const narrow = size.w < 640
   const fs = frameScale(size.w, size.h)
-  const k = narrow ? 0.1 : 0.06
-  const base = bounds ? fitBounds(bounds, size, fs, k, narrow) : { center: project(target), zoom }
-  const fit = fitMarkers(asks, base, size, fs, k, narrow)
+  const k = tight ? 0 : narrow ? 0.1 : 0.06
+  const base = bounds ? fitBounds(bounds, size, fs, k, narrow, tight) : { center: project(target), zoom }
+  const fit = fitMarkers(asks, base, size, fs, k, narrow, tight)
   const goalZoom = fit.zoom * userZoom
   const [gx, gy] = fit.center
   const v = (view.current ??= { cx: gx, cy: gy, zoom: goalZoom })
@@ -253,7 +266,8 @@ export default function Viewport({
 
 // The part of the screen not covered by the stats on top, the question at the
 // bottom and the zoom buttons at the sides, in pixels.
-function clearArea(size: { w: number; h: number }, narrow: boolean) {
+function clearArea(size: { w: number; h: number }, narrow: boolean, tight = false) {
+  if (tight) return { x0: 40, x1: size.w - 40, y0: 40, y1: size.h - 36 }
   const short = size.h < 500
   const top = short ? 80 : narrow ? 150 : 130
   const bottom = short ? 130 : narrow ? 250 : 210
@@ -269,16 +283,18 @@ function fitBounds(
   fs: number,
   k: number,
   narrow: boolean,
+  tight = false,
 ): { center: [number, number]; zoom: number } {
   let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity
   for (const p of points) {
     const [sx, sy] = project(p)
-    x0 = Math.min(x0, sx - 60)
-    x1 = Math.max(x1, sx + 60)
-    y0 = Math.min(y0, sy - 90)
-    y1 = Math.max(y1, sy + 30)
+    // Room for the piece's footprint, its name above it and the pointer tag over that.
+    x0 = Math.min(x0, sx - (tight ? 140 : 60))
+    x1 = Math.max(x1, sx + (tight ? 140 : 60))
+    y0 = Math.min(y0, sy - (tight ? 180 : 90))
+    y1 = Math.max(y1, sy + (tight ? 80 : 30))
   }
-  const area = clearArea(size, narrow)
+  const area = clearArea(size, narrow, tight)
   const fitZoom = Math.min((area.x1 - area.x0) / (fs * (x1 - x0)), (area.y1 - area.y0) / (fs * (y1 - y0)))
   const z = Math.max(0.3, Math.min(1.6, fitZoom))
   const upp = 1 / (fs * z)
@@ -297,6 +313,7 @@ function fitMarkers(
   fs: number,
   k: number,
   narrow: boolean,
+  tight = false,
 ): { center: [number, number]; zoom: number } {
   const { center, zoom } = base
   if (asks.length === 0) return base
@@ -312,7 +329,7 @@ function fitMarkers(
     y1 = Math.max(y1, sy + 12)
   }
 
-  const area = clearArea(size, narrow)
+  const area = clearArea(size, narrow, tight)
   // Scene point → screen pixel for a camera at (cx, cy) and zoom z.
   const toScreen = (cx: number, cy: number, z: number, x: number, y: number) => {
     const upp = 1 / (fs * z)

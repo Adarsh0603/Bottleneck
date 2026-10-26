@@ -15,7 +15,7 @@ export default function Board({ task, at, label, danger, className = '' }: { tas
   }, [task, at, label, danger])
   return (
     <div className={`relative overflow-hidden bg-bg ${className}`}>
-      <BuildScene task={pointed} run={sim} placed={{}} settings={{}} lastTickAt={lastTickAt} dragKind={null} hoverPad={null} onPadClick={() => {}} onPieceDown={() => {}} />
+      <BuildScene task={pointed} run={sim} placed={{}} settings={{}} lastTickAt={lastTickAt} dragKind={null} hoverPad={null} onPadClick={() => {}} onPieceDown={() => {}} tight />
     </div>
   )
 }

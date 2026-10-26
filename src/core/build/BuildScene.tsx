@@ -28,6 +28,7 @@ export default function BuildScene({
   onPadClick,
   onPieceDown,
   grid,
+  tight,
 }: {
   task: BuildTask
   run: Running
@@ -39,6 +40,7 @@ export default function BuildScene({
   onPadClick: (padId: string) => void
   onPieceDown: (padId: string, e: PointerEvent) => void
   grid?: boolean
+  tight?: boolean
 }) {
   const born = useRef(new Map<string, number>())
 
@@ -56,7 +58,7 @@ export default function BuildScene({
   const bounds: V3[] = [...task.fixed, ...task.pads].map((p) => [p.x, 1.5, p.z])
 
   return (
-    <Viewport target={task.shot.target} zoom={task.shot.zoom} shake={0} panKey={task} label="Build area. Drag pieces onto the pads." bounds={bounds} grid={grid}>
+    <Viewport target={task.shot.target} zoom={task.shot.zoom} shake={0} panKey={task} label="Build area. Drag pieces onto the pads." bounds={bounds} grid={grid} tight={tight}>
       {({ now }) => {
         const flow = run.flow
         const frac = Math.min(1, Math.max(0, (now - lastTickAt.current) / MS_PER_TICK))

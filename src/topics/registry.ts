@@ -51,6 +51,9 @@ import { REFERENCE as TRANSACTIONS_REFERENCE } from './transactions/reference'
 import NotificationsPlay from './notifications/Play'
 import { NOTIFICATIONS } from './notifications/build'
 import { REFERENCE as NOTIFICATIONS_REFERENCE } from './notifications/reference'
+import NewsFeedPlay from './news-feed/Play'
+import { NEWS_FEED } from './news-feed/build'
+import { REFERENCE as NEWS_FEED_REFERENCE } from './news-feed/reference'
 import WebCrawlerPlay from './web-crawler/Play'
 import { WEB_CRAWLER } from './web-crawler/build'
 import { REFERENCE as WEB_CRAWLER_REFERENCE } from './web-crawler/reference'
@@ -315,7 +318,16 @@ export const TOPICS: TopicEntry[] = [
     Play: WebCrawlerPlay,
     reference: WEB_CRAWLER_REFERENCE,
   },
-  { id: 'news-feed', title: 'News feed', track: 'capstones', pitch: 'Fan out posts to millions of followers.' },
+  {
+    id: 'news-feed',
+    title: 'News feed',
+    track: 'capstones',
+    pitch: 'Fan out posts to millions of followers.',
+    chapters: [...NEWS_FEED.stages],
+    challenges: ['0:0', '1:0', '2:0'],
+    Play: NewsFeedPlay,
+    reference: NEWS_FEED_REFERENCE,
+  },
   { id: 'chat', title: 'Chat app', track: 'capstones', pitch: 'Real-time messages and who’s online.' },
   { id: 'video-streaming', title: 'Video streaming', track: 'capstones', pitch: 'Upload, transcode, and stream worldwide.' },
   { id: 'ride-sharing', title: 'Ride sharing', track: 'capstones', pitch: 'Match riders and drivers by location, live.' },
