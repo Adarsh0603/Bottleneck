@@ -36,9 +36,6 @@ function Boat({ size }: { size: number }) {
   );
 }
 
-// One tile holding a single dot: only its shape is used, as a mask.
-const PEGS = "radial-gradient(circle, black 1.2px, transparent 1.6px)";
-
 const NOTE_KEY = "bottleneck.desktop-note";
 
 function readDismissed() {
@@ -139,28 +136,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* The armory wall: a peg-board of dots behind the Arsenal, fading out at both edges. */}
       <div className="relative mt-4">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            maskImage:
-              "linear-gradient(to bottom, transparent, black 12%, black 88%, transparent)",
-            WebkitMaskImage:
-              "linear-gradient(to bottom, transparent, black 12%, black 88%, transparent)",
-          }}
-        >
-          <div
-            className="absolute inset-0 bg-line"
-            style={{
-              maskImage: PEGS,
-              maskSize: "22px 22px",
-              WebkitMaskImage: PEGS,
-              WebkitMaskSize: "22px 22px",
-            }}
-          />
-        </div>
         <div className="relative mx-auto max-w-[2200px] px-6 sm:px-10 lg:px-16">
           <Toolbox />
         </div>
