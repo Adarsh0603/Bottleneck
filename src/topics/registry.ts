@@ -24,6 +24,9 @@ import { REFERENCE as CONSENSUS_REFERENCE } from './consensus/reference'
 import { CHAPTERS as CONSISTENT_HASHING_CHAPTERS } from './consistent-hashing/chapters'
 import ConsistentHashingPlay from './consistent-hashing/Play'
 import { REFERENCE as CONSISTENT_HASHING_REFERENCE } from './consistent-hashing/reference'
+import { CHAPTERS as FAN_OUT_CHAPTERS } from './fan-out/chapters'
+import FanOutPlay from './fan-out/Play'
+import { REFERENCE as FAN_OUT_REFERENCE } from './fan-out/reference'
 import { CHAPTERS as IDEMPOTENCY_CHAPTERS } from './idempotency/chapters'
 import IdempotencyPlay from './idempotency/Play'
 import { REFERENCE as IDEMPOTENCY_REFERENCE } from './idempotency/reference'
@@ -227,6 +230,16 @@ export const TOPICS: TopicEntry[] = [
     Play: CircuitBreakersPlay,
     reference: CIRCUIT_BREAKERS_REFERENCE,
   },
+  {
+    id: 'fan-out',
+    title: 'Fan-out',
+    track: 'async',
+    pitch: 'Write once, deliver to millions of followers.',
+    chapters: FAN_OUT_CHAPTERS.map((c) => c.title),
+    challenges: challengeIds(FAN_OUT_CHAPTERS),
+    Play: FanOutPlay,
+    reference: FAN_OUT_REFERENCE,
+  },
 
   {
     id: 'consensus',
@@ -327,7 +340,6 @@ export const PLANNED: PlannedTopic[] = [
   { id: 'search', title: 'Search', track: 'data', pitch: 'Find text across millions of documents.' },
   { id: 'availability', title: 'Availability & failover', track: 'async', pitch: 'Stay up when machines and regions fail.' },
   { id: 'real-time', title: 'Real-time messaging', track: 'async', pitch: 'Push updates over WebSockets, polling or SSE.' },
-  { id: 'fan-out', title: 'Fan-out', track: 'async', pitch: 'Write once, deliver to millions of followers.' },
   { id: 'observability', title: 'Observability', track: 'async', pitch: 'Metrics, logs and traces to see what broke.' },
   { id: 'consistency', title: 'Consistency models', track: 'distributed', pitch: 'Strong, eventual and causal: what readers see.' },
 ]
