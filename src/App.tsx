@@ -63,7 +63,7 @@ export default function App() {
               className="flex items-center gap-2"
               aria-label="Systemlands home"
             >
-              <img src="/favicon.svg" alt="" className="h-6 w-6" />
+              <img src={`${import.meta.env.BASE_URL}favicon.svg`} alt="" className="h-6 w-6" />
               <span className="font-semibold tracking-tight">Systemlands</span>
             </a>
             {topic && (
