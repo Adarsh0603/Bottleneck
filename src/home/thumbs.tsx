@@ -26,6 +26,7 @@ const THUMBS: Record<string, Spot[]> = {
   "url-shortener": [["app", 0, 0]],
   notifications: [["queue", -1.1, 0], ["provider", 1.1, 0]],
   "web-crawler": [["app", -1.1, 0], ["stream", 1.1, 0]],
+  "news-feed": [["database", 0, -0.6], ["queue", -1.2, 0.7], ["cache", 1.2, 0.7]],
   // Topics still to build.
   estimation: [["users", 0, 0]],
   "api-design": [["app", 0, 0]],

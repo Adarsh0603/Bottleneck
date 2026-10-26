@@ -216,6 +216,15 @@ class Fanout implements FlowNode {
   }
   process(sim: FlowSim) {
     let budget = SEND
+    // Writes a busy shard turned away are sent again before anything new.
+    while (budget > 0 && this.feed.resend.length) {
+      const shard = this.feed.shardFor(this.feed.resend[0])
+      if (shard.load() >= WRITE_ROOM) break
+      const write = sim.newJob(1, undefined, 'write')
+      write.msg = this.feed.resend.shift()
+      sim.forward(write, this.key, shard.key)
+      budget--
+    }
     while (budget > 0 && this.todo.length) {
       const cur = this.todo[0]
       const shard = this.feed.shardFor(cur.left + cur.job.id)
@@ -242,6 +251,7 @@ export class Feed {
   readonly cfg: Config
   readonly tally = blank()
   readonly cached = new Map<number, number>() // reader → tick the feed was built
+  readonly resend: number[] = [] // posts with a write that a busy shard turned away
   readonly rebuilds = new Set<number>() // opens from a reader who has been away, under skipIdle
   readonly fanouts: Fanout[] = []
   readonly shards: Pool[] = []
@@ -358,8 +368,10 @@ export class Feed {
         o.dead = true
         this.tally.failed++
       }
-    } else if (job.from === 'post' || job.from === 'write') {
-      const id = job.from === 'post' ? job.id : job.msg!
+    } else if (job.from === 'write') {
+      if (this.posts.has(job.msg!)) this.resend.push(job.msg!)
+    } else if (job.from === 'post') {
+      const id = job.id
       const p = this.posts.get(id)
       if (!p) return
       this.posts.delete(id)

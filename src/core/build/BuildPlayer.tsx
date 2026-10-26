@@ -1,3 +1,4 @@
+import { askConfirm } from "../ConfirmDialog";
 import {
   useEffect,
   useRef,
@@ -498,9 +499,13 @@ function Builder({
   );
   const resetButton = (
     <button
-      onClick={() => {
-        if (window.confirm("Reset this build? Your pieces and settings here will be cleared."))
-          onReset();
+      onClick={async () => {
+        const ok = await askConfirm({
+          title: "Reset this build?",
+          body: "Your pieces and settings here will be cleared.",
+          confirm: "Reset build",
+        });
+        if (ok) onReset();
       }}
       className={`rounded-xl border border-line bg-bg/90 px-4 py-1.5 text-sm backdrop-blur transition hover:border-fg ${side ? "w-full py-2.5" : ""}`}
     >

@@ -293,7 +293,7 @@ export const SCALE_UP: BuildTask = {
     }
     if (f.tally.lost > 0) {
       if (!l.queue) return 'Posts are being lost. A worker busy copying the celebrity’s post turns new posts away, and nothing holds them.'
-      return 'Posts are being lost.'
+      return 'Posts are being lost: the post queue is full. The workers cannot get their copies into the store fast enough, because readers keep it busy.'
     }
     if (f.slowest(true) > FRESH_LIMIT || f.slowest() > FRESH_LIMIT) {
       if (s.mode === 'write') return `A post took ${Math.max(f.slowest(), f.slowest(true)).toFixed(1)} seconds to reach its followers. The celebrity has ${FOLLOWERS.star} followers’ worth of copies to write, and everyone behind the post waits.`

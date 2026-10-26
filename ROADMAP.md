@@ -11,6 +11,8 @@ What is built, and what is still to build. Update this as topics land.
 ## Built, awaiting testing
 - **Capstone 1: URL shortener** (branch `url-shortener`)
 - **Capstone 2: Notification system** (branch `notifications`), built on new engine nodes in `src/core/flow`: provider, sender with retries, dedupe store, dead letters, priority queue, pacer, ledger
+- **Capstone 3: Web crawler** (branch `web-crawler`, merged)
+- **Capstone 4: News feed** (branch `news-feed`), a feed sim in `src/topics/news-feed/feed.ts` with read, write and hybrid fan-out, a queue, a cache, workers and store shards
 
 ## To build: concepts the capstones depend on
 Build these before the remaining capstones.
@@ -19,7 +21,7 @@ Build these before the remaining capstones.
 3. **Availability & failover** (nines, redundancy, multi-region).
 4. **API design** (REST vs RPC, pagination, versioning, idempotent endpoints).
 5. **Real-time messaging** (WebSockets, long polling, server-sent events). Needed for chat.
-6. **Fan-out on write vs on read.** Needed for news feed.
+6. ~~Fan-out on write vs on read~~ (built).
 7. **Geospatial indexing.** Needed for ride sharing.
 
 ## To build: later
@@ -38,7 +40,7 @@ Projects are interview-style systems the learner builds, ordered from easy to ha
 3. Web crawler (built): queues, bloom filters, rate limiting, consistent hashing
 
 **Intermediate**
-4. News feed: caching, fan-out (new), queues, sharding
+4. News feed (built): caching, fan-out, queues, sharding
 5. Chat app: real-time messaging (new), pub/sub, replication, consistent hashing
 6. Video streaming: CDN, queues, autoscaling, caching
 7. Key-value store: consistent hashing, replication, CAP, consensus
