@@ -13,7 +13,7 @@ export const REFERENCE: Reference = {
     { title: 'The numbers', body: '500 million readers × 10 opens a day is about 58,000 opens a second. 100 million posts a day is about 1,200 a second. With 200 followers each, copying costs about 240,000 writes a second. Looking up 200 accounts per open costs 12 million lookups a second.' },
     { title: 'Fan-out on write', body: 'When a post is made, copy it into each follower’s inbox. Opening the app is then one lookup. Posts are slower to arrive, but reads vastly outnumber posts, so this wins.' },
     { title: 'Fan-out on read', body: 'Copy nothing. When a feed opens, look up every account the reader follows and merge. Posts show at once, but every open is expensive. It suits rare readers and celebrities.' },
-    { title: 'The celebrity problem', body: 'One post by someone with 50 million followers is 50 million writes. Everyone behind that post waits. So copy normal accounts, and look celebrities up when a feed opens.' },
+    { title: 'The celebrity problem', body: 'One post by someone with 50 million followers is 50 million writes. Everyone behind that post waits. So copy normal accounts, and look celebrities up when a feed opens. Where to draw the line is a choice: look up too many accounts and every open is costly, copy too many and the workers drown.' },
     { title: 'Queue and cache', body: 'A queue holds posts while workers catch up, so none is lost in a burst. A cache answers most opens without the store, and hides the rush. When it dies, every open lands on the store at once.' },
   ],
 }

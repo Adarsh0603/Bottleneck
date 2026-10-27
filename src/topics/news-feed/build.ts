@@ -3,7 +3,7 @@ import { Tag } from '../../core/iso/primitives'
 import type { BuildTask, Placement, Requirement, Settings } from '../../core/build/types'
 import type { FlowSim } from '../../core/flow/engine'
 import type { Capstone, Intro, Review } from '../../core/capstone/types'
-import { FOLLOWERS, Feed, MODES, SECOND, type Phase } from './feed'
+import { Feed, SECOND, type Limit, type Phase } from './feed'
 
 // The design board: writers and readers on the left, a lane for each, the fan-out
 // workers and the feed server in the middle, and the feed store on the right.
@@ -19,9 +19,11 @@ const POS: Record<string, { x: number; z: number }> = {
   w2: { x: 1.4, z: -1.4 },
   s1: { x: 4.4, z: -4.4 },
   s2: { x: 4.4, z: 4.4 },
+  d0: { x: -5.2, z: -1.6 },
+  d1: { x: 1.4, z: 4.4 },
 }
 const FIRST_SPOTS = ['a0', 'a1', 'w1', 's1']
-const ALL_SPOTS = ['a0', 'a1', 'w1', 'w2', 's1', 's2']
+const ALL_SPOTS = ['a0', 'a1', 'w1', 'w2', 's1', 's2', 'd0', 'd1']
 const spot = (id: string) => ({ id, ...POS[id], accepts: [] })
 
 // The first design: ordinary accounts, a busy hour. Then the real day: a rush,
@@ -30,10 +32,10 @@ const T = (s: number) => s * SECOND
 const FIRST_PHASES: Phase[] = [{ from: 0, opens: 14, posts: 3 }]
 export const FIRST_SETTLED = T(30)
 const SCALE_PHASES: Phase[] = [
-  { from: 0, opens: 8, posts: 2 },
-  { from: T(8), opens: 60, posts: 8 },
-  { from: T(20), opens: 60, posts: 12 },
-  { from: T(24), opens: 60, posts: 8 },
+  { from: 0, opens: 8, posts: 2, mids: 0.5 },
+  { from: T(8), opens: 60, posts: 8, mids: 0.5 },
+  { from: T(20), opens: 60, posts: 12, mids: 0.5 },
+  { from: T(24), opens: 60, posts: 8, mids: 0.5 },
 ]
 const STARS = [T(30), T(46)]
 const COLD_AT = T(40)
@@ -41,6 +43,8 @@ export const SCALE_SETTLED = T(62)
 const WAIT_LIMIT = 0.8 // seconds a reader may wait for a feed
 const FRESH_LIMIT = 3 // seconds a post may take to reach every follower
 const FAIL_LIMIT = 3 // readers turned away in all
+const READ_CAP = 30 // opens a second a rate limiter on the readers' side lets through
+const WRITE_CAP = 6 // posts a second one on the writers' side lets through
 
 const TIMELINE: NonNullable<BuildTask['timeline']> = {
   phases: [
@@ -83,12 +87,20 @@ function layout(raw: Placement) {
     cache: on('cache'),
     workers: ['fan-0', ...all('app')],
     shards: ['s0', ...all('database')],
+    // A rate limiter guards the lane it stands in: readers' below the middle line, writers' above it.
+    limits: Object.entries(raw)
+      .filter(([, k]) => k === 'limiter')
+      .map(([id]): Limit => (POS[id].z > 0 ? { key: id, lane: 'read', rate: READ_CAP } : { key: id, lane: 'write', rate: WRITE_CAP })),
+    extras: Object.values(raw).filter((k) => k === 'breaker' || k === 'ring').length,
     jam: outOfOrder(raw),
   }
 }
 
+export const CUTOFF_NAMES = ['Every post is copied', 'Accounts over 1 million followers are looked up', 'Accounts over 10,000 followers are looked up', 'Every account is looked up']
 export function chosen(settings: Settings) {
-  return { mode: MODES[settings.mode ?? 0], skipIdle: (settings.idle ?? 0) === 1 }
+  // The first design has only small accounts, so its choice is just copy or look up.
+  const cutoff = settings.when !== undefined ? (settings.when === 1 ? 3 : 0) : (settings.cutoff ?? 0)
+  return { cutoff, skipIdle: (settings.idle ?? 0) === 1 }
 }
 
 interface Mode {
@@ -101,7 +113,7 @@ function assemble(raw: Placement, settings: Settings, mode: Mode, rng?: () => nu
   const l = layout(raw)
   const s = chosen(settings)
   const feed = new Feed(rng ?? seeded(7), {
-    mode: s.mode,
+    cutoff: s.cutoff,
     queue: !!l.queue,
     cache: !!l.cache,
     skipIdle: s.skipIdle,
@@ -109,6 +121,7 @@ function assemble(raw: Placement, settings: Settings, mode: Mode, rng?: () => nu
     shards: l.shards,
     phases: mode.phases,
     stars: mode.stars,
+    limits: l.limits,
     coldAt: mode.coldAt,
     jam: l.jam?.ids,
     keys: { queue: l.queue ?? 'queue', cache: l.cache ?? 'cache' },
@@ -178,11 +191,17 @@ const PIECE_HINTS: BuildTask['hints'] = {
   cache: 'remembers a reader’s feed for a few seconds',
   app: 'copies posts into followers’ inboxes',
   database: 'one more piece of the feed store',
+  limiter: 'lets only so many requests a second through',
+  breaker: 'stops calling a service that keeps failing',
+  ring: 'gives each key to one machine',
 }
 
+// Stage 2 has only small accounts, so the choice is just when the work is done.
+const WHEN = { id: 'when', label: 'a feed is made', when: 'app' as const, min: 0, max: 1, step: 1, initial: 0, options: ['When a post is made', 'When a feed opens'] }
+
 const SETTINGS = [
-  { id: 'mode', label: 'a post is', when: 'app' as const, min: 0, max: 2, step: 1, initial: 0, options: ['Looked up when a feed opens', 'Copied to every follower', 'Copied, except celebrities’'] },
-  { id: 'idle', label: 'copied to', when: 'app' as const, min: 0, max: 1, step: 1, initial: 0, options: ['All followers', 'Active followers only'] },
+  { id: 'cutoff', label: 'when a feed opens', when: 'app' as const, min: 0, max: 3, step: 1, initial: 0, options: CUTOFF_NAMES },
+  { id: 'idle', label: 'posts are copied to', when: 'app' as const, min: 0, max: 1, step: 1, initial: 0, options: ['All followers', 'Active followers only'] },
 ]
 
 function decorate(flow: FlowSim, raw: Placement) {
@@ -215,6 +234,18 @@ function common(): Pick<BuildTask, 'pinned' | 'manualStart' | 'rps' | 'shot' | '
   }
 }
 
+// What the learner sees going wrong, in numbers. It says what happened, never why.
+function symptom(f: Feed) {
+  const store = `Store ${Math.round(f.storeLoad() * 100)}% full`
+  const t = f.tally
+  if (t.failed > FAIL_LIMIT) return `${t.failed} readers turned away so far${t.limited ? `, ${t.limited} by a rate limiter` : ''}. ${store}.`
+  if (t.lost > 0) return `${t.lost} post${t.lost > 1 ? 's' : ''} lost so far${t.limited ? `, ${t.limited} by a rate limiter` : ''}. ${f.backlog()} copies waiting.`
+  const slow = Math.max(f.slowest(), f.slowest(true))
+  if (slow > FRESH_LIMIT) return `A post took ${slow.toFixed(1)} s to reach its followers. ${f.backlog()} copies waiting.`
+  if (f.wait() > WAIT_LIMIT) return `Opening the app takes ${f.wait().toFixed(1)} s. ${store}.`
+  return null
+}
+
 // Stage 2: ordinary accounts, and the new idea: do the work when a post is made.
 export const FIRST_DESIGN: BuildTask = {
   ...common(),
@@ -230,24 +261,16 @@ export const FIRST_DESIGN: BuildTask = {
     { kind: 'queue', count: 1 },
     { kind: 'cache', count: 1 },
   ],
-  settings: [SETTINGS[0]],
+  settings: [WHEN],
   watch: [{ kind: 'busy', key: 'feed', label: 'Feed server busy' }],
   requirements: [opens(FIRST_SETTLED), posts, fresh],
   assemble: (placed, settings, rng) => assemble(placed, settings, { phases: FIRST_PHASES, stars: [] }, rng),
-  problem(_m, raw, settings, flow) {
+  problem(_m, raw, _settings, flow) {
     const f = feedOf.get(flow)
     if (!f) return null
     const l = layout(raw)
     if (l.jam) return l.jam.why
-    const s = chosen(settings)
-    if (f.tally.failed > FAIL_LIMIT) {
-      if (s.mode === 'read') return 'Readers are turned away. Every open looks up all 16 accounts the reader follows, one by one, and the store cannot answer that many.'
-      return 'Readers are turned away: the store is too busy.'
-    }
-    if (f.tally.lost > 0) return 'Posts are being lost. Copying a post takes many writes, and with nothing to hold the posts, new ones are turned away while a worker is busy.'
-    if (f.slowest() > FRESH_LIMIT) return `A post took ${f.slowest().toFixed(1)} seconds to reach its followers.`
-    if (f.wait() > WAIT_LIMIT) return `Opening the app takes ${f.wait().toFixed(1)} seconds.`
-    return null
+    return symptom(f)
   },
   check(_m, _raw, _settings, flow) {
     const f = flow && feedOf.get(flow)
@@ -260,10 +283,10 @@ export const FIRST_DESIGN: BuildTask = {
 export const SCALE_UP: BuildTask = {
   ...common(),
   title: 'Where it breaks: a celebrity.',
-  sub: 'A rush of readers, a celebrity with hundreds of followers’ worth of copies, and a cache that dies. Watch what turns red, then fix it.',
+  sub: 'A rush of readers, accounts of every size, a celebrity, and a cache that dies. Watch the numbers, then tune it.',
   goal: 'Get through the whole day: nobody turned away, no post lost, every post fresh.',
   goalShort: 'Survive the whole day',
-  win: 'Copy normal accounts’ posts, look the celebrity up when a feed opens, queue the posts, keep a cache, and give the store more than one shard.',
+  win: 'Look up only the celebrity when a feed opens and copy the rest. Queue the posts, keep a cache, and give the store and the workers room.',
   holdSeconds: 4,
   testSeconds: 66,
   pads: ALL_SPOTS.map(spot),
@@ -272,35 +295,21 @@ export const SCALE_UP: BuildTask = {
     { kind: 'cache', count: 1 },
     { kind: 'app', count: 2 },
     { kind: 'database', count: 2 },
+    { kind: 'limiter', count: 1 },
+    { kind: 'breaker', count: 1 },
+    { kind: 'ring', count: 1 },
   ],
   timeline: TIMELINE,
   settings: SETTINGS,
   watch: [{ kind: 'busy', key: 'feed', label: 'Feed server busy' }],
   requirements: [opens(SCALE_SETTLED), posts, fresh],
   assemble: (placed, settings, rng) => assemble(placed, settings, { phases: SCALE_PHASES, stars: STARS, coldAt: COLD_AT }, rng),
-  problem(_m, raw, settings, flow) {
+  problem(_m, raw, _settings, flow) {
     const f = feedOf.get(flow)
     if (!f) return null
     const l = layout(raw)
     if (l.jam) return l.jam.why
-    const s = chosen(settings)
-    const tick = flow.tick
-    if (f.tally.failed > FAIL_LIMIT) {
-      if (s.mode === 'read') return 'Readers are turned away. In the rush, every open looks up all the accounts the reader follows, and the store cannot keep up.'
-      if (tick >= COLD_AT && !l.cache) return 'Readers are turned away: with no cache, every open reaches the store.'
-      if (tick >= COLD_AT) return 'Readers are turned away when the cache dies: all its opens land on the store at once.'
-      return 'Readers are turned away: the store is too busy.'
-    }
-    if (f.tally.lost > 0) {
-      if (!l.queue) return 'Posts are being lost. A worker busy copying the celebrity’s post turns new posts away, and nothing holds them.'
-      return 'Posts are being lost: the post queue is full. The workers cannot get their copies into the store fast enough, because readers keep it busy.'
-    }
-    if (f.slowest(true) > FRESH_LIMIT || f.slowest() > FRESH_LIMIT) {
-      if (s.mode === 'write') return `A post took ${Math.max(f.slowest(), f.slowest(true)).toFixed(1)} seconds to reach its followers. The celebrity has ${FOLLOWERS.star} followers’ worth of copies to write, and everyone behind the post waits.`
-      return 'Posts take too long to arrive. The workers cannot copy them fast enough.'
-    }
-    if (f.wait() > WAIT_LIMIT) return `Opening the app takes ${f.wait().toFixed(1)} seconds.`
-    return null
+    return symptom(f)
   },
   check(_m, _raw, _settings, flow) {
     const f = flow && feedOf.get(flow)
@@ -312,20 +321,20 @@ export const SCALE_UP: BuildTask = {
 function review(raw: Placement, settings: Settings): Review {
   const l = layout(raw)
   const s = chosen(settings)
-  const MODE_NAME = { read: 'Look up when opened', write: 'Copy to every follower', hybrid: 'Copy, except celebrities’' }
   return {
     lines: [
-      { label: 'When', yours: MODE_NAME[s.mode], reference: 'Copy normal accounts’ posts, look celebrities up when a feed opens', why: 'Reads outnumber posts by far, so do the work when a post is made. But one post by a celebrity would be tens of millions of copies, so that one is looked up when the feed opens.', ok: s.mode === 'hybrid' },
+      { label: 'Cutoff', yours: CUTOFF_NAMES[s.cutoff], reference: 'Only accounts over 1 million followers are looked up', why: 'Reads outnumber posts by far, so copy when a post is made. But one post by a celebrity is millions of copies, so look that account up when the feed opens. Mid accounts are cheap to copy and costly to look up, since every reader follows several.', ok: s.cutoff === 1 },
       { label: 'Post queue', yours: l.queue ? 'A queue in front of the workers' : 'None', reference: 'A queue in front of the workers', why: 'Posts arrive in bursts. A queue holds them while the workers catch up, so none is turned away.', ok: !!l.queue },
       { label: 'Feed cache', yours: l.cache ? 'A cache in front of the feed server' : 'None', reference: 'A cache in front of the feed server', why: 'The same readers open the app again and again. A cache answers most opens without the store, and absorbs the rush.', ok: !!l.cache },
-      { label: 'Workers', yours: `${l.workers.length} fan-out worker${l.workers.length > 1 ? 's' : ''}`, reference: '2 or more fan-out workers', why: 'One worker copies a few writes a tick. More workers copy more posts at once.', ok: l.workers.length >= 2 },
-      { label: 'Store', yours: `${l.shards.length} shard${l.shards.length > 1 ? 's' : ''}`, reference: '2 or more shards', why: 'Lookups and writes share the store. Split over shards, a burst of writes does not starve the readers.', ok: l.shards.length >= 2 },
+      { label: 'Workers', yours: `${l.workers.length} fan-out worker${l.workers.length > 1 ? 's' : ''}`, reference: '3 fan-out workers', why: 'Each worker copies a few writes a tick. The busiest seconds need three of them to keep every post fresh.', ok: l.workers.length >= 3 },
+      { label: 'Store', yours: `${l.shards.length} shard${l.shards.length > 1 ? 's' : ''}`, reference: '3 shards', why: 'Lookups and writes share the store. Split over shards, a burst of writes does not starve the readers.', ok: l.shards.length >= 3 },
+      { label: 'Extras', yours: l.limits.length + l.extras ? 'Pieces this system does not need' : 'Only what is needed', reference: 'No limiter, breaker or hash ring', why: 'A rate limiter turns real readers and posts away. A breaker guards calls to a failing service, and nothing here calls one. A hash ring has nothing to do when the shards already spread by reader.', ok: l.limits.length + l.extras === 0 },
     ],
     tradeoffs: [
       'The cache shows a feed that can be a few seconds old. Readers rarely notice, and the store is spared.',
-      'Hybrid means two ways to build a feed. Every feed merges the inbox with the celebrities it follows, so the feed server does more per open.',
+      'Two ways to build a feed means every open merges the inbox with the accounts looked up, so the feed server does more per open.',
       'Skipping idle followers saves writes, but a returning reader has no inbox: their open looks up every account they follow, and skips the cache. Enough of those at once and the store is swamped.',
-      'Where to draw the line for a celebrity is a choice: a follower count, or a rate of posting. Too low and the lookups grow, too high and the copies hurt.',
+      'Where to draw the line is a choice. Too low and every reader looks up many accounts per open. Too high and the copies of a big account bury the workers.',
     ],
     interview: [
       'Clarify: how many readers and posts, how fresh must a feed be, how is the feed ordered, are there celebrities, images or video.',
@@ -359,7 +368,7 @@ export const INTRO: Intro = {
     toolbox: [],
     assemble: (_placed, _settings, rng) => {
       const feed = new Feed(rng ?? seeded(3), {
-        mode: 'write',
+        cutoff: 0,
         queue: false,
         cache: false,
         skipIdle: false,

@@ -1,15 +1,15 @@
-import { useRef, type PointerEvent, type ReactNode } from 'react'
+import { Children, cloneElement, isValidElement, useRef, type PointerEvent, type ReactNode } from 'react'
 import { Source, Worker } from '../flow/nodes'
 import { depth, points } from '../iso/geometry'
-import { FloorPath, IsoBox, Tag } from '../iso/primitives'
+import { FloorPath, Packet, Tag } from '../iso/primitives'
 import Viewport from '../iso/Viewport'
 import type { V3 } from '../types'
 import { Piece } from './pieces'
 import { MS_PER_TICK, TICKS_PER_SECOND, type Running } from './run'
-import { HALF, type BuildTask, type PieceKind, type Placement, type Settings } from './types'
+import { HALF, PIECE_NAMES, type BuildTask, type PieceKind, type Placement, type Settings } from './types'
 
 const PAD = 1.5
-const CUBE = 0.24
+const CUBE = 0.15 // height a queued packet sits at
 const FLY_Y = 0.6
 const QUEUE_GAP = 0.28
 const FALL_SECONDS = 1.4
@@ -43,6 +43,7 @@ export default function BuildScene({
   tight?: boolean
 }) {
   const born = useRef(new Map<string, number>())
+  const nameOf = (kind: PieceKind) => task.names?.[kind] ?? PIECE_NAMES[kind]
 
   // Where every node stands, by key: fixed pieces and filled pads.
   const spots = new Map<string, { kind: PieceKind; x: number; z: number }>()
@@ -143,12 +144,22 @@ export default function BuildScene({
             solids.push({
               d: depth(qx, s.z),
               node: (
-                <IsoBox key={`q${job.id}`} x={qx} z={s.z} w={CUBE} d={CUBE} h={CUBE} fill={overloaded ? 'var(--danger)' : 'var(--fg)'} />
+                <Packet key={`q${job.id}`} at={[qx, CUBE / 2, s.z]} fill={overloaded ? 'var(--danger)' : 'var(--fg)'} />
               ),
             })
           })
         }
         solids.sort((a, b) => a.d - b.d)
+
+        // Every placed piece wears its name. A tag the build already put over the same piece takes the name in, so the two never overlap.
+        const named = new Set<string>()
+        const extras = Children.toArray(task.decorate?.(flow, placed, settings)).map((el) => {
+          if (!isValidElement<{ at: V3; label: string }>(el) || el.type !== Tag) return el
+          const pad = task.pads.find((p) => placed[p.id] && !named.has(p.id) && p.x === el.props.at[0] && p.z === el.props.at[2])
+          if (!pad) return el
+          named.add(pad.id)
+          return cloneElement(el, { label: `${nameOf(placed[pad.id])} · ${el.props.label}` })
+        })
 
         return (
           <>
@@ -198,7 +209,7 @@ export default function BuildScene({
               const x = ax + (bx - ax) * p
               const z = az + (bz - az) * p + jitter
               const y = FLY_Y + Math.sin(p * Math.PI) * 0.3
-              return <IsoBox key={t.job.id} x={x} z={z} y={y - CUBE / 2} w={CUBE} d={CUBE} h={CUBE} fill={task.jobFill ? task.jobFill(t.job, flow) : 'var(--fg)'} />
+              return <Packet key={t.job.id} at={[x, y, z]} fill={task.jobFill ? task.jobFill(t.job, flow) : 'var(--fg)'} />
             })}
 
             {/* Dropped requests tumble and fade where they were turned away. */}
@@ -211,17 +222,7 @@ export default function BuildScene({
               // Users who find nowhere to send a request lose it at their edge; anything else at the end of its line.
               const x0 = flow.node(d.node) instanceof Source ? s.x + HALF[s.kind] : s.x - HALF[s.kind] - 0.3 - 8 * QUEUE_GAP
               return (
-                <IsoBox
-                  key={`d${d.jobId}`}
-                  x={x0 - age * 0.6}
-                  z={s.z + side * (0.15 + age * 0.9)}
-                  y={FLY_Y + age * 1.2 - 5 * age * age}
-                  w={CUBE}
-                  d={CUBE}
-                  h={CUBE}
-                  fill="var(--danger)"
-                  opacity={1 - age / FALL_SECONDS}
-                />
+                <Packet key={`d${d.jobId}`} at={[x0 - age * 0.6, FLY_Y + age * 1.2 - 5 * age * age, s.z + side * (0.15 + age * 0.9)]} fill="var(--danger)" opacity={1 - age / FALL_SECONDS} />
               )
             })}
             </g>
@@ -229,7 +230,8 @@ export default function BuildScene({
             {task.labels?.map((l) => (
               <Tag key={l.text + l.at.join()} at={l.at} label={l.text} />
             ))}
-            {task.decorate?.(flow, placed, settings)}
+            {task.pads.map((pad) => placed[pad.id] && !named.has(pad.id) && <Tag key={`name-${pad.id}`} at={[pad.x, 1.5, pad.z]} label={nameOf(placed[pad.id])} />)}
+            {extras}
           </>
         )
       }}
