@@ -36,6 +36,9 @@ import { CHAPTERS as PUBSUB_CHAPTERS } from './pubsub/chapters'
 import PubsubPlay from './pubsub/Play'
 import { REFERENCE as PUBSUB_REFERENCE } from './pubsub/reference'
 import { ADVANCED as LOAD_BALANCING_CARDS, INTERVIEW as LOAD_BALANCING_INTERVIEW } from './load-balancing/reference'
+import { CHAPTERS as REAL_TIME_CHAPTERS } from './real-time/chapters'
+import RealTimePlay from './real-time/Play'
+import { REFERENCE as REAL_TIME_REFERENCE } from './real-time/reference'
 import { CHAPTERS as RATE_LIMITING_CHAPTERS } from './rate-limiting/chapters'
 import RateLimitingPlay from './rate-limiting/Play'
 import { REFERENCE as RATE_LIMITING_REFERENCE } from './rate-limiting/reference'
@@ -243,6 +246,17 @@ export const TOPICS: TopicEntry[] = [
     Play: FanOutPlay,
     reference: FAN_OUT_REFERENCE,
   },
+  {
+    id: 'real-time',
+    title: 'Real-time messaging',
+    short: 'Real-time',
+    track: 'async',
+    pitch: 'Push updates over WebSockets, polling or SSE.',
+    chapters: REAL_TIME_CHAPTERS.map((c) => c.title),
+    challenges: challengeIds(REAL_TIME_CHAPTERS),
+    Play: RealTimePlay,
+    reference: REAL_TIME_REFERENCE,
+  },
 
   {
     id: 'consensus',
@@ -351,7 +365,6 @@ export const PLANNED: PlannedTopic[] = [
   { id: 'blob-storage', title: 'Blob storage', track: 'data', pitch: 'Keep big files cheaply and serve them fast.' },
   { id: 'search', title: 'Search', track: 'data', pitch: 'Find text across millions of documents.' },
   { id: 'availability', title: 'Availability & failover', track: 'async', pitch: 'Stay up when machines and regions fail.' },
-  { id: 'real-time', title: 'Real-time messaging', track: 'async', pitch: 'Push updates over WebSockets, polling or SSE.' },
   { id: 'observability', title: 'Observability', track: 'async', pitch: 'Metrics, logs and traces to see what broke.' },
   { id: 'consistency', title: 'Consistency models', track: 'distributed', pitch: 'Strong, eventual and causal: what readers see.' },
 ]

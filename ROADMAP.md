@@ -2,10 +2,10 @@
 
 What is built, and what is still to build. Update this as topics land.
 
-## Built (16 concepts)
+## Built (18 concepts)
 - **Scaling basics:** load balancing, caching, CDN, autoscaling
 - **Data:** replication, sharding, consistent hashing, CAP
-- **Async & reliability:** message queues, pub/sub & streams, rate limiting, circuit breakers
+- **Async & reliability:** message queues, pub/sub & streams, rate limiting, circuit breakers, fan-out, real-time messaging (branch `real-time`, awaiting testing)
 - **Distributed:** consensus, idempotency, distributed transactions (sagas), bloom filters
 
 ## Built, awaiting testing
@@ -20,7 +20,7 @@ Build these before the remaining capstones.
 2. **Data modeling & choosing a database** (SQL, key-value, document, wide-column).
 3. **Availability & failover** (nines, redundancy, multi-region).
 4. **API design** (REST vs RPC, pagination, versioning, idempotent endpoints).
-5. **Real-time messaging** (WebSockets, long polling, server-sent events). Needed for chat.
+5. ~~Real-time messaging~~ (built).
 6. ~~Fan-out on write vs on read~~ (built).
 7. **Geospatial indexing.** Needed for ride sharing.
 
@@ -76,4 +76,4 @@ About 26 systems. Each needs its own simulation and stages, at roughly the cost 
 Clocks and ordering, gossip, HyperLogLog and count-min sketch, encryption and TLS, deployment strategies.
 
 ## Postponed
-"Build it" chapters for consensus, idempotency, distributed transactions and bloom filters.
+"Build it" chapters for consensus, idempotency, distributed transactions, bloom filters and real-time messaging.
