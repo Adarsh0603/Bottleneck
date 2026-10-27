@@ -476,6 +476,18 @@ function Builder({
       </button>
     </div>
   );
+  const transportBtn =
+    "grid h-11 w-11 place-items-center rounded-full transition hover:bg-subtle sm:h-10 sm:w-10";
+  const svg = {
+    width: 20,
+    height: 20,
+    viewBox: "0 0 20 20",
+    fill: "currentColor",
+    stroke: "currentColor",
+    strokeWidth: 1.5,
+    strokeLinejoin: "round" as const,
+  };
+  const startLabel = running ? "Stop and edit" : failure ? "Try again" : "Start requests";
   const startButton = task.manualStart && !solved && (
     <button
       onClick={
@@ -488,13 +500,13 @@ function Builder({
               }
             : () => setRunning(true)
       }
-      className={`rounded-xl px-4 py-1.5 text-sm font-medium transition ${side ? "w-full py-2.5" : ""} ${
-        running
-          ? "border border-line bg-bg/90 backdrop-blur hover:border-fg"
-          : "bg-fg text-bg hover:opacity-85"
-      }`}
+      aria-label={startLabel}
+      title={startLabel}
+      className={`${transportBtn} ${running ? "" : "bg-fg text-bg hover:bg-fg hover:opacity-85"}`}
     >
-      {running ? "Stop and edit" : failure ? "Try again" : "Start requests"}
+      <svg {...svg}>
+        {running ? <rect x="5" y="5" width="10" height="10" rx="1.5" /> : <path d="M6 4l10 6-10 6z" />}
+      </svg>
     </button>
   );
   const resetButton = (
@@ -507,9 +519,13 @@ function Builder({
         });
         if (ok) onReset();
       }}
-      className={`rounded-xl border border-line bg-bg/90 px-4 py-1.5 text-sm backdrop-blur transition hover:border-fg ${side ? "w-full py-2.5" : ""}`}
+      aria-label="Reset build"
+      title="Reset build"
+      className={transportBtn}
     >
-      Reset build
+      <svg {...svg} fill="none">
+        <path d="M4 6h12M8 6V4h4v2M5.5 6l.7 10h7.6l.7-10M8.5 9v4.5M11.5 9v4.5" />
+      </svg>
     </button>
   );
   const situationButton = task.brief && (!briefOpen || side) && (
@@ -749,6 +765,15 @@ function Builder({
         />
       </div>
 
+      {/* Right edge: start/stop and reset, above the zoom controls. */}
+      <div
+        style={{ bottom: "calc(50% + 4.75rem)" }}
+        className={`absolute z-20 flex flex-col gap-1 rounded-full border border-line bg-bg/80 p-1 backdrop-blur ${side ? "right-[23rem]" : "right-3"}`}
+      >
+        {startButton}
+        {resetButton}
+      </div>
+
       {/* Top: chapter menu, sound and live numbers. */}
       <div
         className={`pointer-events-none absolute left-0 top-0 z-20 ${side ? "right-88" : "right-0"} ${short ? "space-y-1.5 p-2" : "space-y-2 p-3 sm:space-y-3 sm:p-4"}`}
@@ -921,10 +946,6 @@ function Builder({
                 </div>
               </section>
             ))}
-            <div className="mt-auto flex flex-col gap-2">
-              {startButton}
-              {resetButton}
-            </div>
           </aside>
 
           {/* Canvas: goal, hint, situation and what's going wrong. */}
@@ -991,8 +1012,6 @@ function Builder({
                 )}
                 {situationButton}
                 {!compact && shownSettings.map(settingRow)}
-                {startButton}
-                {resetButton}
               </div>
             </div>
 

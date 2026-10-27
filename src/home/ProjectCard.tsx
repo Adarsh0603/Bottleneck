@@ -9,7 +9,7 @@ import {
 import { openTopic, type ProjectState } from "./shared";
 
 const STATE_TEXT: Record<ProjectState, string> = {
-  done: "Built",
+  done: "Conquered",
   next: "Next on the road",
   fog: "Under mist",
 };
@@ -47,7 +47,7 @@ export default function ProjectCard({
         />
       )}
       <div className="font-mono text-[11px] uppercase tracking-widest text-muted">
-        {TIER_NAMES[project.tier]} · project {projectNumber(project)} ·{" "}
+        {TIER_NAMES[project.tier]} · System {projectNumber(project)} ·{" "}
         <span className={state === "next" ? "text-danger" : ""}>
           {STATE_TEXT[state]}
         </span>
