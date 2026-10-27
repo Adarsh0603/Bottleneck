@@ -160,7 +160,7 @@ function TopicCard({
     <button
       onClick={onOpen}
       className={`group flex gap-3 rounded-2xl border cursor-pointer bg-bg p-4 text-left transition hover:border-fg ${
-        isNext || status === "done" ? "border-fg" : "border-line"
+        isNext ? "border-fg" : "border-line"
       }`}
     >
       <div className="h-20 w-20 shrink-0 sm:h-24 sm:w-24">

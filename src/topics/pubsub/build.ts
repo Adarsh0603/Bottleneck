@@ -52,7 +52,7 @@ export const ORDER_DESK: BuildTask = {
     'Orders arrive at 5 a second. Three teams each need every single one: Email sends receipts, Analytics counts sales, and Inventory updates stock.',
     'Email and Inventory are slow. A consumer finishes about 2 orders a second, and you have 7 consumers to hand out.',
     'Ten seconds in, Analytics goes offline for 12 seconds while it is redeployed. Orders keep coming.',
-    'Inventory must handle the orders for one product in the order they were placed, or its stock count goes wrong. The dark, grey and white cubes are the three products.',
+    'Inventory must handle the orders for one product in the order they were placed, or its stock count goes wrong. The dark, grey and white packets are the three products.',
     'Pick the channel in the middle, then set it up. A queue, a topic and a stream each behave differently. Think about what each team needs.',
   ],
   manualStart: true,

@@ -28,7 +28,7 @@ export const CHAPTERS: CapChapter[] = [
       },
       {
         caption: 'Every write is copied across.',
-        sub: 'Outlined cubes are writes. The small cubes arcing over are the copies, sent to the other region.',
+        sub: 'Outlined packets are writes. The small packets arcing over are the copies, sent to the other region.',
         shot: WIDE,
         tags: ['dbs', 'link'],
         hud: ['mix', 'link'],

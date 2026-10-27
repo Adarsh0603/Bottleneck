@@ -80,7 +80,7 @@ export const CHAPTERS: LbChapter[] = [
       { caption: 'This is a server.', sub: 'A computer that answers your app’s requests.', shot: SERVER, tags: ['server'] },
       {
         caption: 'Users send it requests.',
-        sub: 'Each cube is one request.',
+        sub: 'Each packet is one request.',
         set: { rps: 1 },
         shot: WIDE,
         tags: ['users'],
@@ -118,7 +118,7 @@ export const CHAPTERS: LbChapter[] = [
       },
       {
         caption: 'Line full? Users get errors.',
-        sub: 'Red cubes are requests turned away.',
+        sub: 'Red packets are requests turned away.',
         set: { rps: 3 },
         ramp: trafficRamp(12, 900),
         shot: QUEUE,

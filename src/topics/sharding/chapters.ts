@@ -19,7 +19,7 @@ export const CHAPTERS: ShardingChapter[] = [
     beats: [
       {
         caption: 'Your app keeps every user’s posts in one database.',
-        sub: 'People write posts and read profiles. Solid cubes are reads; outlined ones are writes.',
+        sub: 'People write posts and read profiles. Solid packets are reads; outlined ones are writes.',
         shot: WIDE,
         tags: ['users', 'app', 'dbs'],
         hud: ['traffic', 'load'],

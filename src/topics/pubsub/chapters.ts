@@ -226,7 +226,7 @@ export const CHAPTERS: BusChapter[] = [
       },
       {
         caption: 'But the order is lost.',
-        sub: 'The dark, grey and white cubes are three products. Events for one product land in different partitions, and different consumers finish them in a different order.',
+        sub: 'The dark, grey and white packets are three products. Events for one product land in different partitions, and different consumers finish them in a different order.',
         shot: STOCK,
         tags: ['channel', 'stock', 'products'],
         hud: ['order', 'behind'],

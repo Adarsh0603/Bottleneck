@@ -74,7 +74,7 @@ export const CHAPTERS: CachingChapter[] = [
       },
       {
         caption: 'But users keep asking for the same things.',
-        sub: 'A few items get most requests: the top 10 get about 70%. The lettered cubes are the top five.',
+        sub: 'A few items get most requests: the top 10 get about 70%. The lettered packets are the top five.',
         set: { rps: 10 },
         shot: POPULAR,
         tags: ['popularity'],

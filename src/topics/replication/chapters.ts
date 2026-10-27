@@ -33,7 +33,7 @@ export const CHAPTERS: ReplicationChapter[] = [
       },
       {
         caption: 'Most requests are reads.',
-        sub: 'Feeds, profiles, search. Solid cubes are reads; outlined ones are writes, about 1 in 10.',
+        sub: 'Feeds, profiles, search. Solid packets are reads; outlined ones are writes, about 1 in 10.',
         shot: DBS,
         tags: ['dbs', 'load'],
         hud: ['mix', 'load'],
