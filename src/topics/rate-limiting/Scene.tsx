@@ -2,7 +2,7 @@ import { useRef, type ReactNode } from 'react'
 import { Piece } from '../../core/build/pieces'
 import { HALF } from '../../core/build/types'
 import { depth } from '../../core/iso/geometry'
-import { FloorPath, IsoBox, Tag } from '../../core/iso/primitives'
+import { FloorPath, Packet, Tag } from '../../core/iso/primitives'
 import { crowd } from '../../core/iso/crowd'
 import Viewport from '../../core/iso/Viewport'
 import type { SceneProps, V3 } from '../../core/types'
@@ -11,7 +11,6 @@ import { ALGO_NAMES, CLIENTS, CLIENT_NAMES, TICKS_PER_SECOND } from './gate'
 import type { Beat, RateState } from './types'
 import { above, BALANCER, entryOf, exitOf, gateZ, MS_PER_TICK, spotOf, type Spot } from './world'
 
-const CUBE = 0.22
 const FLY_Y = 0.55
 const FALL_SECONDS = 1.2
 const RISE_MS = 800
@@ -122,14 +121,14 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
             .slice(0, 8)
             .forEach((job, k) => {
               const qx = s.x - HALF.limiter - 0.3 - k * WAIT_GAP
-              solids.push({ d: depth(qx, s.z), node: <IsoBox key={`h${job.id}`} x={qx} z={s.z} w={CUBE} d={CUBE} h={CUBE} fill="var(--fg)" /> })
+              solids.push({ d: depth(qx, s.z), node: <Packet key={`h${job.id}`} at={[qx, 0.12, s.z]} fill="var(--fg)" /> })
             })
         }
         const api = spot('api')!
         solids.push({ d: depth(api.x, api.z), node: <Piece key="api" kind="app" x={api.x} z={api.z} node={g.api} /> })
         g.api.queue.slice(0, 8).forEach((job, k) => {
           const qx = api.x - HALF.app - 0.3 - k * WAIT_GAP
-          solids.push({ d: depth(qx, api.z), node: <IsoBox key={`q${job.id}`} x={qx} z={api.z} w={CUBE} d={CUBE} h={CUBE} fill="var(--fg)" /> })
+          solids.push({ d: depth(qx, api.z), node: <Packet key={`q${job.id}`} at={[qx, 0.12, api.z]} fill="var(--fg)" /> })
         })
         solids.sort((a, b) => a.d - b.d)
 
@@ -184,7 +183,7 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
                 route = [a, b]
               }
               const [x, , z] = along(route, p)
-              return <IsoBox key={t.job.id} x={x} z={z} y={FLY_Y + Math.sin(p * Math.PI) * 0.3} w={CUBE * c.scale} d={CUBE * c.scale} h={CUBE * c.scale} fill="var(--fg)" opacity={c.opacity} />
+              return <Packet key={t.job.id} at={[x, FLY_Y + Math.sin(p * Math.PI) * 0.3, z]} scale={c.scale} fill="var(--fg)" opacity={c.opacity} />
             })}
 
             {/* Requests turned away tumble where they were stopped. */}
@@ -196,17 +195,7 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
               const side = d.jobId % 2 === 0 ? 1 : -1
               const x0 = s.x - HALF[s.kind] - 0.6
               return (
-                <IsoBox
-                  key={`d${d.jobId}`}
-                  x={x0 - age * 0.6}
-                  z={s.z + side * (0.15 + age * 0.8)}
-                  y={FLY_Y + age * 1.2 - 5 * age * age}
-                  w={CUBE}
-                  d={CUBE}
-                  h={CUBE}
-                  fill="var(--danger)"
-                  opacity={1 - age / FALL_SECONDS}
-                />
+                <Packet key={`d${d.jobId}`} at={[x0 - age * 0.6, FLY_Y + age * 1.2 - 5 * age * age, s.z + side * (0.15 + age * 0.8)]} fill="var(--danger)" opacity={1 - age / FALL_SECONDS} />
               )
             })}
 

@@ -1,6 +1,6 @@
 import { useRef, type ReactNode } from 'react'
 import { depth, points } from '../../core/iso/geometry'
-import { Crowd, FloorPath, IsoBox, IsoCylinder, Tag } from '../../core/iso/primitives'
+import { Crowd, FloorPath, IsoBox, IsoCylinder, Packet, Tag } from '../../core/iso/primitives'
 import { crowd, edge, glide } from '../../core/iso/crowd'
 import Viewport from '../../core/iso/Viewport'
 import type { SceneProps, V3 } from '../../core/types'
@@ -8,7 +8,6 @@ import { CELEBRITY, holdsOf, shardOf, type ShardingSim } from './engine'
 import type { Beat, ShardingState } from './types'
 import { APP, DB_X, HOT, MS_PER_TICK, SHARD, shardIndex, shardKey, shardSpot, TICKS_PER_SECOND, USERS } from './world'
 
-const CUBE = 0.22
 const FLY_Y = 0.55
 const FALL_SECONDS = 1.2
 const RISE_MS = 800
@@ -144,17 +143,7 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
               const p = glide(Math.min(1, t.progress + frac / t.ticks))
               const write = sim.kindOf.get(t.job) === 'write'
               return (
-                <IsoBox
-                  key={t.job.id}
-                  x={a.x + (b.x - a.x) * p}
-                  z={a.z + (b.z - a.z) * p}
-                  y={FLY_Y + Math.sin(p * Math.PI) * 0.3}
-                  w={CUBE * c.scale}
-                  d={CUBE * c.scale}
-                  h={CUBE * c.scale}
-                  fill={write ? undefined : 'var(--fg)'}
-                  opacity={c.opacity * edge(p)}
-                />
+                <Packet key={t.job.id} at={[a.x + (b.x - a.x) * p, FLY_Y + Math.sin(p * Math.PI) * 0.3, a.z + (b.z - a.z) * p]} scale={c.scale} fill={write ? undefined : 'var(--fg)'} opacity={c.opacity * edge(p)} />
               )
             })}
 
@@ -166,17 +155,7 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
               if (!s) return null
               const side = d.jobId % 2 === 0 ? 1 : -1
               return (
-                <IsoBox
-                  key={`d${d.jobId}`}
-                  x={s.x - 1.1 - age * 0.6}
-                  z={s.z + side * (0.15 + age * 0.8)}
-                  y={FLY_Y + age * 1.2 - 5 * age * age}
-                  w={CUBE}
-                  d={CUBE}
-                  h={CUBE}
-                  fill="var(--danger)"
-                  opacity={1 - age / FALL_SECONDS}
-                />
+                <Packet key={`d${d.jobId}`} at={[s.x - 1.1 - age * 0.6, FLY_Y + age * 1.2 - 5 * age * age, s.z + side * (0.15 + age * 0.8)]} fill="var(--danger)" opacity={1 - age / FALL_SECONDS} />
               )
             })}
 

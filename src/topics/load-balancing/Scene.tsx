@@ -1,6 +1,6 @@
 import { useRef, type ReactNode } from 'react'
 import { depth, points, project } from '../../core/iso/geometry'
-import { Crowd, FloorPath, FloorSpot, IsoBox, Tag } from '../../core/iso/primitives'
+import { Crowd, FloorPath, FloorSpot, IsoBox, Packet, Tag } from '../../core/iso/primitives'
 import { crowd, edge, glide } from '../../core/iso/crowd'
 import Viewport from '../../core/iso/Viewport'
 import type { SceneProps, V3 } from '../../core/types'
@@ -103,7 +103,7 @@ export default function Scene({
             solids.push({
               d: depth(x, qz),
               node: (
-                <IsoBox key={`q${job.id}`} x={x} z={qz} w={CUBE} d={CUBE} h={CUBE} fill={overloaded ? 'var(--danger)' : 'var(--fg)'} />
+                <Packet key={`q${job.id}`} at={[x, 0.12, qz]} fill={overloaded ? 'var(--danger)' : 'var(--fg)'} />
               ),
             })
           })
@@ -187,7 +187,7 @@ export default function Scene({
               const p = glide(Math.min(1, t.progress + frac / sim.config.transitTicks))
               const at = transitPoint(sim, t, p, lbz)
               if (!at) return null
-              return <IsoBox key={t.job.id} x={at[0]} z={at[2]} y={at[1] - CUBE / 2} w={CUBE * c.scale} d={CUBE * c.scale} h={CUBE * c.scale} fill="var(--fg)" opacity={c.opacity * edge(p)} />
+              return <Packet key={t.job.id} at={[at[0], at[1] - CUBE / 2, at[2]]} scale={c.scale} fill="var(--fg)" opacity={c.opacity * edge(p)} />
             })}
 
             {/* Dropped requests tumble and fade. */}
@@ -196,17 +196,7 @@ export default function Scene({
               if (age > FALL_SECONDS) return null
               const [x, y, z] = dropPoint(dropOrigin(sim, d.serverId), age, d.jobId)
               return (
-                <IsoBox
-                  key={`drop-${d.jobId}`}
-                  x={x}
-                  z={z}
-                  y={y}
-                  w={CUBE}
-                  d={CUBE}
-                  h={CUBE}
-                  fill="var(--danger)"
-                  opacity={1 - age / FALL_SECONDS}
-                />
+                <Packet key={`drop-${d.jobId}`} at={[x, y, z]} fill="var(--danger)" opacity={1 - age / FALL_SECONDS} />
               )
             })}
 

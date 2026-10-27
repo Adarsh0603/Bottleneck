@@ -163,10 +163,10 @@ export function FloorSpot({ x, z, size }: { x: number; z: number; size: number }
 
 // A dashed route painted on the floor.
 // A request, drawn flat to the screen: a small packet with a header strip and two lines of data. `at` is its centre.
-export function Packet({ at, fill = 'var(--fg)', opacity = 1 }: { at: V3; fill?: string; opacity?: number }) {
+export function Packet({ at, fill = 'var(--fg)', opacity = 1, scale = 1 }: { at: V3; fill?: string; opacity?: number; scale?: number }) {
   const [sx, sy] = project(at)
   return (
-    <g transform={`translate(${sx} ${sy})`} opacity={opacity} pointerEvents="none">
+    <g transform={`translate(${sx} ${sy}) scale(${scale})`} opacity={opacity} pointerEvents="none">
       <rect x={-6} y={-4.5} width={12} height={9} rx={1.5} fill={fill} />
       <rect x={-6} y={-4.5} width={12} height={2.5} rx={1.5} fill="var(--bg)" fillOpacity={0.45} />
       <line x1={-4} x2={4} y1={0.5} y2={0.5} stroke="var(--bg)" strokeWidth={1} />

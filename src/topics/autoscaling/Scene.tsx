@@ -1,7 +1,7 @@
 import { useRef, type ReactNode } from 'react'
 import { Piece } from '../../core/build/pieces'
 import { depth } from '../../core/iso/geometry'
-import { Crowd, FloorPath, FloorSpot, IsoBox, Tag } from '../../core/iso/primitives'
+import { Crowd, FloorPath, FloorSpot, IsoBox, Packet, Tag } from '../../core/iso/primitives'
 import { crowd, edge, glide } from '../../core/iso/crowd'
 import Viewport from '../../core/iso/Viewport'
 import type { SceneProps, V3 } from '../../core/types'
@@ -9,7 +9,6 @@ import type { AutoscaleSim } from './engine'
 import type { AutoscaleState, Beat } from './types'
 import { LB, MAX_SERVERS, MS_PER_TICK, SERVER, SERVER_X, slotZ, spotOf, TICKS_PER_SECOND, USERS } from './world'
 
-const CUBE = 0.22
 const FLY_Y = 0.55
 const FALL_SECONDS = 1.2
 const RISE_MS = 800
@@ -117,7 +116,7 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
               const p = glide(Math.min(1, t.progress + frac / t.ticks))
               const x = a.x + (b.x - a.x) * p
               const z = a.z + (b.z - a.z) * p
-              return <IsoBox key={t.job.id} x={x} z={z} y={FLY_Y + Math.sin(p * Math.PI) * 0.3} w={CUBE * c.scale} d={CUBE * c.scale} h={CUBE * c.scale} fill="var(--fg)" opacity={c.opacity * edge(p)} />
+              return <Packet key={t.job.id} at={[x, FLY_Y + Math.sin(p * Math.PI) * 0.3, z]} scale={c.scale} opacity={c.opacity * edge(p)} />
             })}
 
             {/* Turned away: red cubes tumble off the full server. */}
@@ -127,14 +126,9 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
               if (!at || age > FALL_SECONDS) return null
               const side = d.jobId % 2 === 0 ? 1 : -1
               return (
-                <IsoBox
+                <Packet
                   key={`drop-${d.jobId}`}
-                  x={at.x - 0.9 - age * 0.6}
-                  z={at.z + side * (0.15 + age * 0.9)}
-                  y={FLY_Y + age * 1.2 - 5 * age * age}
-                  w={CUBE}
-                  d={CUBE}
-                  h={CUBE}
+                  at={[at.x - 0.9 - age * 0.6, FLY_Y + age * 1.2 - 5 * age * age, at.z + side * (0.15 + age * 0.9)]}
                   fill="var(--danger)"
                   opacity={1 - age / FALL_SECONDS}
                 />

@@ -12,6 +12,7 @@ export type Sound =
   | 'pickup' // building: a piece picked up
   | 'place'
   | 'remove'
+  | 'drum' // a heavy war-drum hit: a build fails
 
 let ctx: AudioContext | null = null
 let enabled = readSaved()
@@ -60,7 +61,22 @@ export function play(sound: Sound) {
     osc.stop(t + start + dur)
   }
 
+  // A horn is a bright, slightly buzzy note: a saw wave with a quieter octave under it.
+  const horn = (freq: number, start: number, dur: number) => {
+    tone(freq, start, dur, 'sawtooth', 0.035)
+    tone(freq / 2, start, dur, 'triangle', 0.05)
+  }
+  // A drum is a quick low thump that falls in pitch, with a short skin slap on top.
+  const drum = (start: number, gain: number) => {
+    tone(130, start, 0.28, 'sine', gain, 40)
+    tone(260, start, 0.04, 'triangle', gain * 0.4, 120)
+  }
+
   switch (sound) {
+    case 'drum':
+      drum(0, 0.16)
+      drum(0.22, 0.12)
+      break
     case 'crash':
       tone(160, 0, 0.4, 'sawtooth', 0.05, 45)
       break
@@ -70,12 +86,9 @@ export function play(sound: Sound) {
       tone(1320, 0.2, 0.3, 'sine', 0.06)
       break
     case 'built':
-      tone(523, 0, 0.14, 'triangle', 0.06)
-      tone(659, 0.12, 0.14, 'triangle', 0.06)
-      tone(784, 0.24, 0.14, 'triangle', 0.06)
-      tone(1047, 0.36, 0.7, 'triangle', 0.06)
-      tone(1319, 0.36, 0.7, 'sine', 0.04)
-      tone(262, 0.36, 0.7, 'sine', 0.05)
+      horn(262, 0, 0.18)
+      horn(330, 0.16, 0.18)
+      horn(392, 0.32, 0.9)
       break
     case 'conquered':
       tone(392, 0, 0.16, 'triangle', 0.06)

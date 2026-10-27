@@ -401,14 +401,14 @@ export default function RealmMap({
   // The map opens whole. Tapping a castle flies in on it and opens its card.
   // The drawing is laid out once at the closest zoom and only moved and scaled by CSS, so a
   // fly-in never redraws it: the browser slides one finished picture.
-  // On a phone it opens at its farthest zoom, on the chosen castle, and pans; the whole map never fits.
+  // On a phone it opens at its farthest zoom, against the map's left edge (clampView pulls cx: 0 in), at the chosen castle's height, and pans; the whole map never fits.
   const compact = useMedia(COMPACT)
   // A phone on its side has width to spare: the card lies over the map's right half.
   const short = useMedia(SHORT)
   const overlay = compact && short
   const [view, setView] = useState<View>(() => {
     const sel = PROJECTS.find((p) => p.id === selected)
-    return compact && sel ? { z: COMPACT_FAR, cx: sel.x, cy: sel.y - 40 } : FIT
+    return compact && sel ? { z: COMPACT_FAR, cx: 0, cy: sel.y - 40 } : FIT
   })
   const [opened, setOpened] = useState<string | null>(null)
   const [moving, setMoving] = useState(false)

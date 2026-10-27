@@ -2,7 +2,7 @@ import { useRef, type ReactNode } from 'react'
 import { Piece } from '../../core/build/pieces'
 import { HALF } from '../../core/build/types'
 import { depth } from '../../core/iso/geometry'
-import { FloorPath, IsoBox, Tag } from '../../core/iso/primitives'
+import { FloorPath, Packet, Tag } from '../../core/iso/primitives'
 import { crowd, edge, glide } from '../../core/iso/crowd'
 import Viewport from '../../core/iso/Viewport'
 import type { SceneProps, V3 } from '../../core/types'
@@ -11,7 +11,6 @@ import type { BusSim } from './engine'
 import type { Beat, BusState } from './types'
 import { aboveConsumer, CHANNEL, halfOf, MS_PER_TICK, ORDERS, PRODUCT_FILL, spotOf, teamOf } from './world'
 
-const CUBE = 0.22
 const FLY_Y = 0.55
 const FALL_SECONDS = 1.2
 const RISE_MS = 800
@@ -81,7 +80,7 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
             const qx = s.x - HALF.server - 0.3 - k * WAIT_GAP
             solids.push({
               d: depth(qx, s.z),
-              node: <IsoBox key={`w${job.id}`} x={qx} z={s.z} w={CUBE} d={CUBE} h={CUBE} fill={fillOf(job.key, tags)} />,
+              node: <Packet key={`w${job.id}`} at={[qx, 0.12, s.z]} fill={fillOf(job.key, tags)} />,
             })
           })
         }
@@ -139,17 +138,7 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
               const ax = a.x + halfOf(t.from, st.mode)
               const bx = b.x - halfOf(t.to, st.mode) - 0.15
               return (
-                <IsoBox
-                  key={t.job.id}
-                  x={ax + (bx - ax) * p}
-                  z={a.z + (b.z - a.z) * p}
-                  y={FLY_Y + Math.sin(p * Math.PI) * 0.3}
-                  w={CUBE * c.scale}
-                  d={CUBE * c.scale}
-                  h={CUBE * c.scale}
-                  fill={fillOf(t.job.key, tags)}
-                  opacity={c.opacity * edge(p)}
-                />
+                <Packet key={t.job.id} at={[ax + (bx - ax) * p, FLY_Y + Math.sin(p * Math.PI) * 0.3, a.z + (b.z - a.z) * p]} scale={c.scale} fill={fillOf(t.job.key, tags)} opacity={c.opacity * edge(p)} />
               )
             })}
 
@@ -162,17 +151,7 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
               const side = d.jobId % 2 === 0 ? 1 : -1
               const x0 = teamOf(d.node) ? s.x - HALF.server - 0.6 : s.x + halfOf(d.node, st.mode)
               return (
-                <IsoBox
-                  key={`d${d.jobId}`}
-                  x={x0 - age * 0.6}
-                  z={s.z + side * (0.15 + age * 0.8)}
-                  y={FLY_Y + age * 1.2 - 5 * age * age}
-                  w={CUBE}
-                  d={CUBE}
-                  h={CUBE}
-                  fill="var(--danger)"
-                  opacity={1 - age / FALL_SECONDS}
-                />
+                <Packet key={`d${d.jobId}`} at={[x0 - age * 0.6, FLY_Y + age * 1.2 - 5 * age * age, s.z + side * (0.15 + age * 0.8)]} fill="var(--danger)" opacity={1 - age / FALL_SECONDS} />
               )
             })}
 

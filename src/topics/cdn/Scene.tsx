@@ -1,7 +1,7 @@
 import { useRef, type ReactNode } from 'react'
 import { Piece } from '../../core/build/pieces'
 import { depth, points } from '../../core/iso/geometry'
-import { Crowd, FloorPath, IsoBox, Tag } from '../../core/iso/primitives'
+import { Crowd, FloorPath, IsoBox, Packet, Tag } from '../../core/iso/primitives'
 import { crowd, edge, glide } from '../../core/iso/crowd'
 import Viewport from '../../core/iso/Viewport'
 import type { SceneProps, V3 } from '../../core/types'
@@ -9,7 +9,6 @@ import type { CdnSim } from './engine'
 import type { Beat, CdnState } from './types'
 import { edgeKey, edgeSpot, MS_PER_TICK, ORIGIN, REGIONS, SLOW_MS, spotOf, TICKS_PER_SECOND, usersKey } from './world'
 
-const CUBE = 0.22
 const FLY_Y = 0.55
 const HIT_SECONDS = 0.5
 const RISE_MS = 800
@@ -102,7 +101,7 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
               const p = glide(Math.min(1, t.progress + frac / t.ticks))
               const x = a.x + (b.x - a.x) * p
               const z = a.z + (b.z - a.z) * p
-              return <IsoBox key={t.job.id} x={x} z={z} y={FLY_Y + Math.sin(p * Math.PI) * 0.3} w={CUBE * c.scale} d={CUBE * c.scale} h={CUBE * c.scale} fill="var(--fg)" opacity={c.opacity * edge(p)} />
+              return <Packet key={t.job.id} at={[x, FLY_Y + Math.sin(p * Math.PI) * 0.3, z]} scale={c.scale} fill="var(--fg)" opacity={c.opacity * edge(p)} />
             })}
 
             {/* Hits bounce straight back from the edge to its users. */}
@@ -115,17 +114,7 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
                 if (age > HIT_SECONDS) return null
                 const p = age / HIT_SECONDS
                 return (
-                  <IsoBox
-                    key={`${edgeKey(r.id)}-${i}-${ev.tick}`}
-                    x={e.x + (r.x - e.x) * p}
-                    z={e.z + (r.z - e.z) * p}
-                    y={FLY_Y + Math.sin(p * Math.PI) * 0.4}
-                    w={CUBE}
-                    d={CUBE}
-                    h={CUBE}
-                    fill="var(--fg)"
-                    opacity={1 - p}
-                  />
+                  <Packet key={`${edgeKey(r.id)}-${i}-${ev.tick}`} at={[e.x + (r.x - e.x) * p, FLY_Y + Math.sin(p * Math.PI) * 0.4, e.z + (r.z - e.z) * p]} fill="var(--fg)" opacity={1 - p} />
                 )
               })
             })}

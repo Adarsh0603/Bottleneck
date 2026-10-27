@@ -2,7 +2,7 @@ import { useRef, type ReactNode } from 'react'
 import { BreakerPiece, Piece } from '../../core/build/pieces'
 import { HALF } from '../../core/build/types'
 import { depth } from '../../core/iso/geometry'
-import { FloorPath, IsoBox, Tag } from '../../core/iso/primitives'
+import { FloorPath, IsoBox, Packet, Tag } from '../../core/iso/primitives'
 import { crowd, edge, glide } from '../../core/iso/crowd'
 import Viewport from '../../core/iso/Viewport'
 import type { SceneProps, V3 } from '../../core/types'
@@ -11,7 +11,6 @@ import { DEP_NAMES, MODE_NAMES, TICKS_PER_SECOND, type Dep } from './shop'
 import type { Beat, ShopState } from './types'
 import { above, DEP_AT, entryOf, exitOf, GATE_AT, MS_PER_TICK, spotOf, type Spot } from './world'
 
-const CUBE = 0.22
 const FLY_Y = 0.55
 const FALL_SECONDS = 1.2
 const THREAD = 0.2
@@ -90,7 +89,7 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
         // Requests waiting for a thread.
         s.shop.queue.slice(0, 6).forEach((job, k) => {
           const qx = shop.x - HALF.app - 0.3 - k * 0.28
-          solids.push({ d: depth(qx, shop.z), node: <IsoBox key={`q${job.id}`} x={qx} z={shop.z} w={CUBE} d={CUBE} h={CUBE} fill="var(--danger)" /> })
+          solids.push({ d: depth(qx, shop.z), node: <Packet key={`q${job.id}`} at={[qx, 0.12, shop.z]} fill="var(--danger)" /> })
         })
 
         for (const dep of deps) {
@@ -147,7 +146,7 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
               const route = [exitOf(a), entryOf(b)]
               const p = glide(Math.min(1, t.progress + frac / t.ticks))
               const [x, , z] = along(route, p)
-              return <IsoBox key={`${t.job.id}:${t.to}`} x={x} z={z} y={FLY_Y + Math.sin(p * Math.PI) * 0.3} w={CUBE * c.scale} d={CUBE * c.scale} h={CUBE * c.scale} fill="var(--fg)" opacity={c.opacity * edge(p)} />
+              return <Packet key={`${t.job.id}:${t.to}`} at={[x, FLY_Y + Math.sin(p * Math.PI) * 0.3, z]} scale={c.scale} fill="var(--fg)" opacity={c.opacity * edge(p)} />
             })}
 
             {/* Requests that failed tumble in front of the shop. */}
@@ -158,17 +157,7 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
               if (age > FALL_SECONDS) return null
               const side = d.jobId % 2 === 0 ? 1 : -1
               return (
-                <IsoBox
-                  key={`d${d.jobId}`}
-                  x={at.x - HALF[at.kind] - 0.4 - age * 0.6}
-                  z={at.z + side * (0.15 + age * 0.8)}
-                  y={FLY_Y + age * 1.2 - 5 * age * age}
-                  w={CUBE}
-                  d={CUBE}
-                  h={CUBE}
-                  fill="var(--danger)"
-                  opacity={1 - age / FALL_SECONDS}
-                />
+                <Packet key={`d${d.jobId}`} at={[at.x - HALF[at.kind] - 0.4 - age * 0.6, FLY_Y + age * 1.2 - 5 * age * age, at.z + side * (0.15 + age * 0.8)]} fill="var(--danger)" opacity={1 - age / FALL_SECONDS} />
               )
             })}
 

@@ -10,6 +10,7 @@ import {
 } from "./core/progress";
 import { navigate, replaceRoute, useRoute } from "./core/router";
 import Home from "./home/Home";
+import WelcomeDialog from "./home/WelcomeDialog";
 import CheatSheetPage from "./core/CheatSheetPage";
 import TopicComplete from "./TopicComplete";
 import { TOPICS, type TopicEntry } from "./topics/registry";
@@ -95,6 +96,7 @@ export default function App() {
       </header>
       <SignInDialog />
       <ConfirmHost />
+      <WelcomeDialog />
       {topic && route.page === "topic" ? (
         <TopicView topic={topic} chapter={route.chapter} step={route.step} />
       ) : (

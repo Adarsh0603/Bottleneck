@@ -249,6 +249,7 @@ function Builder({
     const why = task.problem?.(m, placed, settings, run.flow) ?? broken.says;
     setFailure({ title: broken.label, text: `${text}. ${why}` });
     setRunning(false);
+    play("drum");
   }, [task, running, solved, failure, tick, m, placed, settings, run]);
   // Traffic right now: it can rise and fall during a build.
   const rps = !running

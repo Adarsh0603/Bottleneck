@@ -28,7 +28,7 @@ export default function Toolbox() {
           <b>The Arsenal</b>
           <span className="block text-lg leading-snug tracking-tighter text-muted">
             From single server to distributed consensus, learn the tactics that
-            make systems work
+            make systems work at scale
           </span>
         </h1>
       </div>

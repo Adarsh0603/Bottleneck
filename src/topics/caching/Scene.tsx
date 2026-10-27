@@ -1,6 +1,6 @@
 import { useRef, type ReactNode } from 'react'
 import { depth, points, project } from '../../core/iso/geometry'
-import { Crowd, FloorPath, FloorSpot, IsoBox, IsoCylinder, Tag } from '../../core/iso/primitives'
+import { Crowd, FloorPath, FloorSpot, IsoBox, IsoCylinder, Packet, Tag } from '../../core/iso/primitives'
 import { crowd, edge, glide } from '../../core/iso/crowd'
 import Viewport from '../../core/iso/Viewport'
 import type { SceneProps, V3 } from '../../core/types'
@@ -151,7 +151,7 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
             {solids.map((s) => s.node)}
 
             {Array.from({ length: Math.min(waiting, 12) }, (_, k) => (
-              <IsoBox key={`w${k}`} x={WAIT_SPOT[0]} z={WAIT_SPOT[2]} y={k * 0.26} w={CUBE} d={CUBE} h={CUBE} fill="var(--muted)" />
+              <Packet key={`w${k}`} at={[WAIT_SPOT[0], k * 0.26, WAIT_SPOT[2]]} fill="var(--muted)" />
             ))}
 
             {/* Requests in flight. */}
@@ -213,7 +213,7 @@ export default function Scene({ simRef, lastTickAt, st, beat, shot, shake, quiet
               if (age > FALL_SECONDS) return null
               const [x, y, z] = dropPoint(d.node, age, d.jobId)
               return (
-                <IsoBox key={`d${d.jobId}`} x={x} z={z} y={y} w={CUBE} d={CUBE} h={CUBE} fill="var(--danger)" opacity={1 - age / FALL_SECONDS} />
+                <Packet key={`d${d.jobId}`} at={[x, y, z]} fill="var(--danger)" opacity={1 - age / FALL_SECONDS} />
               )
             })}
 
@@ -402,13 +402,13 @@ function Bar({ x, z, h, item, cached }: { x: number; z: number; h: number; item:
 // letter on top, so the same item can be followed through the system.
 function ItemCube({ x, y, z, item, fill = 'var(--fg)', opacity }: { x: number; y: number; z: number; item?: number; fill?: string; opacity?: number }) {
   const mark = markOf(item)
-  const size = mark ? MARKED_CUBE : CUBE
-  if (!mark) return <IsoBox x={x} z={z} y={y} w={size} d={size} h={size} fill={fill} opacity={opacity} />
-  const [tx, ty] = project([x, y + size, z])
+  const at: V3 = [x, y + (mark ? MARKED_CUBE : CUBE) / 2, z]
+  if (!mark) return <Packet at={at} fill={fill} opacity={opacity} />
+  const [tx, ty] = project(at)
   return (
     <g opacity={opacity}>
-      <IsoBox x={x} z={z} y={y} w={size} d={size} h={size} fill={fill} />
-      <text x={tx} y={ty + 0.5} textAnchor="middle" dominantBaseline="middle" className="font-mono" fontSize={8} fontWeight={700} fill="var(--bg)">
+      <Packet at={at} fill={fill} scale={1.7} />
+      <text x={tx} y={ty + 0.5} textAnchor="middle" dominantBaseline="middle" className="font-mono" fontSize={8} fontWeight={700} fill="var(--bg)" pointerEvents="none">
         {mark}
       </text>
     </g>
