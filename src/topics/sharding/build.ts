@@ -125,6 +125,7 @@ export const CELEBRITY_LAUNCH: BuildTask = {
   ],
   goal: 'Serve 18 req/s with under 1% errors and no database over 85% busy.',
   win: 'Shards share the writes, and a cache takes the one user no shard key can split.',
+  replies: () => true,
   holdSeconds: 6,
   rps: RPS,
   shot: { target: [-1.2, 0.7, 0], zoom: 0.8 },

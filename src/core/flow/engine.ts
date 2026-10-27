@@ -37,6 +37,13 @@ export interface Drop {
   tick: number
 }
 
+// An answer on its way back along the route its request took, for drawing only.
+export interface Reply {
+  jobId: number
+  path: string[] // from the node that answered back to the one that asked
+  tick: number // when the request was answered
+}
+
 export interface Stats {
   completed: number
   dropped: number
@@ -65,6 +72,8 @@ interface Link {
 
 const LATENCY_WINDOW = 200
 const DROP_MEMORY_TICKS = 40
+export const REPLY_MEMORY_TICKS = 160
+const PATH_MEMORY_TICKS = 600
 
 export class FlowSim {
   tick = 0
@@ -76,6 +85,10 @@ export class FlowSim {
   onComplete?: (job: Job, latencyTicks: number) => void
   // Requests per second arriving right now, for systems whose traffic does not come from `Source` nodes.
   traffic?: () => number
+  // Which requests get an answer drawn on their way back. Nothing is recorded when this is unset.
+  replying?: (job: Job) => boolean
+  replies: Reply[] = []
+  private paths = new Map<number, { path: string[]; at: number }>()
 
   private nodes = new Map<string, FlowNode>()
   private links = new Map<string, Link[]>()
@@ -136,6 +149,11 @@ export class FlowSim {
 
   // Send a request along a link. A zero-tick link delivers it right away.
   forward(job: Job, from: string, to: string) {
+    if (this.replying?.(job)) {
+      const seen = this.paths.get(job.id) ?? { path: [from], at: this.tick }
+      seen.path.push(to)
+      this.paths.set(job.id, seen)
+    }
     const ticks = (this.links.get(from) ?? []).find((l) => l.to === to)?.ticks ?? 0
     if (ticks <= 0) this.deliver(job, to)
     else this.inTransit.push({ job, from, to, progress: 0, ticks })
@@ -148,6 +166,11 @@ export class FlowSim {
   }
 
   complete(job: Job) {
+    const seen = this.paths.get(job.id)
+    if (seen) {
+      this.paths.delete(job.id)
+      this.replies.push({ jobId: job.id, path: [...seen.path].reverse(), tick: this.tick })
+    }
     this.stats.completed++
     this.stats.latencies.push(this.tick - job.createdAt)
     if (this.stats.latencies.length > LATENCY_WINDOW) this.stats.latencies.shift()
@@ -155,6 +178,7 @@ export class FlowSim {
   }
 
   drop(job: Job, node: string) {
+    this.paths.delete(job.id)
     this.stats.dropped++
     this.recentDrops.push({ jobId: job.id, node, tick: this.tick })
   }
@@ -177,6 +201,8 @@ export class FlowSim {
   step() {
     this.tick++
     this.recentDrops = this.recentDrops.filter((d) => this.tick - d.tick <= DROP_MEMORY_TICKS)
+    if (this.replies.length) this.replies = this.replies.filter((r) => this.tick - r.tick <= REPLY_MEMORY_TICKS)
+    if (this.tick % 100 === 0) for (const [id, p] of this.paths) if (this.tick - p.at > PATH_MEMORY_TICKS) this.paths.delete(id)
 
     for (const node of this.nodes.values()) node.emit?.(this)
 

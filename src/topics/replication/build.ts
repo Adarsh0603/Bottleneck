@@ -104,6 +104,7 @@ export const PAYDAY_CRASH: BuildTask = {
   goal: 'Survive the crash: zero payments lost, errors under 1%, and no database over 85% busy.',
   goalShort: 'No payment lost · errors under 1%',
   win: 'The replicas carried every balance check. A confirming replica had every payment, so the new primary lost none, and the old one was never slowed too much.',
+  replies: () => true,
   holdSeconds: 6,
   rps: RPS,
   shot: { target: [-1.2, 0.7, 0], zoom: 0.62 },

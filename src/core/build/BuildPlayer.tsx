@@ -23,7 +23,7 @@ import {
   type SavedBuild,
 } from "./saved";
 import { Source } from "../flow/nodes";
-import { MS_PER_TICK, Running, TICKS_PER_SECOND } from "./run";
+import { MS_PER_TICK, TICKS_PER_SECOND, startRun, type Running } from "./run";
 import {
   PIECE_NAMES,
   type BuildTask,
@@ -148,7 +148,7 @@ function Builder({
   // The live system, rebuilt from scratch whenever the placement or a setting changes.
   const runRef = useRef<Running | null>(null);
   if (!runRef.current)
-    runRef.current = new Running(task.assemble(placed, settings));
+    runRef.current = startRun(task, placed, settings);
   const run = runRef.current;
   const lastTickAt = useRef(0);
   useEffect(() => {
@@ -162,9 +162,7 @@ function Builder({
   }, [running]);
   // Stopping puts the run back at the start, ready to build again.
   const stop = () => {
-    runRef.current = new Running(
-      task.assemble(placedRef.current, settingsRef.current),
-    );
+    runRef.current = startRun(task, placedRef.current, settingsRef.current);
     holdStart.current = null;
     setFailure(null);
     setRunning(false);
@@ -180,7 +178,7 @@ function Builder({
   // Any change starts the run over, so nothing from the old build (numbers,
   // errors, a goal already reached) carries into the new one.
   const restart = (nextPlaced: Placement, nextSettings: Settings) => {
-    runRef.current = new Running(task.assemble(nextPlaced, nextSettings));
+    runRef.current = startRun(task, nextPlaced, nextSettings);
     holdStart.current = null;
     setFailure(null);
     setSolved(false);
@@ -203,12 +201,13 @@ function Builder({
   };
   const changeSetting = (id: string, value: number) => {
     const next = { ...settingsRef.current, [id]: value };
+    const wasRunning = running;
     settingsRef.current = next;
     setSettings(next);
     restart(placedRef.current, next);
     saveBuild(saveKey, { placed: placedRef.current, settings: next });
-    // Tuning a setting is asking to see what it does: no need to press Start.
-    if (task.manualStart) setRunning(true);
+    // A run in progress carries on with the new setting; one that has not started waits for Start.
+    if (task.manualStart && wasRunning) setRunning(true);
   };
   const rebuildRef = useRef(rebuild);
   rebuildRef.current = rebuild;

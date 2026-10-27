@@ -27,14 +27,11 @@ export default function IntroScene({ intro, onDone }: { intro: Intro; onDone: ()
           ))}
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => setStep(step - 1)}
-            disabled={step === 0}
-            tabIndex={step === 0 ? -1 : undefined}
-            className={`h-10 rounded-full border border-line px-5 text-sm font-medium transition hover:border-fg ${step === 0 ? 'invisible' : ''}`}
-          >
-            <ArrowText>← Back</ArrowText>
-          </button>
+          {step > 0 && (
+            <button onClick={() => setStep(step - 1)} className="h-10 rounded-full border border-line px-5 text-sm font-medium transition hover:border-fg">
+              <ArrowText>← Back</ArrowText>
+            </button>
+          )}
           <button
             onClick={() => (last ? onDone() : setStep(step + 1))}
             className="h-10 rounded-full bg-fg px-6 text-sm font-medium text-bg transition hover:opacity-85"

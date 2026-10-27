@@ -80,6 +80,7 @@ export const CRASH_DRILL: BuildTask = {
   ],
   goal: 'Survive the crash with almost no errors and no server over 85% busy.',
   win: 'The ring moved only the crashed server’s items, and several spots per server shared them between all the survivors.',
+  replies: () => true,
   holdSeconds: 6,
   rps: RPS,
   shot: { target: [-1.4, 0.7, 0], zoom: 0.55 },

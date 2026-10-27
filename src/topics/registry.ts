@@ -60,6 +60,9 @@ import { REFERENCE as NEWS_FEED_REFERENCE } from './news-feed/reference'
 import ChatPlay from './chat/Play'
 import { CHAT } from './chat/build'
 import { REFERENCE as CHAT_REFERENCE } from './chat/reference'
+import VideoStreamingPlay from './video-streaming/Play'
+import { VIDEO_STREAMING } from './video-streaming/build'
+import { REFERENCE as VIDEO_STREAMING_REFERENCE } from './video-streaming/reference'
 import WebCrawlerPlay from './web-crawler/Play'
 import { WEB_CRAWLER } from './web-crawler/build'
 import { REFERENCE as WEB_CRAWLER_REFERENCE } from './web-crawler/reference'
@@ -355,7 +358,16 @@ export const TOPICS: TopicEntry[] = [
     Play: ChatPlay,
     reference: CHAT_REFERENCE,
   },
-  { id: 'video-streaming', title: 'Video streaming', track: 'capstones', pitch: 'Upload, transcode, and stream worldwide.' },
+  {
+    id: 'video-streaming',
+    title: 'Video streaming',
+    track: 'capstones',
+    pitch: 'Upload, transcode, and stream worldwide.',
+    chapters: [...VIDEO_STREAMING.stages],
+    challenges: ['0:0', '1:0', '2:0'],
+    Play: VideoStreamingPlay,
+    reference: VIDEO_STREAMING_REFERENCE,
+  },
   { id: 'ride-sharing', title: 'Ride sharing', track: 'capstones', pitch: 'Match riders and drivers by location, live.' },
 ]
 

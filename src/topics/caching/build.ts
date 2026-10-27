@@ -88,6 +88,7 @@ export const SAVE_THE_DATABASE: BuildTask = {
   goal: `Keep the database under 75% busy, with under ${STALE_LIMIT}% of answers out of date.`,
   goalShort: 'Database under 75% busy, answers up to date.',
   win: 'A cache big enough for the popular items, and kept just long enough.',
+  replies: () => true,
   holdSeconds: 6,
   testSeconds: 38,
   rps: RPS,

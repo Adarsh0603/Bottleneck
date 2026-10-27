@@ -35,6 +35,7 @@ export const GO_GLOBAL: BuildTask = {
   goal: `Get every region you can under ${LIMIT_MS / 1000}s with two edge caches.`,
   goalShort: `Regions under ${LIMIT_MS / 1000}s.`,
   win: 'Edges in the US and Asia, where visitors share popular files. Europe’s visitors each get a personal page, so an edge there has nothing to reuse and Europe stays slow.',
+  replies: () => true,
   holdSeconds: 5,
   rps: RPS * REGIONS.length,
   shot: { target: [-0.9, 0.6, -0.2], zoom: 0.8 },

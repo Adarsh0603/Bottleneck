@@ -124,6 +124,7 @@ export const FLASH_SALE: BuildTask = {
   ],
   goal: `Get through a rush of ${SPIKE.peak} req/s with no errors.`,
   win: 'A load balancer, an autoscaler, and spare servers to hold the rush while new ones boot.',
+  replies: () => true,
   holdSeconds: 1,
   rps: SPIKE.quiet,
   shot: { target: [-1.2, 0.6, 0], zoom: 0.8 },

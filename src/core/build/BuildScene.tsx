@@ -14,6 +14,8 @@ const FLY_Y = 0.6
 const QUEUE_GAP = 0.28
 const FALL_SECONDS = 1.4
 const RISE_MS = 700
+const REPLY_HOP_TICKS = 4 // how long an answer takes to cross from one piece to the next
+const REPLY_LANE = 0.38 // how far beside the request lane an answer travels
 
 // The floor the learner builds on: pads, the pieces placed so far, and live
 // traffic moving through them.
@@ -210,6 +212,22 @@ export default function BuildScene({
               const z = az + (bz - az) * p + jitter
               const y = FLY_Y + Math.sin(p * Math.PI) * 0.3
               return <Packet key={t.job.id} at={[x, y, z]} fill={task.jobFill ? task.jobFill(t.job, flow) : 'var(--fg)'} />
+            })}
+
+            {/* Answers travelling back to whoever asked, one piece at a time. */}
+            {flow.replies.map((r) => {
+              const hops = r.path.length - 1
+              const h = (flow.tick - r.tick + frac) / REPLY_HOP_TICKS
+              if (h >= hops) return null
+              const i = Math.floor(h)
+              const a = spots.get(r.path[i])
+              const b = spots.get(r.path[i + 1])
+              if (!a || !b) return null
+              const p = h - i
+              const [ax, , az] = entry(r.path[i])
+              const [bx, , bz] = exit(r.path[i + 1])
+              const y = FLY_Y + Math.sin(p * Math.PI) * 0.3
+              return <Packet key={`r${r.jobId}`} at={[ax + (bx - ax) * p, y, az + (bz - az) * p + REPLY_LANE]} fill="var(--muted)" />
             })}
 
             {/* Dropped requests tumble and fade where they were turned away. */}

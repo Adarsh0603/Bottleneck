@@ -1,6 +1,6 @@
 import type { FlowSim } from '../flow/engine'
 import { Worker } from '../flow/nodes'
-import type { BuildMetrics } from './types'
+import type { BuildMetrics, BuildTask, Placement, Settings } from './types'
 
 export const TICKS_PER_SECOND = 20
 export const MS_PER_TICK = 1000 / TICKS_PER_SECOND
@@ -61,4 +61,11 @@ export class Running {
       latency,
     }
   }
+}
+
+// A task's system built and ready to run, with its answers set to be drawn.
+export function startRun(task: BuildTask, placed: Placement, settings: Settings, rng?: () => number) {
+  const flow = task.assemble(placed, settings, rng)
+  flow.replying = task.replies
+  return new Running(flow)
 }

@@ -246,10 +246,11 @@ function decorate(flow: FlowSim, raw: Placement) {
   return out
 }
 
-function common(): Pick<BuildTask, 'pinned' | 'manualStart' | 'rps' | 'shot' | 'fixed' | 'labels' | 'decorate' | 'hints' | 'failFast' | 'anywhere'> {
+function common(): Pick<BuildTask, 'pinned' | 'manualStart' | 'rps' | 'shot' | 'fixed' | 'labels' | 'decorate' | 'hints' | 'failFast' | 'anywhere' | 'replies'> {
   return {
     pinned: BRIEF,
     manualStart: true,
+    replies: (job) => job.from === 'users' || job.from === 'makers' || job.from === 'bot',
     rps: 4,
     shot: { target: [-1.4, 0.8, 0], zoom: 0.56 },
     fixed: FIXED,

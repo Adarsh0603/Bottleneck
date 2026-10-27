@@ -42,7 +42,7 @@ Projects are interview-style systems the learner builds, ordered from easy to ha
 **Intermediate**
 4. News feed (built): caching, fan-out, queues, sharding
 5. Chat app (built): real-time messaging, pub/sub, replication, consistent hashing
-6. Video streaming: CDN, queues, autoscaling, caching
+6. Video streaming (built): CDN, queues, autoscaling, caching
 7. Key-value store: consistent hashing, replication, CAP, consensus
 
 **Advanced**
@@ -76,4 +76,4 @@ About 26 systems. Each needs its own simulation and stages, at roughly the cost 
 Clocks and ordering, gossip, HyperLogLog and count-min sketch, encryption and TLS, deployment strategies.
 
 ## Postponed
-"Build it" chapters for consensus, idempotency, distributed transactions, bloom filters and real-time messaging.
+"Build it" chapters for consensus, idempotency, distributed transactions, bloom filters and real-time messaging. The Blob storage chapter (video streaming uses a fixed store node for now).

@@ -156,6 +156,9 @@ export interface BuildTask {
   // Extra live drawing in the scene, in world coordinates: tags that follow
   // the numbers, markers, anything the generic pieces can't show.
   decorate?: (flow: FlowSim, placed: Placement, settings: Settings) => ReactNode
+  // Which requests are answered back to whoever asked, so the answer is drawn travelling home.
+  // Leave it out for one-way systems (uploads, posts, crawling).
+  replies?: (job: Job) => boolean
   assemble: (placed: Placement, settings: Settings, rng?: () => number) => FlowSim
   // `flow` is the running system, for goals the numbers alone can't judge.
   // Says what's going wrong with the build right now, if anything, so the
