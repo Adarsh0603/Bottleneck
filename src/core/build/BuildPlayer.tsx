@@ -577,13 +577,33 @@ function Builder({
           height={44}
           aria-hidden
           fill="none"
-          stroke="currentColor"
+          stroke="#16a34a"
           strokeWidth={2.5}
           strokeLinecap="round"
           strokeLinejoin="round"
         >
+          <circle cx="12" cy="12" r="0" fill="#16a34a" stroke="none">
+            <animate
+              attributeName="r"
+              from="0"
+              to="10"
+              dur="1.2s"
+              fill="freeze"
+            />
+          </circle>
           <circle cx="12" cy="12" r="10" />
-          <path d="M7.5 12.5l3 3 6-7" />
+          <g stroke="#fff" opacity="0">
+            <animate
+              attributeName="opacity"
+              from="0"
+              to="1"
+              begin="0.9s"
+              dur="0.3s"
+              fill="freeze"
+            />
+            <path d="M9.5 6.5v11" />
+            <path d="M9.5 7h6l-1.5 2.5 1.5 2.5h-6" fill="#fff" strokeWidth={1.5} />
+          </g>
         </svg>
         <div className="mt-3 font-mono text-[10px] uppercase tracking-widest text-muted">
           {finale ? "Conquered!" : "Built"}
