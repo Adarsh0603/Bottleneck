@@ -69,10 +69,11 @@ export default function WelcomeDialog() {
           Welcome to Systemlands
         </h2>
         <p className="mt-3 text-sm text-muted">
-          <b> Brave Warrior!</b> <br></br>Every system in this realm breaks
-          under traffic. Select any system, learn the tactics, analyze its
-          collapse at scale, and build the architecture that survives the surge
-          to conquer it.
+          <b className="block  mt-3 text-sm">Brave Warrior!</b>
+          <p className="mt-1 text-sm text-muted">
+            Select any system, learn the tactics, analyze its collapse at scale,
+            and build the architecture that survives the surge to conquer it.
+          </p>
         </p>
         <button
           autoFocus
