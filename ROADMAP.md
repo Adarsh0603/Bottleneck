@@ -41,7 +41,7 @@ Projects are interview-style systems the learner builds, ordered from easy to ha
 
 **Intermediate**
 4. News feed (built): caching, fan-out, queues, sharding
-5. Chat app: real-time messaging (new), pub/sub, replication, consistent hashing
+5. Chat app (built): real-time messaging, pub/sub, replication, consistent hashing
 6. Video streaming: CDN, queues, autoscaling, caching
 7. Key-value store: consistent hashing, replication, CAP, consensus
 

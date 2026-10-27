@@ -602,8 +602,14 @@ function Builder({
               dur="0.3s"
               fill="freeze"
             />
-            <path d="M9.5 6.5v11" />
-            <path d="M9.5 7h6l-1.5 2.5 1.5 2.5h-6" fill="#fff" strokeWidth={1.5} />
+            {finale ? (
+              <>
+                <path d="M9.5 6.5v11" />
+                <path d="M9.5 7h6l-1.5 2.5 1.5 2.5h-6" fill="#fff" strokeWidth={1.5} />
+              </>
+            ) : (
+              <path d="M7.5 12.5l3 3 6-7" />
+            )}
           </g>
         </svg>
         <div className="mt-3 font-mono text-[10px] uppercase tracking-widest text-muted">
@@ -886,7 +892,11 @@ function Builder({
                     .map((s) => (
                       <div
                         key={s.id}
-                        className="flex items-center justify-between gap-3"
+                        className={
+                          s.options
+                            ? "flex flex-col items-stretch gap-1.5"
+                            : "flex items-center justify-between gap-3"
+                        }
                       >
                         {s.options ? (
                           <>
@@ -894,6 +904,7 @@ function Builder({
                               {s.label}
                             </span>
                             <Select
+                              fill
                               label={s.label}
                               value={settings[s.id]}
                               options={s.options.map((label, i) => ({

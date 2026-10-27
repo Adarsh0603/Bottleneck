@@ -76,18 +76,20 @@ export function Select<T extends string | number>({
   options,
   onChange,
   label,
+  fill,
 }: {
   value: T
   options: { value: T; label: string }[]
   onChange: (value: T) => void
   label: string
+  fill?: boolean
 }) {
   return (
     <select
       aria-label={label}
       value={value}
       onChange={(e) => onChange((typeof value === 'number' ? Number(e.target.value) : e.target.value) as T)}
-      className="h-9 min-w-0 max-w-[60%] flex-1 cursor-pointer rounded-lg border border-line bg-bg px-2 text-sm transition hover:border-fg focus:border-fg focus:outline-none"
+      className={`h-9 min-w-0 flex-1 cursor-pointer rounded-lg border border-line bg-bg px-2 text-sm transition hover:border-fg focus:border-fg focus:outline-none ${fill ? 'w-full' : 'max-w-[60%]'}`}
     >
       {options.map((o) => (
         <option key={o.value} value={o.value}>
