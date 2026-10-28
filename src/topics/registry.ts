@@ -72,6 +72,9 @@ import { REFERENCE as KEY_VALUE_STORE_REFERENCE } from './key-value-store/refere
 import RideSharingPlay from './ride-sharing/Play'
 import { RIDE_SHARING } from './ride-sharing/build'
 import { REFERENCE as RIDE_SHARING_REFERENCE } from './ride-sharing/reference'
+import TwitterTimelinePlay from './twitter-timeline/Play'
+import { TWITTER_TIMELINE } from './twitter-timeline/build'
+import { REFERENCE as TWITTER_TIMELINE_REFERENCE } from './twitter-timeline/reference'
 import PaymentsPlay from './payments/Play'
 import { PAYMENTS } from './payments/build'
 import { REFERENCE as PAYMENTS_REFERENCE } from './payments/reference'
@@ -420,6 +423,16 @@ export const TOPICS: TopicEntry[] = [
     challenges: ['0:0', '1:0', '2:0'],
     Play: RideSharingPlay,
     reference: RIDE_SHARING_REFERENCE,
+  },
+  {
+    id: 'twitter-timeline',
+    title: 'Twitter timeline',
+    track: 'capstones',
+    pitch: 'Show every follower the latest tweets, even after a delete.',
+    chapters: [...TWITTER_TIMELINE.stages],
+    challenges: ['0:0', '1:0', '2:0'],
+    Play: TwitterTimelinePlay,
+    reference: TWITTER_TIMELINE_REFERENCE,
   },
 ]
 

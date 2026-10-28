@@ -1,5 +1,6 @@
 import type { FlowSim } from '../flow/engine'
 import { Worker } from '../flow/nodes'
+import { freshRng } from './day'
 import type { BuildMetrics, BuildTask, Placement, Settings } from './types'
 
 export const TICKS_PER_SECOND = 20
@@ -65,7 +66,7 @@ export class Running {
 
 // A task's system built and ready to run, with its answers set to be drawn.
 export function startRun(task: BuildTask, placed: Placement, settings: Settings, rng?: () => number) {
-  const flow = task.assemble(placed, settings, rng)
+  const flow = task.assemble(placed, settings, rng ?? (task.freshDay ? freshRng() : undefined))
   flow.replying = task.replies
   return new Running(flow)
 }

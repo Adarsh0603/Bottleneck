@@ -5,6 +5,7 @@ export function Slider({
   value,
   min,
   max,
+  step,
   unit,
   hint,
   onChange,
@@ -13,6 +14,7 @@ export function Slider({
   value: number
   min: number
   max: number
+  step?: number
   unit: string
   hint?: ReactNode
   onChange: (value: number) => void
@@ -29,6 +31,7 @@ export function Slider({
         type="range"
         min={min}
         max={max}
+        step={step}
         value={value}
         onChange={(e) => onChange(Number(e.target.value))}
         className="w-full accent-fg"
