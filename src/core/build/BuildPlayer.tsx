@@ -125,12 +125,16 @@ function Builder({
   // The victory card stays up until the learner moves on or closes it to look around.
   const [victoryOpen, setVictoryOpen] = useState(false);
   const [briefOpen, setBriefOpen] = useState(!!task.brief);
-  const [detailsOpen, setDetailsOpen] = useState(true);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  // The folded one-line goal can be closed too; the Goal button brings it back.
+  const [goalHidden, setGoalHidden] = useState(false);
   const [openSetting, setOpenSetting] = useState<string | null>(null);
-  const [pinnedOpen, setPinnedOpen] = useState(() => !window.matchMedia(COMPACT).matches);
+  const [pinnedOpen, setPinnedOpen] = useState(true);
   const [running, setRunning] = useState(!task.manualStart);
   // Set the moment a fail-fast task's requirement breaks: the run freezes there.
   const [failure, setFailure] = useState<{ title: string; text: string } | null>(null);
+  // The problem text the learner closed; it stays hidden until the text changes.
+  const [dismissed, setDismissed] = useState<string | null>(null);
   const [, setFrame] = useState(0);
   const compact = useMedia(COMPACT);
   const short = useMedia(SHORT);
@@ -166,6 +170,7 @@ function Builder({
     runRef.current = startRun(task, placedRef.current, settingsRef.current);
     holdStart.current = null;
     setFailure(null);
+    setDismissed(null);
     setRunning(false);
   };
 
@@ -182,6 +187,7 @@ function Builder({
     runRef.current = startRun(task, nextPlaced, nextSettings);
     holdStart.current = null;
     setFailure(null);
+    setDismissed(null);
     setSolved(false);
     setVictoryOpen(false);
     // Tasks with a Start button wait for it again, so the new build starts from zero.
@@ -279,6 +285,17 @@ function Builder({
   const problem = failure ? failure.text : found;
   // On a small screen the goal and title can be folded away to show more floor.
   const focus = compact && !detailsOpen && !solved;
+  // On a phone a started run clears the panel down to the goal and the
+  // transport row; stopping or failing brings everything back, goal folded.
+  const playing = compact && !!task.manualStart && running && !failure && !solved;
+  useEffect(() => {
+    setDetailsOpen(playing);
+    if (playing) setGoalHidden(false);
+  }, [playing]);
+  // A failure puts the build-failed card on screen, so the goal steps aside.
+  useEffect(() => {
+    if (failure) setGoalHidden(true);
+  }, [failure]);
   const holdProgress =
     holdStart.current === null
       ? 0
@@ -420,11 +437,11 @@ function Builder({
     />
   );
   const settingRow = (s: (typeof shownSettings)[number]) => (
-    <div key={s.id} className="flex items-center gap-2">
+    <div key={s.id} className="flex min-w-0 items-center gap-2">
       <PieceIcon kind={s.when} size={28} />
       {s.options ? (
         <>
-          <span className="text-sm font-medium">{s.label}</span>
+          <span className="shrink-0 text-sm font-medium">{s.label}</span>
           <Segmented
             scroll
             value={settings[s.id]}
@@ -466,7 +483,7 @@ function Builder({
     </div>
   );
   const settingPopover = compact && activeSetting && (
-    <div className="mt-2 flex items-center justify-between gap-2 overflow-x-auto rounded-xl border border-line bg-bg p-2 shadow-lg">
+    <div className="mt-2 flex items-center justify-between gap-2 rounded-xl border border-line bg-bg p-2 shadow-lg">
       {settingRow(activeSetting)}
       <button
         onClick={() => setOpenSetting(null)}
@@ -563,12 +580,19 @@ function Builder({
       </div>
     </div>
   );
-  const problemCard = problem && !briefOpen && (
+  const problemCard = problem && problem !== dismissed && !briefOpen && (
     <div
-      className={`max-w-md rounded-xl border border-danger bg-bg/90 p-3 text-sm backdrop-blur ${side ? "" : "mb-3"}`}
+      className={`relative max-w-md rounded-xl border border-danger bg-bg/90 p-3 text-sm backdrop-blur ${side ? "" : "mb-3"}`}
       role="status"
     >
-      <div className="font-mono text-[10px] uppercase tracking-widest text-danger">
+      <button
+        onClick={() => setDismissed(problem)}
+        aria-label="Close"
+        className="absolute right-1.5 top-1.5 rounded-full px-2 font-mono text-xs text-muted transition hover:text-fg"
+      >
+        ✕
+      </button>
+      <div className="pr-6 font-mono text-[10px] uppercase tracking-widest text-danger">
         {failure ? `Build failed: ${failure.title}` : "What’s going wrong"}
       </div>
       <p className="mt-1">{problem}</p>
@@ -682,7 +706,7 @@ function Builder({
     : 0;
   const goalCard = (
     <div
-      className={`max-w-md rounded-xl border transition ${side ? "w-full p-3" : short || focus ? "mb-2 px-3 py-2" : "mb-3 p-3"} ${
+      className={`relative max-w-md rounded-xl border transition ${side ? "w-full p-3" : short || focus ? "mb-2 px-3 py-2" : "mb-3 p-3"} ${
         solved
           ? "border-fg bg-fg text-bg"
           : "border-line bg-bg/80 backdrop-blur"
@@ -695,11 +719,20 @@ function Builder({
       </div>
       <div
         className={
-          focus ? "truncate text-xs font-medium" : "mt-1 text-sm font-medium"
+          focus ? "truncate pr-5 text-xs font-medium" : "mt-1 text-sm font-medium"
         }
       >
         {solved ? task.win : focus ? (task.goalShort ?? task.goal) : task.goal}
       </div>
+      {focus && !side && (
+        <button
+          onClick={() => setGoalHidden(true)}
+          aria-label="Hide goal"
+          className="absolute right-1 top-1 rounded-full px-2 font-mono text-xs text-muted transition hover:text-fg"
+        >
+          ✕
+        </button>
+      )}
       {!solved && running && !focus && (
         <div className="mt-1 text-xs opacity-70">{testNote}</div>
       )}
@@ -755,6 +788,13 @@ function Builder({
     >
       <div
         className={`absolute inset-y-0 left-0 ${side ? "right-88" : "right-0"}`}
+        onPointerDownCapture={() => {
+          if (!compact) return;
+          if (!playing) setDetailsOpen(false);
+          setOpenSetting(null);
+          setPinnedOpen(false);
+          setBriefOpen(false);
+        }}
       >
         <BuildScene
           task={task}
@@ -769,14 +809,17 @@ function Builder({
         />
       </div>
 
-      {/* Right edge: start/stop and reset, above the zoom controls. */}
-      <div
-        style={{ bottom: "calc(50% + 4.75rem)" }}
-        className={`absolute z-20 flex flex-col gap-1 rounded-full border border-line bg-bg/80 p-1 backdrop-blur ${side ? "right-[23rem]" : "right-3"}`}
-      >
-        {startButton}
-        {resetButton}
-      </div>
+      {/* Right edge: start/stop and reset, above the zoom controls. On a
+          phone they sit in the row with Situation instead, to spare the floor. */}
+      {!compact && (
+        <div
+          style={{ bottom: "calc(50% + 4.75rem)" }}
+          className={`absolute z-20 flex flex-col gap-1 rounded-full border border-line bg-bg/80 p-1 backdrop-blur ${side ? "right-[23rem]" : "right-3"}`}
+        >
+          {startButton}
+          {resetButton}
+        </div>
+      )}
 
       {/* Top: chapter menu, sound and live numbers. */}
       <div
@@ -975,23 +1018,23 @@ function Builder({
         >
           <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-5">
             <div className="pointer-events-auto min-w-0">
-              {problemCard}
-              {!victoryOpen && goalCard}
+              {!playing && problemCard}
+              {!victoryOpen && !(focus && goalHidden) && goalCard}
               <h2
-                className={`font-semibold tracking-tight ${focus || short ? "hidden" : ""} text-xl sm:text-2xl`}
+                className={`font-semibold tracking-tight ${focus || short || playing ? "hidden" : ""} text-xl sm:text-2xl`}
               >
                 {task.title}
               </h2>
-              <p className={`mt-1 text-sm text-muted ${focus || short ? "hidden" : ""}`}>
+              <p className={`mt-1 text-sm text-muted ${focus || short || playing ? "hidden" : ""}`}>
                 {hint}
               </p>
 
-              {settingChips}
-              {settingPopover}
+              {!playing && settingChips}
+              {!playing && settingPopover}
 
               {/* The toolbox. touch-none so a finger drag moves the piece
                   instead of scrolling the page. */}
-              {rail && (
+              {rail && !playing && (
                 <>
                   <div className="no-scrollbar -mx-3 mt-3 flex gap-2 overflow-x-auto px-3">
                     {toolboxButtons}
@@ -1004,17 +1047,27 @@ function Builder({
                 </>
               )}
               <div className="mt-3 flex flex-wrap gap-2">
-                {!rail && toolboxButtons}
+                {!rail && !playing && toolboxButtons}
                 {compact && !solved && (
                   <button
-                    onClick={() => setDetailsOpen((o) => !o)}
+                    onClick={() => {
+                      if (focus && goalHidden) setDetailsOpen(true);
+                      else setDetailsOpen((o) => !o);
+                      setGoalHidden(false);
+                    }}
                     aria-expanded={detailsOpen}
                     className="rounded-xl border border-line bg-bg/90 px-3 py-1.5 text-sm backdrop-blur transition hover:border-fg"
                   >
                     {detailsOpen ? "Hide goal ▾" : "Goal ▴"}
                   </button>
                 )}
-                {situationButton}
+                {!playing && situationButton}
+                {compact && (
+                  <div className="ml-auto flex rounded-full border border-line bg-bg/80 p-0.5 backdrop-blur">
+                    {startButton}
+                    {resetButton}
+                  </div>
+                )}
                 {!compact && shownSettings.map(settingRow)}
               </div>
             </div>

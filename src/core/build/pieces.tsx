@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState } from 'react'
 import { Cache } from '../flow/cache'
 import { logOf, type Log } from '../flow/log'
 import type { FlowNode } from '../flow/engine'
@@ -405,11 +406,31 @@ function CachePiece({ x, z, rise, cache }: { x: number; z: number; rise: number;
 }
 
 // A small picture of a piece, for the toolbox and the piece being dragged.
+// The frame is a fixed size per kind, so pieces keep their relative scale; one
+// that spills past it (a wide cache or app server) widens its own frame to fit.
 export function PieceIcon({ kind, size = 40 }: { kind: PieceKind; size?: number }) {
-  const box = kind === 'users' ? '-70 -60 140 110' : kind === 'database' || kind === 'replica' || kind === 'cache' || kind === 'ring' || kind === 'queue' || kind === 'topic' || kind === 'stream' || kind === 'limiter' || kind === 'breaker' || kind === 'provider' || kind === 'dead' || kind === 'dedupe' ? '-55 -80 110 110' : '-45 -80 90 100'
+  const base = kind === 'users' ? [-70, -60, 140, 110] : kind === 'database' || kind === 'replica' || kind === 'cache' || kind === 'ring' || kind === 'queue' || kind === 'topic' || kind === 'stream' || kind === 'limiter' || kind === 'breaker' || kind === 'provider' || kind === 'dead' || kind === 'dedupe' ? [-55, -80, 110, 110] : [-45, -80, 90, 100]
+  const art = useRef<SVGGElement>(null)
+  const [box, setBox] = useState(base)
+  useLayoutEffect(() => {
+    try {
+      const b = art.current?.getBBox()
+      if (!b) return
+      const pad = 3
+      const x0 = Math.min(base[0], b.x - pad)
+      const y0 = Math.min(base[1], b.y - pad)
+      const x1 = Math.max(base[0] + base[2], b.x + b.width + pad)
+      const y1 = Math.max(base[1] + base[3], b.y + b.height + pad)
+      setBox([x0, y0, x1 - x0, y1 - y0])
+    } catch {
+      /* no layout (tests): keep the fixed frame */
+    }
+  }, [kind]) // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <svg viewBox={box} width={size} height={size} aria-hidden className="shrink-0">
-      <Piece kind={kind} x={0} z={0} active={6} />
+    <svg viewBox={box.join(' ')} width={size} height={size} aria-hidden className="shrink-0">
+      <g ref={art}>
+        <Piece kind={kind} x={0} z={0} active={6} />
+      </g>
     </svg>
   )
 }
