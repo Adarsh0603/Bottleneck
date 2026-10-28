@@ -69,6 +69,9 @@ import { REFERENCE as VIDEO_STREAMING_REFERENCE } from './video-streaming/refere
 import KeyValueStorePlay from './key-value-store/Play'
 import { KEY_VALUE_STORE } from './key-value-store/build'
 import { REFERENCE as KEY_VALUE_STORE_REFERENCE } from './key-value-store/reference'
+import RideSharingPlay from './ride-sharing/Play'
+import { RIDE_SHARING } from './ride-sharing/build'
+import { REFERENCE as RIDE_SHARING_REFERENCE } from './ride-sharing/reference'
 import PaymentsPlay from './payments/Play'
 import { PAYMENTS } from './payments/build'
 import { REFERENCE as PAYMENTS_REFERENCE } from './payments/reference'
@@ -408,7 +411,16 @@ export const TOPICS: TopicEntry[] = [
     Play: PaymentsPlay,
     reference: PAYMENTS_REFERENCE,
   },
-  { id: 'ride-sharing', title: 'Ride sharing', track: 'capstones', pitch: 'Match riders and drivers by location, live.' },
+  {
+    id: 'ride-sharing',
+    title: 'Ride sharing',
+    track: 'capstones',
+    pitch: 'Match riders and drivers by location, live.',
+    chapters: [...RIDE_SHARING.stages],
+    challenges: ['0:0', '1:0', '2:0'],
+    Play: RideSharingPlay,
+    reference: RIDE_SHARING_REFERENCE,
+  },
 ]
 
 // Topics still to build, shown in the list under their track. They are not in

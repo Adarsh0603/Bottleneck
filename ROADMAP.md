@@ -16,6 +16,7 @@ What is built, and what is still to build. Update this as topics land.
 - **Capstone 7: Key-value store** (branch `key-value-store`), a leaderless store in `src/topics/key-value-store/kv.ts` with a hash ring, N/R/W quorums, stand-in writes, read repair, version counters against clock skew, and a hot-key cache
 
 - **Capstone 8: Payments** (branch `payments`), a checkout sim in `src/topics/payments/payments.ts` with idempotency keys, a store of keys, timeouts, retries, a circuit breaker, an order queue, and crash recovery (write the order down first, or refund)
+- **Capstone 9: Ride sharing** (branch `ride-sharing`), a dispatch sim in `src/topics/ride-sharing/ride.ts` with driver pings (live map vs database), map shards cut by cells or by load, claiming a car before offering it, and a request log replayed after a dispatch crash
 
 ## To build: concepts the capstones depend on
 Build these before the remaining capstones.
@@ -50,7 +51,7 @@ Projects are interview-style systems the learner builds, ordered from easy to ha
 
 **Advanced**
 8. Payments / checkout (built): idempotency, sagas, circuit breakers, consensus
-9. Ride sharing: geospatial, sharding, pub/sub, consensus
+9. Ride sharing (built): geospatial, sharding, pub/sub, consensus
 
 **Expert** (the large systems big companies ask about; start with Twitter timeline, WhatsApp, Uber, Google Docs)
 - Twitter / X timeline: fan-out (new), caching, sharding, queues, consistent hashing
