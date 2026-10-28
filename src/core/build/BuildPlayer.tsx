@@ -23,6 +23,7 @@ import {
   type SavedBuild,
 } from "./saved";
 import { Source } from "../flow/nodes";
+import Tooltip from "../Tooltip";
 import { MS_PER_TICK, TICKS_PER_SECOND, startRun, type Running } from "./run";
 import {
   PIECE_NAMES,
@@ -489,6 +490,7 @@ function Builder({
   };
   const startLabel = running ? "Stop and edit" : failure ? "Try again" : "Start requests";
   const startButton = task.manualStart && !solved && (
+    <Tooltip text={startLabel} className="inline-flex">
     <button
       onClick={
         running
@@ -501,15 +503,16 @@ function Builder({
             : () => setRunning(true)
       }
       aria-label={startLabel}
-      title={startLabel}
       className={`${transportBtn} ${running ? "" : "bg-fg text-bg hover:bg-fg hover:opacity-85"}`}
     >
       <svg {...svg}>
         {running ? <rect x="5" y="5" width="10" height="10" rx="1.5" /> : <path d="M6 4l10 6-10 6z" />}
       </svg>
     </button>
+    </Tooltip>
   );
   const resetButton = (
+    <Tooltip text="Reset build" className="inline-flex">
     <button
       onClick={async () => {
         const ok = await askConfirm({
@@ -520,13 +523,13 @@ function Builder({
         if (ok) onReset();
       }}
       aria-label="Reset build"
-      title="Reset build"
       className={transportBtn}
     >
       <svg {...svg} fill="none">
         <path d="M4 6h12M8 6V4h4v2M5.5 6l.7 10h7.6l.7-10M8.5 9v4.5M11.5 9v4.5" />
       </svg>
     </button>
+    </Tooltip>
   );
   const situationButton = task.brief && (!briefOpen || side) && (
     <button
@@ -718,14 +721,15 @@ function Builder({
             {timeline.phases.map((p, i) => {
               const to = timeline.phases[i + 1]?.from ?? timeline.end;
               return (
-                <div
+                <Tooltip
+                  as="div"
                   key={p.from}
+                  text={p.name}
                   className={`min-w-0 overflow-hidden ${i === phaseNow ? "font-medium" : "opacity-50"}`}
                   style={{ flex: to - p.from }}
-                  title={p.name}
                 >
                   <span className="block truncate">{p.name}</span>
-                </div>
+                </Tooltip>
               );
             })}
           </div>

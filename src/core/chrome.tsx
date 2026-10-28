@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { isSoundOn, setSoundOn } from './sound'
+import Tooltip from './Tooltip'
 import type { Level } from './types'
 
 export const CHEAT_SHEET = 'Interview cheat sheet'
@@ -46,9 +47,9 @@ export function TopBar({
           <ol className="absolute left-0 top-full z-20 mt-2 w-60 overflow-hidden rounded-xl border border-line bg-bg shadow-lg">
             {chapters.map((c, i) => (
               <li key={c.title}>
+                <Tooltip as="div" text={c.locked ? 'Finish the stage before it to open this' : undefined}>
                 <button
                   disabled={c.locked}
-                  title={c.locked ? 'Finish the stage before it to open this' : undefined}
                   onClick={() => {
                     setMenuOpen(false)
                     onChapter(i)
@@ -60,9 +61,10 @@ export function TopBar({
                   <span className="font-mono text-xs">{String(i + 1).padStart(2, '0')}</span>
                   <span className="flex-1">{c.title}</span>
                   {c.locked && (
-                    <span className="font-mono text-xs" aria-label="locked">
-                      🔒
-                    </span>
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" role="img" aria-label="locked">
+                      <rect x="2.5" y="5.5" width="7" height="5" rx="1" />
+                      <path d="M4 5.5V4a2 2 0 0 1 4 0v1.5" />
+                    </svg>
                   )}
                   {doneChapters.includes(i) && (
                     <span className="font-mono text-xs text-fg" aria-label="done">
@@ -70,6 +72,7 @@ export function TopBar({
                     </span>
                   )}
                 </button>
+                </Tooltip>
               </li>
             ))}
             {extra && (
