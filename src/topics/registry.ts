@@ -27,6 +27,9 @@ import { REFERENCE as CONSISTENT_HASHING_REFERENCE } from './consistent-hashing/
 import { CHAPTERS as FAN_OUT_CHAPTERS } from './fan-out/chapters'
 import FanOutPlay from './fan-out/Play'
 import { REFERENCE as FAN_OUT_REFERENCE } from './fan-out/reference'
+import { CHAPTERS as GEOSPATIAL_CHAPTERS } from './geospatial/chapters'
+import GeospatialPlay from './geospatial/Play'
+import { REFERENCE as GEOSPATIAL_REFERENCE } from './geospatial/reference'
 import { CHAPTERS as IDEMPOTENCY_CHAPTERS } from './idempotency/chapters'
 import IdempotencyPlay from './idempotency/Play'
 import { REFERENCE as IDEMPOTENCY_REFERENCE } from './idempotency/reference'
@@ -204,6 +207,17 @@ export const TOPICS: TopicEntry[] = [
     challenges: challengeIds(CAP_CHAPTERS),
     Play: CapPlay,
     reference: CAP_REFERENCE,
+  },
+  {
+    id: 'geospatial',
+    title: 'Geospatial indexing',
+    short: 'Geospatial',
+    track: 'data',
+    pitch: 'Find what is near a point, fast.',
+    chapters: GEOSPATIAL_CHAPTERS.map((c) => c.title),
+    challenges: challengeIds(GEOSPATIAL_CHAPTERS),
+    Play: GeospatialPlay,
+    reference: GEOSPATIAL_REFERENCE,
   },
 
   {
@@ -411,7 +425,6 @@ export const PLANNED: PlannedTopic[] = [
   { id: 'api-design', title: 'API design', track: 'scaling', pitch: 'Pagination, versioning and safe retries.' },
   { id: 'authentication', title: 'Authentication', track: 'scaling', pitch: 'Sessions, tokens and who may do what.' },
   { id: 'data-modeling', title: 'Data modeling', track: 'data', pitch: 'Pick the right database for the access pattern.' },
-  { id: 'geospatial', title: 'Geospatial indexing', track: 'data', pitch: 'Find what is near a point, fast.' },
   { id: 'blob-storage', title: 'Blob storage', track: 'data', pitch: 'Keep big files cheaply and serve them fast.' },
   { id: 'search', title: 'Search', track: 'data', pitch: 'Find text across millions of documents.' },
   { id: 'availability', title: 'Availability & failover', track: 'async', pitch: 'Stay up when machines and regions fail.' },
