@@ -17,6 +17,7 @@ What is built, and what is still to build. Update this as topics land.
 
 - **Capstone 8: Payments** (branch `payments`), a checkout sim in `src/topics/payments/payments.ts` with idempotency keys, a store of keys, timeouts, retries, a circuit breaker, an order queue, and crash recovery (write the order down first, or refund)
 - **Capstone 9: Ride sharing** (branch `ride-sharing`), a dispatch sim in `src/topics/ride-sharing/ride.ts` with driver pings (live map vs database), map shards cut by cells or by load, claiming a car before offering it, and a request log replayed after a dispatch crash
+- **Capstone 10: Twitter timeline** (branch `twitter-timeline`), a timeline sim in `src/topics/twitter-timeline/timeline.ts` with write and read paths that share the timeline caches, whole tweets vs ids (a delete is one write with ids), a celebrity cutoff, a cache restart that empties timelines, and rebuild storms (one rebuild per reader vs one per open)
 
 ## To build: concepts the capstones depend on
 Build these before the remaining capstones.
@@ -54,7 +55,7 @@ Projects are interview-style systems the learner builds, ordered from easy to ha
 9. Ride sharing (built): geospatial, sharding, pub/sub, consensus
 
 **Expert** (the large systems big companies ask about; start with Twitter timeline, WhatsApp, Uber, Google Docs)
-- Twitter / X timeline: fan-out (new), caching, sharding, queues, consistent hashing
+- Twitter / X timeline (built): fan-out, caching, sharding, queues, consistent hashing
 - WhatsApp at scale: real-time messaging (new), pub/sub, replication, idempotency, sharding
 - Dropbox / Google Drive: chunking and dedupe (new), CDN, sharding, replication, queues
 - Google Docs: collaborative editing, OT/CRDT (new), real-time messaging, consensus

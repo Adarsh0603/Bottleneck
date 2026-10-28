@@ -86,6 +86,8 @@ export interface BuildSetting {
   initial: number
   // Names for the values min…max, when the setting is a choice, not a count.
   options?: string[]
+  // A count with many values shows as a slider, with this unit after the number.
+  slider?: { unit: string }
 }
 
 export type Settings = Record<string, number>
@@ -164,5 +166,12 @@ export interface BuildTask {
   // Says what's going wrong with the build right now, if anything, so the
   // learner knows why it isn't working.
   problem?: (m: BuildMetrics, placed: Placement, settings: Settings, flow: FlowSim) => string | null
+  // Every run gets its own day (a little more traffic, a later restart), so a design
+  // tuned to the exact numbers of one run fails the next. The task reads it from `rng`.
+  freshDay?: boolean
+  // What the finished run achieved, in its own numbers: shown on the win card instead of `win`.
+  result?: (m: BuildMetrics, placed: Placement, settings: Settings, flow: FlowSim) => string | null
+  // After HINT_AFTER failed runs the failure card also says why. Unlike `problem`, it may name the cause.
+  hint?: (m: BuildMetrics, placed: Placement, settings: Settings, flow: FlowSim) => string | null
   check: (m: BuildMetrics, placed: Placement, settings: Settings, flow?: FlowSim) => boolean
 }

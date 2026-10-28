@@ -6,7 +6,8 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { CHEAT_SHEET, TopBar } from "../chrome";
-import { Segmented, Select, Stepper } from "../controls";
+import { Segmented, Select, Slider, Stepper } from "../controls";
+import { HINT_AFTER } from "./day";
 import { ArrowIcon, Chip, ClockIcon, CrossIcon, GaugeIcon } from "../hud";
 import { play } from "../sound";
 import type { Level } from "../types";
@@ -69,6 +70,8 @@ interface BuildPlayerProps {
   continueText?: string;
   // The last build of a capstone: a bigger sound and word when it holds.
   finale?: boolean;
+  // Stop the requests the moment the goal holds, and leave the board as it ended.
+  stopWhenBuilt?: boolean;
 }
 
 // A "Build it" chapter: drag pieces onto the floor while live traffic runs
@@ -114,6 +117,7 @@ function Builder({
   onContinue,
   continueText,
   finale,
+  stopWhenBuilt,
 }: BuildPlayerProps & { start: SavedBuild; onReset: () => void }) {
   const [placed, setPlaced] = useState<Placement>(start.placed);
   const [selected, setSelected] = useState<PieceKind | null>(null);
@@ -132,7 +136,9 @@ function Builder({
   const [pinnedOpen, setPinnedOpen] = useState(true);
   const [running, setRunning] = useState(!task.manualStart);
   // Set the moment a fail-fast task's requirement breaks: the run freezes there.
-  const [failure, setFailure] = useState<{ title: string; text: string } | null>(null);
+  const [failure, setFailure] = useState<{ title: string; text: string; at: number; hint?: string } | null>(null);
+  // Failed runs so far on this stage; from the fifth, the card also says why.
+  const [fails, setFails] = useState(0);
   // The problem text the learner closed; it stays hidden until the text changes.
   const [dismissed, setDismissed] = useState<string | null>(null);
   const [, setFrame] = useState(0);
@@ -237,6 +243,8 @@ function Builder({
       holdStart.current ??= now;
       if (now - holdStart.current >= task.holdSeconds * 1000) {
         setSolved(true);
+        if (finale || stopWhenBuilt) setRunning(false);
+        setFails(0);
         setVictoryOpen(true);
         onSolvedRef.current?.(0);
         onStepRef.current?.(0, true);
@@ -245,7 +253,7 @@ function Builder({
     } else {
       holdStart.current = null;
     }
-  }, [solved, tick, task, m, placed, settings, run, finale]);
+  }, [solved, tick, task, m, placed, settings, run, finale, stopWhenBuilt]);
   // Fail fast: the first requirement to break stops the run on the spot, with the reason.
   useEffect(() => {
     if (!task.failFast || !running || solved || failure || tick === 0) return;
@@ -253,10 +261,12 @@ function Builder({
     if (!broken) return;
     const { text } = broken.read(run.flow, m);
     const why = task.problem?.(m, placed, settings, run.flow) ?? broken.says;
-    setFailure({ title: broken.label, text: `${text}. ${why}` });
+    const hint = fails >= HINT_AFTER ? task.hint?.(m, placed, settings, run.flow) : null;
+    setFailure({ title: broken.label, text: `${text}. ${why}`, at: tick, hint: hint ?? undefined });
+    setFails(fails + 1);
     setRunning(false);
     play("drum");
-  }, [task, running, solved, failure, tick, m, placed, settings, run]);
+  }, [task, running, solved, failure, fails, tick, m, placed, settings, run]);
   // Traffic right now: it can rise and fall during a build.
   const rps = !running
     ? 0
@@ -292,10 +302,11 @@ function Builder({
     setDetailsOpen(playing);
     if (playing) setGoalHidden(false);
   }, [playing]);
-  // A failure puts the build-failed card on screen, so the goal steps aside.
+  // A failure puts the build-failed card on screen, so the goal steps aside,
+  // unless the goal shows the day and where in it the build failed.
   useEffect(() => {
-    if (failure) setGoalHidden(true);
-  }, [failure]);
+    if (failure && !task.timeline) setGoalHidden(true);
+  }, [failure, task.timeline]);
   const holdProgress =
     holdStart.current === null
       ? 0
@@ -400,19 +411,19 @@ function Builder({
         onPointerDown={(e) => count > 0 && startDrag(kind, undefined, e)}
         aria-pressed={selected === kind}
         aria-label={`${nameOf(kind)}, ${count} left. Drag onto a pad, or tap then tap a pad.`}
-        className={`flex ${rail ? "shrink-0 touch-pan-x" : "touch-none"} items-center gap-2 rounded-xl border bg-bg/90 py-1.5 pl-1.5 pr-3 text-sm backdrop-blur transition disabled:opacity-35 ${
+        className={`relative flex ${rail ? "shrink-0 touch-pan-x" : "touch-none"} flex-col items-stretch justify-start gap-1 rounded-xl border bg-bg/90 py-1.5 pl-1.5 pr-3 text-left text-sm backdrop-blur transition disabled:opacity-35 ${
           selected === kind
             ? "border-fg ring-1 ring-fg"
             : "border-line hover:border-fg"
         } ${count > 0 ? "cursor-grab active:cursor-grabbing" : ""}`}
       >
-        <PieceIcon kind={kind} size={compact ? 26 : 34} />
-        <span className="min-w-0 text-left">
-          <span className="block">{nameOf(kind)}</span>
-          {/* A phone has no room for the one-line description under each name. */}
-          {!compact && sub(kind) && <span className="block text-[10px] leading-tight text-muted">{sub(kind)}</span>}
+        <span className="absolute right-2 top-1.5 font-mono text-xs text-muted">×{count}</span>
+        <span className="flex items-center gap-2 pr-7">
+          <PieceIcon kind={kind} size={compact ? 26 : 34} />
+          <span className="min-w-0">{nameOf(kind)}</span>
         </span>
-        <span className="ml-auto font-mono text-xs text-muted">×{count}</span>
+        {/* A phone has no room for the description under each name. It spans the whole card. */}
+        {!compact && sub(kind) && <span className="block pl-1 text-[10px] leading-tight text-muted">{sub(kind)}</span>}
       </button>
     );
   });
@@ -422,7 +433,18 @@ function Builder({
       Object.values(placed).includes(s.when) ||
       task.fixed.some((f) => f.kind === s.when),
   );
-  const settingStepper = (s: (typeof shownSettings)[number]) => (
+  const settingStepper = (s: (typeof shownSettings)[number]) =>
+    s.slider ? (
+      <Slider
+        label={s.label}
+        unit={s.slider.unit}
+        value={settings[s.id]}
+        min={s.min}
+        max={s.max}
+        step={s.step}
+        onChange={(v) => changeSetting(s.id, v)}
+      />
+    ) : (
     <Stepper
       value={settings[s.id]}
       min={s.min}
@@ -462,7 +484,9 @@ function Builder({
   const chipValue = (s: (typeof shownSettings)[number]) =>
     s.options
       ? s.options[(settings[s.id] - s.min) / s.step]
-      : `${settings[s.id]} ${s.label}${settings[s.id] === 1 ? "" : "s"}`;
+      : s.slider
+        ? `${settings[s.id].toLocaleString()} ${s.slider.unit}`
+        : `${settings[s.id]} ${s.label}${settings[s.id] === 1 ? "" : "s"}`;
   const activeSetting = shownSettings.find((s) => s.id === openSetting);
   const settingChips = compact && shownSettings.length > 0 && (
     <div className="no-scrollbar pointer-events-auto -mx-3 mt-3 flex gap-2 overflow-x-auto px-3">
@@ -596,6 +620,12 @@ function Builder({
         {failure ? `Build failed: ${failure.title}` : "What’s going wrong"}
       </div>
       <p className="mt-1">{problem}</p>
+      {failure?.hint && (
+        <p className="mt-1.5 border-t border-danger/30 pt-1.5">
+          <span className="font-medium">Hint: </span>
+          {failure.hint}
+        </p>
+      )}
       {failure && (
         <p className="mt-1 text-xs opacity-70">
           Change something, or tap Try again to rerun it.
@@ -606,6 +636,7 @@ function Builder({
   const continueLabel = continueText ?? (lastChapter ? "Finish ✓" : "Next →");
   const goOn = onContinue ?? (lastChapter ? onFinish : () => onChapter(index + 1));
   // Solving it pops a card up in the middle of the floor.
+  const winText = (solved && task.result?.(m, placed, settings, run.flow)) || task.win;
   const victoryCard = solved && victoryOpen && (
     <div
       className={`pointer-events-none absolute inset-y-0 left-0 z-30 flex items-center justify-center p-4 ${side ? "right-88" : "right-0"}`}
@@ -658,7 +689,7 @@ function Builder({
           {finale ? "Conquered!" : "Built"}
         </div>
         <p className="mt-2 min-h-0 flex-1 overflow-y-auto text-base">
-          {task.win}
+          {winText}
         </p>
         <div className="mt-5 flex shrink-0 flex-wrap justify-center gap-2">
           <button
@@ -704,6 +735,12 @@ function Builder({
   const phaseNow = timeline
     ? timeline.phases.reduce((at, p, i) => (tick >= p.from ? i : at), 0)
     : 0;
+  // Where in the day a failed build gave out.
+  const failedPhase =
+    failure && timeline
+      ? timeline.phases.reduce((at, p, i) => (failure.at >= p.from ? i : at), 0)
+      : -1;
+  const shownPhase = failure ? failedPhase : phaseNow;
   const goalCard = (
     <div
       className={`relative max-w-md rounded-xl border transition ${side ? "w-full p-3" : short || focus ? "mb-2 px-3 py-2" : "mb-3 p-3"} ${
@@ -722,7 +759,7 @@ function Builder({
           focus ? "truncate pr-5 text-xs font-medium" : "mt-1 text-sm font-medium"
         }
       >
-        {solved ? task.win : focus ? (task.goalShort ?? task.goal) : task.goal}
+        {solved ? winText : focus ? (task.goalShort ?? task.goal) : task.goal}
       </div>
       {focus && !side && (
         <button
@@ -736,7 +773,14 @@ function Builder({
       {!solved && running && !focus && (
         <div className="mt-1 text-xs opacity-70">{testNote}</div>
       )}
-      {!solved && running && !focus && timeline && (
+      {failure && !solved && (
+        <div className="mt-1 text-xs font-medium text-danger">
+          {timeline
+            ? `Failed at ${Math.floor(failure.at / TICKS_PER_SECOND)}s, during “${timeline.phases[failedPhase].name}”.`
+            : `Failed at ${Math.floor(failure.at / TICKS_PER_SECOND)}s.`}
+        </div>
+      )}
+      {!solved && (running || failure) && !focus && timeline && (
         <div className="mt-2" aria-label="The day, phase by phase">
           <div className="relative flex h-1.5 gap-px overflow-hidden rounded-full">
             {timeline.phases.map((p, i) => {
@@ -744,7 +788,15 @@ function Builder({
               return (
                 <div
                   key={p.from}
-                  className={i < phaseNow ? "bg-fg" : i === phaseNow ? "bg-fg animate-pulse" : "bg-line"}
+                  className={
+                    i < shownPhase
+                      ? "bg-fg"
+                      : i === shownPhase
+                        ? failure
+                          ? "bg-danger"
+                          : "bg-fg animate-pulse"
+                        : "bg-line"
+                  }
                   style={{ flex: to - p.from }}
                 />
               );
@@ -758,7 +810,7 @@ function Builder({
                   as="div"
                   key={p.from}
                   text={p.name}
-                  className={`min-w-0 overflow-hidden ${i === phaseNow ? "font-medium" : "opacity-50"}`}
+                  className={`min-w-0 overflow-hidden ${i === shownPhase ? (failure ? "font-medium text-danger" : "font-medium") : "opacity-50"}`}
                   style={{ flex: to - p.from }}
                 >
                   <span className="block truncate">{p.name}</span>

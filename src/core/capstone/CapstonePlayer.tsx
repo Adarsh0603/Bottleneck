@@ -57,6 +57,7 @@ export default function CapstonePlayer(props: CapstoneProps) {
         onContinue={next}
         continueText="Next stage →"
         finale={chapter === 2}
+        stopWhenBuilt
       />
     )
   }
