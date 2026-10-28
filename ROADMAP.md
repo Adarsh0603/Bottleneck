@@ -4,7 +4,7 @@ What is built, and what is still to build. Update this as topics land.
 
 ## Built (18 concepts)
 - **Scaling basics:** load balancing, caching, CDN, autoscaling
-- **Data:** replication, sharding, consistent hashing, CAP
+- **Data:** replication, sharding, consistent hashing, CAP, geospatial indexing (branch `geospatial`, awaiting testing)
 - **Async & reliability:** message queues, pub/sub & streams, rate limiting, circuit breakers, fan-out, real-time messaging (branch `real-time`, awaiting testing)
 - **Distributed:** consensus, idempotency, distributed transactions (sagas), bloom filters
 
@@ -25,7 +25,7 @@ Build these before the remaining capstones.
 4. **API design** (REST vs RPC, pagination, versioning, idempotent endpoints).
 5. ~~Real-time messaging~~ (built).
 6. ~~Fan-out on write vs on read~~ (built).
-7. **Geospatial indexing.** Needed for ride sharing.
+7. ~~Geospatial indexing~~ (built, branch `geospatial`, awaiting testing). Needed for ride sharing.
 
 ## To build: later
 - Consistency models (strong, eventual, causal)
@@ -50,7 +50,7 @@ Projects are interview-style systems the learner builds, ordered from easy to ha
 
 **Advanced**
 8. Payments / checkout (built): idempotency, sagas, circuit breakers, consensus
-9. Ride sharing: geospatial (new), sharding, pub/sub, consensus
+9. Ride sharing: geospatial, sharding, pub/sub, consensus
 
 **Expert** (the large systems big companies ask about; start with Twitter timeline, WhatsApp, Uber, Google Docs)
 - Twitter / X timeline: fan-out (new), caching, sharding, queues, consistent hashing
@@ -79,4 +79,4 @@ About 26 systems. Each needs its own simulation and stages, at roughly the cost 
 Clocks and ordering, gossip, HyperLogLog and count-min sketch, encryption and TLS, deployment strategies.
 
 ## Postponed
-"Build it" chapters for consensus, idempotency, distributed transactions, bloom filters and real-time messaging. The Blob storage chapter (video streaming uses a fixed store node for now).
+"Build it" chapters for consensus, idempotency, distributed transactions, bloom filters, real-time messaging and geospatial indexing. The Blob storage chapter (video streaming uses a fixed store node for now).
