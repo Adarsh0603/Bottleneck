@@ -29,6 +29,7 @@ const THUMBS: Record<string, Spot[]> = {
   "news-feed": [["database", 0, -0.6], ["queue", -1.2, 0.7], ["cache", 1.2, 0.7]],
   chat: [["app", -1.2, 0], ["topic", 0.2, 0], ["app", 1.4, 0]],
   "video-streaming": [["queue", -1.3, -0.6], ["cache", 1.2, 0.7], ["app", 0, 0]],
+  "key-value-store": [["ring", -1.2, 0], ["database", 1, -0.8], ["database", 1, 0.8]],
   // Topics still to build.
   estimation: [["users", 0, 0]],
   "api-design": [["app", 0, 0]],

@@ -13,6 +13,7 @@ What is built, and what is still to build. Update this as topics land.
 - **Capstone 2: Notification system** (branch `notifications`), built on new engine nodes in `src/core/flow`: provider, sender with retries, dedupe store, dead letters, priority queue, pacer, ledger
 - **Capstone 3: Web crawler** (branch `web-crawler`, merged)
 - **Capstone 4: News feed** (branch `news-feed`), a feed sim in `src/topics/news-feed/feed.ts` with read, write and hybrid fan-out, a queue, a cache, workers and store shards
+- **Capstone 7: Key-value store** (branch `key-value-store`), a leaderless store in `src/topics/key-value-store/kv.ts` with a hash ring, N/R/W quorums, stand-in writes, read repair, version counters against clock skew, and a hot-key cache
 
 ## To build: concepts the capstones depend on
 Build these before the remaining capstones.
@@ -43,7 +44,7 @@ Projects are interview-style systems the learner builds, ordered from easy to ha
 4. News feed (built): caching, fan-out, queues, sharding
 5. Chat app (built): real-time messaging, pub/sub, replication, consistent hashing
 6. Video streaming (built): CDN, queues, autoscaling, caching
-7. Key-value store: consistent hashing, replication, CAP, consensus
+7. Key-value store (built): consistent hashing, replication, CAP, consensus
 
 **Advanced**
 8. Payments / checkout: idempotency, sagas, circuit breakers, consensus
