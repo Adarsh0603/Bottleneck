@@ -24,6 +24,9 @@ export const lookedUp = (cutoff: number, kind: Kind) => cutoff > 2 - KINDS.index
 export const FOLLOWED: Record<Kind, number> = { small: 7, mid: 8, star: 1 }
 // Followers per account. A real celebrity has millions, so one tweet here stands for millions of writes.
 export const FOLLOWERS: Record<Kind, number> = { small: 20, mid: 100, star: 2000 }
+// What those accounts stand for in real life. The board runs the small numbers; what the learner reads is these.
+export const REAL_FOLLOWERS: Record<Kind, number> = { small: 200, mid: 10_000, star: 50_000_000 }
+export const spoken = (n: number) => (n >= 1_000_000 ? `${n / 1_000_000} million` : n.toLocaleString())
 export const READERS = 40
 export const HYDRATE = 3 // lookups to fetch the tweets a timeline of ids shows
 export const REBUILD = 12 // lookups to rebuild a lost timeline of LENGTH tweets: the newest tweets of every followed account, in batches

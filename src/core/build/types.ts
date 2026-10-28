@@ -125,6 +125,9 @@ export interface BuildTask {
   goal: string
   goalShort?: string // the goal in a few words, for when it's folded away
   win: string
+  // What the win popup teaches, in this order: the problem the design avoided, the choice that won,
+  // what it costs, and the next problem. When set, the popup shows these and the result as a small line.
+  lesson?: { without: string; choice: string; cost: string; next?: string }
   holdSeconds: number
   // About how long a run takes to judge, hold included, so the learner knows to wait.
   testSeconds?: number
