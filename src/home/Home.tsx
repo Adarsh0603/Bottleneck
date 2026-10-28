@@ -66,21 +66,6 @@ export default function Home() {
   return (
     <main className="pb-10 sm:pb-14">
       <div className="mx-auto max-w-[2200px] px-6 pt-6 sm:px-10 sm:pt-14 lg:px-16">
-        {phone && !noteGone && (
-          <div
-            role="note"
-            className="mb-4 flex items-start justify-between gap-3 rounded-xl border border-line bg-bg px-3 py-2 text-sm"
-          >
-            <p>PS: Building systems is easier on a bigger screen.</p>
-            <button
-              onClick={dismissNote}
-              aria-label="Dismiss"
-              className="shrink-0 rounded-full px-2 font-mono text-xs text-muted transition hover:text-fg"
-            >
-              ✕
-            </button>
-          </div>
-        )}
         <div className="font-mono text-[11px] uppercase tracking-widest text-muted">
           Conquer each system
         </div>
@@ -141,6 +126,22 @@ export default function Home() {
           <Toolbox />
         </div>
       </div>
+
+      {phone && !noteGone && (
+        <div
+          role="status"
+          className="fixed inset-x-4 bottom-4 z-40 mx-auto flex max-w-sm items-start justify-between gap-3 rounded-xl border border-line bg-bg px-3 py-2 text-sm shadow-lg"
+        >
+          <p>Building systems is easier on a bigger screen.</p>
+          <button
+            onClick={dismissNote}
+            aria-label="Dismiss"
+            className="shrink-0 rounded-full px-2 font-mono text-xs text-muted transition hover:text-fg"
+          >
+            ✕
+          </button>
+        </div>
+      )}
     </main>
   );
 }
