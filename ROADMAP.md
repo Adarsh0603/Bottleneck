@@ -15,6 +15,8 @@ What is built, and what is still to build. Update this as topics land.
 - **Capstone 4: News feed** (branch `news-feed`), a feed sim in `src/topics/news-feed/feed.ts` with read, write and hybrid fan-out, a queue, a cache, workers and store shards
 - **Capstone 7: Key-value store** (branch `key-value-store`), a leaderless store in `src/topics/key-value-store/kv.ts` with a hash ring, N/R/W quorums, stand-in writes, read repair, version counters against clock skew, and a hot-key cache
 
+- **Capstone 8: Payments** (branch `payments`), a checkout sim in `src/topics/payments/payments.ts` with idempotency keys, a store of keys, timeouts, retries, a circuit breaker, an order queue, and crash recovery (write the order down first, or refund)
+
 ## To build: concepts the capstones depend on
 Build these before the remaining capstones.
 1. **Back-of-envelope estimation** (requests per second, storage, bandwidth). Every capstone opens with it.
@@ -47,7 +49,7 @@ Projects are interview-style systems the learner builds, ordered from easy to ha
 7. Key-value store (built): consistent hashing, replication, CAP, consensus
 
 **Advanced**
-8. Payments / checkout: idempotency, sagas, circuit breakers, consensus
+8. Payments / checkout (built): idempotency, sagas, circuit breakers, consensus
 9. Ride sharing: geospatial (new), sharding, pub/sub, consensus
 
 **Expert** (the large systems big companies ask about; start with Twitter timeline, WhatsApp, Uber, Google Docs)

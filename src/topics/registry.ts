@@ -66,6 +66,9 @@ import { REFERENCE as VIDEO_STREAMING_REFERENCE } from './video-streaming/refere
 import KeyValueStorePlay from './key-value-store/Play'
 import { KEY_VALUE_STORE } from './key-value-store/build'
 import { REFERENCE as KEY_VALUE_STORE_REFERENCE } from './key-value-store/reference'
+import PaymentsPlay from './payments/Play'
+import { PAYMENTS } from './payments/build'
+import { REFERENCE as PAYMENTS_REFERENCE } from './payments/reference'
 import WebCrawlerPlay from './web-crawler/Play'
 import { WEB_CRAWLER } from './web-crawler/build'
 import { REFERENCE as WEB_CRAWLER_REFERENCE } from './web-crawler/reference'
@@ -380,6 +383,16 @@ export const TOPICS: TopicEntry[] = [
     challenges: ['0:0', '1:0', '2:0'],
     Play: KeyValueStorePlay,
     reference: KEY_VALUE_STORE_REFERENCE,
+  },
+  {
+    id: 'payments',
+    title: 'Payments',
+    track: 'capstones',
+    pitch: 'Charge once, even when everything fails.',
+    chapters: [...PAYMENTS.stages],
+    challenges: ['0:0', '1:0', '2:0'],
+    Play: PaymentsPlay,
+    reference: PAYMENTS_REFERENCE,
   },
   { id: 'ride-sharing', title: 'Ride sharing', track: 'capstones', pitch: 'Match riders and drivers by location, live.' },
 ]

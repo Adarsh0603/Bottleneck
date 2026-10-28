@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent, type R
 import type { Marker, V3 } from '../types'
 import { frameScale, project, VIEW_H, VIEW_W } from './geometry'
 import { IsoGrid, MarkerPin } from './primitives'
+import Tooltip from '../Tooltip'
 
 const MIN_ZOOM = 0.5
 const MAX_ZOOM = 3
@@ -230,9 +231,11 @@ export default function Viewport({
           >
             −
           </button>
-          <button className={`${zoomBtn} text-sm`} onClick={reset} aria-label="Reset view" title="Reset view">
-            ⟲
-          </button>
+          <Tooltip text="Reset view" className="contents">
+            <button className={`${zoomBtn} text-sm`} onClick={reset} aria-label="Reset view">
+              ⟲
+            </button>
+          </Tooltip>
         </div>
       )}
       <svg
