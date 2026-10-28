@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import BuildPlayer from '../build/BuildPlayer'
 import { getBuild, useBuildsLoaded } from '../build/saved'
+import { topicProgress, useProgress } from '../progress'
 import { CHEAT_SHEET, TopBar } from '../chrome'
 import { play } from '../sound'
 import Board from './Board'
@@ -26,9 +27,18 @@ const stageKey = (capstone: Capstone, stage: number) => `${capstone.id}:${stage}
 // A capstone: four stages. Requirements and the final review are paper; the
 // two middle stages build on one design.
 export default function CapstonePlayer(props: CapstoneProps) {
-  const { capstone, chapter } = props
-  const chapters = capstone.stages.map((title) => ({ title, level: 'Advanced' as const }))
+  const { capstone } = props
+  // The final review shows the answer, so it stays shut until the last build is solved.
+  const last = capstone.stages.length - 1
+  const open = topicProgress(useProgress(), capstone.id).solved.includes(`${last - 1}:0`)
+  const chapters = capstone.stages.map((title, i) => ({ title, level: 'Advanced' as const, locked: i === last && !open }))
+  const chapter = props.chapter === last && !open ? last - 1 : props.chapter
   const next = () => props.onChapter(Math.min(chapter + 1, chapters.length - 1))
+  // Opened on the locked review: go to the build, so solving it is recorded for that stage.
+  const { onChapter } = props
+  useEffect(() => {
+    if (props.chapter !== chapter) onChapter(chapter)
+  }, [props.chapter, chapter, onChapter])
 
   if (chapter === 1 || chapter === 2) {
     const task = chapter === 1 ? capstone.first : capstone.scale
@@ -51,7 +61,7 @@ export default function CapstonePlayer(props: CapstoneProps) {
     )
   }
   return (
-    <Paper chapters={chapters} {...props}>
+    <Paper chapters={chapters} {...props} chapter={chapter}>
       {chapter === 0 ? <Requirements {...props} next={next} /> : <Final {...props} />}
     </Paper>
   )

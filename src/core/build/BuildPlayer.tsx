@@ -53,7 +53,7 @@ const padAt = (x: number, y: number) =>
 
 interface BuildPlayerProps {
   task: BuildTask;
-  chapters: { title: string; level: Level }[];
+  chapters: { title: string; level: Level; locked?: boolean }[];
   index: number;
   doneChapters: number[];
   onChapter: (index: number) => void;

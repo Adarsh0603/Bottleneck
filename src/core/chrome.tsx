@@ -14,7 +14,8 @@ export function TopBar({
   extra,
   title,
 }: {
-  chapters: { title: string; level: Level }[]
+  // A locked chapter shows in the menu but cannot be opened yet.
+  chapters: { title: string; level: Level; locked?: boolean }[]
   index: number
   doneChapters: number[]
   onChapter: (index: number) => void
@@ -46,16 +47,23 @@ export function TopBar({
             {chapters.map((c, i) => (
               <li key={c.title}>
                 <button
+                  disabled={c.locked}
+                  title={c.locked ? 'Finish the stage before it to open this' : undefined}
                   onClick={() => {
                     setMenuOpen(false)
                     onChapter(i)
                   }}
-                  className={`flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition hover:bg-subtle ${
+                  className={`flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition hover:bg-subtle disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent ${
                     i === index ? 'font-medium' : 'text-muted'
                   }`}
                 >
                   <span className="font-mono text-xs">{String(i + 1).padStart(2, '0')}</span>
                   <span className="flex-1">{c.title}</span>
+                  {c.locked && (
+                    <span className="font-mono text-xs" aria-label="locked">
+                      🔒
+                    </span>
+                  )}
                   {doneChapters.includes(i) && (
                     <span className="font-mono text-xs text-fg" aria-label="done">
                       ✓
