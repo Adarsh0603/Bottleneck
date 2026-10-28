@@ -120,6 +120,14 @@ export function clearBuild(key: string) {
   changeListeners.forEach((l) => l())
 }
 
+// Forgets every saved build, e.g. when the learner resets all progress.
+export function clearAllBuilds() {
+  const keys = Object.keys(cache)
+  cache = {}
+  for (const key of keys) void backend.remove(key).catch(() => {})
+  changeListeners.forEach((l) => l())
+}
+
 // --- Cloud sync ------------------------------------------------------------
 
 export const whenBuildsLoaded = () => load()

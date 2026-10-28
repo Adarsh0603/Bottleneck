@@ -1,5 +1,6 @@
 import { askConfirm } from "../core/ConfirmDialog";
 import { openSignIn, useSession } from "../core/cloud/session";
+import { clearAllBuilds } from "../core/build/saved";
 import { resetProgress, useProgress } from "../core/progress";
 import { PLANNED, TOPICS, TRACKS, type TopicEntry } from "../topics/registry";
 import { Credit } from "./parts";
@@ -108,7 +109,10 @@ export default function Toolbox() {
                     : "This can’t be undone.",
                   confirm: "Reset progress",
                 });
-                if (ok) resetProgress();
+                if (ok) {
+                  resetProgress();
+                  clearAllBuilds();
+                }
               }}
               className="font-mono underline-offset-4 transition hover:text-fg hover:underline"
             >

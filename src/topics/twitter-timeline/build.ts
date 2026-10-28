@@ -4,7 +4,7 @@ import type { BuildTask, Placement, Requirement, Settings } from '../../core/bui
 import type { FlowSim } from '../../core/flow/engine'
 import type { Capstone, Intro, Review } from '../../core/capstone/types'
 import { jitter, seeded } from '../../core/build/day'
-import { FOLLOWED, FOLLOWERS, HYDRATE, KINDS, LENGTH, READERS, RETRY_NEVER, RETRY_NOW, SCROLL_AT, SECOND, Timeline, type Limit, type Phase } from './timeline'
+import { FOLLOWED, FOLLOWERS, HYDRATE, KINDS, LENGTH, READERS, REAL_FOLLOWERS, RETRY_NEVER, RETRY_NOW, SCROLL_AT, SECOND, spoken, Timeline, type Limit, type Phase } from './timeline'
 
 // The design board: writers and readers on the left, a lane for each. The learner
 // places every machine: servers on the readers' side (below the middle line), fan-out
@@ -78,8 +78,8 @@ const NEED_WORKERS = Math.ceil(COPIES / WRITES_A_SECOND)
 const OPEN_READS = FOLLOWED.star + HYDRATE // store reads for one open: the celebrity, and the tweets the ids point to
 const NEED_SHARDS = Math.ceil((PEAK.opens * OPEN_READS) / LOOKUPS_A_SECOND) + 1 // and a spare for the rebuild after a restart
 const NEED_CACHES = Math.ceil((PEAK.opens + COPIES) / CACHE_OPS_A_SECOND)
-const LINE_FROM = FOLLOWERS.mid // the line must sit at or above the mid accounts and below the celebrity
-const LINE_TO = FOLLOWERS.star - 1
+const LINE_FROM = REAL_FOLLOWERS.mid // the line must sit at or above the mid accounts and below the celebrity
+const LINE_TO = REAL_FOLLOWERS.star - 1
 const WAIT_LIMIT = 0.8 // seconds a reader may wait for a timeline
 const FRESH_LIMIT = 3 // seconds a tweet may take to reach every follower
 const GONE_LIMIT = 3 // seconds a deleted tweet may stay in a timeline
@@ -147,13 +147,16 @@ function missing(l: ReturnType<typeof layout>) {
 
 export const HOLDS_NAMES = ['A full copy of each tweet', 'Only the id of each tweet']
 export const REBUILD_NAMES = ['Every open rebuilds', 'One rebuild per reader, the rest wait']
-export const LINE_START = 2500 // above every account: all are written into timelines
+// The look-up line is a choice among real follower counts; the setting holds the position in this list.
+export const LINE_AT = [100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000, 100_000_000]
+export const LINE_NAMES = LINE_AT.map(spoken)
+export const LINE_START = LINE_AT.length - 1 // above every account: all are written into timelines
 export const LENGTH_START = 1400
 export function chosen(settings: Settings) {
   // The first design has only small accounts, so its choice is just write or look up.
   // Later, accounts with more followers than the line are looked up; the cutoff counts the sizes that are.
-  const line = settings.line ?? LINE_START
-  const cutoff = settings.when !== undefined ? (settings.when === 1 ? 3 : 0) : KINDS.filter((k) => FOLLOWERS[k] > line).length
+  const line = LINE_AT[Math.min(Math.max(settings.line ?? LINE_START, 0), LINE_START)]
+  const cutoff = settings.when !== undefined ? (settings.when === 1 ? 3 : 0) : KINDS.filter((k) => REAL_FOLLOWERS[k] > line).length
   return {
     line,
     cutoff,
@@ -248,7 +251,7 @@ const SCALE_BRIEF = {
   title: BRIEF.title,
   lines: [
     ...BRIEF.lines,
-    `On this board, at the busiest: about ${PEAK.opens} opens a second, ${PEAK.posts} tweets a second from ordinary accounts (about 20 followers each) and ${PEAK.mids} from bigger ones (about 100). A celebrity has about 2,000 followers. Each follower is one write into a timeline, and looking an account up is one read of the store. Some days are busier.`,
+    `On this board, at the busiest: about ${PEAK.opens} opens a second, ${PEAK.posts} tweets a second from ordinary accounts (about ${spoken(REAL_FOLLOWERS.small)} followers each) and ${PEAK.mids} from bigger ones (about ${spoken(REAL_FOLLOWERS.mid)}). A celebrity has about ${spoken(REAL_FOLLOWERS.star)} followers. Each follower is one write into a timeline, and looking an account up is one read of the store. The board runs all of this scaled down, so the loads and machine counts below are board numbers. Some days are busier.`,
   ],
 }
 
@@ -275,7 +278,7 @@ const PIECE_HINTS: BuildTask['hints'] = {
 const WHEN = { id: 'when', label: 'a timeline is made', when: 'app' as const, min: 0, max: 1, step: 1, initial: 0, options: ['When a tweet is sent', 'When a timeline opens'] }
 
 const SETTINGS = [
-  { id: 'line', label: 'Look up an account when it has more than', when: 'app' as const, min: 10, max: 5000, step: 10, initial: LINE_START, slider: { unit: 'followers' } },
+  { id: 'line', label: 'Look up an account with more followers than', when: 'app' as const, min: 0, max: LINE_START, step: 1, initial: LINE_START, options: LINE_NAMES },
   { id: 'length', label: 'A timeline keeps the newest', when: 'app' as const, min: 200, max: 2000, step: 50, initial: LENGTH_START, slider: { unit: 'tweets' } },
   { id: 'holds', label: 'a timeline holds', when: 'app' as const, min: 0, max: 1, step: 1, initial: 0, options: HOLDS_NAMES },
   { id: 'rebuild', label: 'a lost timeline is rebuilt', when: 'app' as const, min: 0, max: 1, step: 1, initial: 0, options: REBUILD_NAMES },
@@ -349,6 +352,12 @@ export const FIRST_DESIGN: BuildTask = {
   goal: 'Give every reader a timeline in under a second, and get every tweet to its followers within 3 seconds.',
   goalShort: 'Fast timelines · fresh tweets',
   win: 'Put a timeline server on the readers’ side, a worker on the writers’ side and a store shard. Write each tweet into its followers’ timelines when it is sent, so opening the app is one lookup. A queue holds tweets in a burst, and a cache holds the timelines.',
+  lesson: {
+    without: `Without it, every open would look up each of the ${FOLLOWED.small} accounts a reader follows, and the store would drown whenever many readers opened the app together.`,
+    choice: 'Write each tweet into its followers’ timelines when it is sent, so opening the app is one lookup.',
+    cost: 'The price: a tweet now costs one write per follower, and the last follower gets it a moment after the first.',
+    next: `This holds for ordinary accounts. Next comes a celebrity with ${spoken(REAL_FOLLOWERS.star)} followers.`,
+  },
   holdSeconds: 4,
   testSeconds: 36,
   pads: FIRST_SPOTS.map(spot),
@@ -386,13 +395,13 @@ function whyHint(raw: Placement, settings: Settings): string | null {
   const l = layout(raw)
   const s = chosen(settings)
   const wide = (n: number) => n.toLocaleString()
-  if (s.cutoff === 0) return `A celebrity tweet is ${wide(FOLLOWERS.star)} writes in one go, more than the workers can send in time. Look that account up when a timeline opens instead of writing it.`
+  if (s.cutoff === 0) return `A celebrity tweet is about ${spoken(REAL_FOLLOWERS.star)} writes in one go, more than the workers can send in time. Look that account up when a timeline opens instead of writing it.`
   if (s.cutoff >= 2) return `Looking up bigger accounts adds ${FOLLOWED.mid} reads of the store to every open. At ${PEAK.opens} opens a second that is far more than the store answers. Write those accounts into timelines instead.`
   if (!s.thin) return 'A timeline that holds full copies means a delete must find and rewrite every copy. Keep only the id of each tweet, and a delete is one write.'
   if (s.length < LENGTH_FROM) return `A reader scrolls about ${LENGTH_FROM} tweets deep. A timeline of ${s.length} runs out first, and every scroll past it is another read of the store.`
   if (s.length > LENGTH_TO) return `After a restart each lost timeline is rebuilt from the store, and a timeline of ${wide(s.length)} tweets costs ${wide(Math.round((s.length / LENGTH) * 12))} reads to rebuild. Keep it short enough to rebuild quickly.`
   if (!l.queue) return 'Tweets arrive in bursts. With nothing to hold them, a worker that is busy turns the next one away.'
-  if (l.workers.length < NEED_WORKERS) return `At the peak the tweets need about ${COPIES} writes a second (${PEAK.posts} × ${FOLLOWERS.small} + ${PEAK.mids} × ${FOLLOWERS.mid}). A worker writes ${WRITES_A_SECOND}, so you need at least ${NEED_WORKERS}.`
+  if (l.workers.length < NEED_WORKERS) return `On this board, at the peak the tweets need about ${COPIES} writes a second (${PEAK.posts} × ${FOLLOWERS.small} + ${PEAK.mids} × ${FOLLOWERS.mid}). A worker writes ${WRITES_A_SECOND}, so you need at least ${NEED_WORKERS}.`
   if (l.caches.length < NEED_CACHES) return `Opens and timeline writes share the caches: about ${PEAK.opens + COPIES} operations a second at the peak, ${CACHE_OPS_A_SECOND} per cache. And one cache holds every timeline a restart can empty.`
   if (l.shards.length < NEED_SHARDS) return `Each open reads the store ${OPEN_READS} times (the celebrity, and the tweets the ids point to). ${PEAK.opens} opens a second is ${PEAK.opens * OPEN_READS} reads, and a shard answers ${LOOKUPS_A_SECOND}. After a restart, rebuilding the lost timelines needs room on top.`
   if (!s.collapse) return 'After the restart, every open for a lost timeline rebuilds it, and the same reads hit the store again and again. Let one open rebuild it and the rest wait.'
@@ -409,7 +418,12 @@ export const SCALE_UP: BuildTask = {
   sub: 'Edit and delete ship halfway through. Then a goal, a celebrity, and a cache machine that restarts empty. Every run is a slightly different day. Work out what each lane needs, then build it.',
   goal: 'Get through the whole day: nobody given up on, no tweet lost, every tweet fresh, every delete gone.',
   goalShort: 'Survive the whole day',
-  win: `Fill the ${Object.keys(POS).length} pads with a queue, ${NEED_CACHES} caches, a timeline server, ${NEED_WORKERS} workers and ${NEED_SHARDS} shards. Look up only the celebrity (a line between ${LINE_FROM} and ${LINE_TO} followers), keep only ids in the timelines of about ${LENGTH} tweets, spread them over ${NEED_CACHES} caches, and rebuild each lost timeline once, however many readers ask.`,
+  win: `Fill the ${Object.keys(POS).length} pads with a queue, ${NEED_CACHES} caches, a timeline server, ${NEED_WORKERS} workers and ${NEED_SHARDS} shards. Look up only the celebrity (a line between ${spoken(LINE_FROM)} and ${spoken(LINE_TO)} followers), keep only ids in the timelines of about ${LENGTH} tweets, spread them over ${NEED_CACHES} caches, and rebuild each lost timeline once, however many readers ask.`,
+  lesson: {
+    without: `Without the look-up line, one celebrity tweet is about ${spoken(REAL_FOLLOWERS.star)} writes in one go, and every timeline behind it arrives late. Without ids, a delete must find and rewrite every copy.`,
+    choice: 'Write ordinary accounts into timelines, look only the celebrity up when a timeline opens, and keep only ids in the timelines.',
+    cost: 'The price: opening a timeline now merges two sources, and each open reads the store once more for the celebrity.',
+  },
   holdSeconds: 4,
   testSeconds: 68,
   pads: ALL_SPOTS.map(spot),
@@ -443,7 +457,7 @@ export const SCALE_UP: BuildTask = {
     if (!f) return null
     const t = f.tally
     const cached = t.opened ? Math.round((t.hits / t.opened) * 100) : 0
-    return `You carried a whole day: ${t.opened.toLocaleString()} timelines opened, ${cached}% straight from a cache, and ${t.delivered.toLocaleString()} tweets and ${t.gone.toLocaleString()} deletes reached every follower, none lost. The celebrity’s tweet took ${f.worst.star.toFixed(1)} s to reach its ${FOLLOWERS.star.toLocaleString()} followers, the slowest delete ${f.worst.delete.toFixed(1)} s, and a cache machine restarted empty with ${t.failed} readers given up on.`
+    return `You carried a whole day: ${t.opened.toLocaleString()} timelines opened, ${cached}% straight from a cache, and ${t.delivered.toLocaleString()} tweets and ${t.gone.toLocaleString()} deletes reached every follower, none lost. The celebrity’s tweet took ${f.worst.star.toFixed(1)} s to reach its ${spoken(REAL_FOLLOWERS.star)} followers, the slowest delete ${f.worst.delete.toFixed(1)} s, and a cache machine restarted empty with ${t.failed} readers given up on.`
   },
   check(_m, _raw, _settings, flow) {
     const f = flow && timelineOf.get(flow)
@@ -465,14 +479,14 @@ function review(raw: Placement, settings: Settings): Review {
   const s = chosen(settings)
   return {
     lines: [
-      { label: 'Look-up line', yours: `Accounts over ${s.line.toLocaleString()} followers are looked up`, reference: `Accounts over a line between ${LINE_FROM} and ${LINE_TO} followers: only the celebrity`, why: 'Reads outnumber tweets by far, so write into timelines when a tweet is sent. But one tweet by a celebrity is millions of writes, so look that account up when the timeline opens. Mid accounts are cheap to write and costly to look up.', ok: s.cutoff === 1 },
+      { label: 'Look-up line', yours: `Accounts over ${spoken(s.line)} followers are looked up`, reference: `Accounts over a line between ${spoken(LINE_FROM)} and ${spoken(LINE_TO)} followers: only the celebrity`, why: 'Reads outnumber tweets by far, so write into timelines when a tweet is sent. But one tweet by a celebrity is millions of writes, so look that account up when the timeline opens. Mid accounts are cheap to write and costly to look up.', ok: s.cutoff === 1 },
       { label: 'Timeline length', yours: `${s.length.toLocaleString()} tweets`, reference: `${LENGTH_FROM} to ${LENGTH_TO} tweets (about ${LENGTH})`, why: 'A timeline is as long as a reader scrolls. Shorter, and scrolling runs out and reads the store. Longer, and every timeline a restart loses costs more reads to build again.', ok: s.length >= LENGTH_FROM && s.length <= LENGTH_TO },
       { label: 'Timelines hold', yours: HOLDS_NAMES[s.thin ? 1 : 0], reference: 'Only the id of each tweet', why: 'A copy of the tweet is in every follower’s timeline, so an edit or a delete must find and rewrite them all. With only ids, a delete is one write: the tweet itself. Each open then fetches the tweets it shows, which is a cost worth paying.', ok: s.thin },
       { label: 'Rebuilding', yours: REBUILD_NAMES[s.collapse ? 1 : 0], reference: 'One rebuild per reader, the rest wait', why: 'When a cache machine restarts empty, many opens arrive for the same lost timeline. If each rebuilds it, the store is asked the same thing again and again. One rebuild, shared, is enough.', ok: s.collapse },
       { label: 'Tweet queue', yours: l.queue ? 'A queue in front of the workers' : 'None', reference: 'A queue in front of the workers', why: 'Tweets arrive in bursts. A queue holds them while the workers catch up, so none is turned away.', ok: !!l.queue },
       { label: 'Timeline caches', yours: `${l.caches.length} cache${l.caches.length === 1 ? '' : 's'}`, reference: `${NEED_CACHES} caches`, why: `Timelines live in memory, so an open is fast. Tweets and opens share a cache’s slots: about ${PEAK.opens + COPIES} operations a second at the peak, ${CACHE_OPS_A_SECOND} per cache. A restart empties one, so more than one also halves what it loses.`, ok: l.caches.length >= NEED_CACHES },
       { label: 'Timeline server', yours: `${l.servers.length} on the readers’ side`, reference: '1 on the readers’ side', why: 'Something has to build a timeline when a reader opens the app, and merge in the celebrities. One server is enough here, because the cache answers most of the work.', ok: l.servers.length >= 1 },
-      { label: 'Workers', yours: `${l.workers.length} fan-out worker${l.workers.length === 1 ? '' : 's'}`, reference: `${NEED_WORKERS} fan-out workers`, why: `At the peak, ${PEAK.posts} tweets × ${FOLLOWERS.small} followers plus ${PEAK.mids} × ${FOLLOWERS.mid} is about ${COPIES} writes a second. A worker writes ${WRITES_A_SECOND}.`, ok: l.workers.length >= NEED_WORKERS },
+      { label: 'Workers', yours: `${l.workers.length} fan-out worker${l.workers.length === 1 ? '' : 's'}`, reference: `${NEED_WORKERS} fan-out workers`, why: `On this board, at the peak, ${PEAK.posts} tweets × ${FOLLOWERS.small} followers plus ${PEAK.mids} × ${FOLLOWERS.mid} is about ${COPIES} writes a second. A worker writes ${WRITES_A_SECOND}.`, ok: l.workers.length >= NEED_WORKERS },
       { label: 'Store', yours: `${l.shards.length} shard${l.shards.length === 1 ? '' : 's'}`, reference: `${NEED_SHARDS} shards`, why: `Each open reads the store ${OPEN_READS} times, so ${PEAK.opens} opens a second is ${PEAK.opens * OPEN_READS} reads, and a shard answers ${LOOKUPS_A_SECOND}. The rebuild after a restart comes on top, so keep one shard spare.`, ok: l.shards.length >= NEED_SHARDS },
       { label: 'Extras', yours: l.limits.length + l.extras ? 'Pieces this system does not need' : 'Only what is needed', reference: 'No limiter, breaker or hash ring', why: 'A rate limiter turns real readers and tweets away. A breaker guards calls to a failing service, and nothing here calls one. A hash ring has nothing to do when the shards already spread by reader.', ok: l.limits.length + l.extras === 0 },
     ],
@@ -557,7 +571,7 @@ export const TWITTER_TIMELINE: Capstone = {
       { question: '500 million tweets a day. About how many tweets a second?', options: ['About 580', 'About 5,800', 'About 58,000'], answer: 1, at: 'writers', show: '5,800 tweets / second', why: '500,000,000 ÷ 86,400 is about 5,800. Opens outnumber tweets about 6 to 1.' },
       { question: 'Each tweet is written into the timeline of each of its 200 followers. About how many writes a second?', options: ['About 120,000', 'About 1.2 million', 'About 12 million'], answer: 1, at: 'fan-0', show: '1.2 million writes / second', why: '5,800 tweets × 200 followers is about 1.2 million writes a second. Spread over many workers and caches, but it is a lot.' },
       { question: 'A timeline holds the 800 newest tweets, as ids of 8 bytes each. For 300 million readers, about how much memory?', options: ['About 19 GB', 'About 1.9 TB', 'About 190 TB'], answer: 1, at: 's0', show: '1.9 TB of ids', why: '800 × 8 bytes is 6.4 KB a reader. × 300 million is about 1.9 TB: a few dozen cache machines. Full 300-byte tweets would be 70 times more.' },
-      { question: 'A tweet followed by 2,000 people is deleted. Timelines hold full copies. How many writes to remove it everywhere?', options: ['One', 'About 2,000', 'About 2 million'], answer: 1, at: 'feed', show: '2,000 writes, or 1 with ids', why: 'Every copy must be found and rewritten: 2,000 writes for one delete. If timelines hold only the id, the tweet is changed in one place, and every timeline shows the change.' },
+      { question: 'A tweet followed by 50 million people is deleted. Timelines hold full copies. How many writes to remove it everywhere?', options: ['One', 'About 50,000', 'About 50 million'], answer: 2, at: 'feed', show: '50 million writes, or 1 with ids', why: 'Every copy must be found and rewritten: 50 million writes for one delete. If timelines hold only the id, the tweet is changed in one place, and every timeline shows the change.' },
     ],
   },
   first: FIRST_DESIGN,

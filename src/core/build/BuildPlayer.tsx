@@ -688,9 +688,19 @@ function Builder({
         <div className="mt-3 font-mono text-[10px] uppercase tracking-widest text-muted">
           {finale ? "Conquered!" : "Built"}
         </div>
-        <p className="mt-2 min-h-0 flex-1 overflow-y-auto text-base">
-          {winText}
-        </p>
+        {task.lesson ? (
+          <div className="mt-2 min-h-0 flex-1 space-y-2 overflow-y-auto text-base">
+            <p>{task.lesson.without}</p>
+            <p className="font-medium">{task.lesson.choice}</p>
+            <p>{task.lesson.cost}</p>
+            {task.lesson.next && <p className="text-muted">{task.lesson.next}</p>}
+            {winText !== task.win && <p className="border-t border-line pt-2 text-xs text-muted">{winText}</p>}
+          </div>
+        ) : (
+          <p className="mt-2 min-h-0 flex-1 overflow-y-auto text-base">
+            {winText}
+          </p>
+        )}
         <div className="mt-5 flex shrink-0 flex-wrap justify-center gap-2">
           <button
             onClick={goOn}

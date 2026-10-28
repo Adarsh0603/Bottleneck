@@ -46,7 +46,7 @@ describe('first design', () => {
 })
 
 const GOOD: Placement = { a0: 'queue', a1: 'cache', a2: 'cache', r1: 'app', w1: 'app', w2: 'app', w3: 'app', s1: 'database', s2: 'database', s3: 'database', s4: 'database' }
-const GOOD_SET: Settings = { line: 1000, length: 800, holds: 1, rebuild: 1 }
+const GOOD_SET: Settings = { line: 2, length: 800, holds: 1, rebuild: 1 }
 
 describe('where it breaks', () => {
   it.each(Array.from({ length: 25 }, (_, i) => i))('wins with the full design, seed %i', (seed) => {
@@ -62,9 +62,9 @@ describe('where it breaks', () => {
     expect(TWITTER_TIMELINE.review(placed, GOOD_SET).lines.some((l) => !l.ok)).toBe(true)
   })
   it.each([
-    ['copying every tweet', GOOD, { ...GOOD_SET, line: 5000 }],
-    ['looking up mid accounts too', GOOD, { ...GOOD_SET, line: 50 }],
-    ['looking everything up', GOOD, { ...GOOD_SET, line: 10 }],
+    ['copying every tweet', GOOD, { ...GOOD_SET, line: 6 }],
+    ['looking up mid accounts too', GOOD, { ...GOOD_SET, line: 1 }],
+    ['looking everything up', GOOD, { ...GOOD_SET, line: 0 }],
     ['timelines too short to scroll', GOOD, { ...GOOD_SET, length: 200 }],
     ['full copies in the timelines, which a delete must rewrite', GOOD, { ...GOOD_SET, holds: 0 }],
     ['every open rebuilding its own timeline', GOOD, { ...GOOD_SET, rebuild: 0 }],
@@ -139,8 +139,8 @@ describe('the hint after repeated failures', () => {
     return SCALE_UP.hint?.(run.metrics(), placed, settings, run.flow)
   }
   it.each([
-    ['celebrity written', GOOD, { ...GOOD_SET, line: 5000 }, /celebrity/],
-    ['mid accounts looked up', GOOD, { ...GOOD_SET, line: 50 }, /bigger accounts/],
+    ['celebrity written', GOOD, { ...GOOD_SET, line: 6 }, /celebrity/],
+    ['mid accounts looked up', GOOD, { ...GOOD_SET, line: 1 }, /bigger accounts/],
     ['full copies', GOOD, { ...GOOD_SET, holds: 0 }, /only the id/],
     ['too short', GOOD, { ...GOOD_SET, length: 200 }, /scrolls/],
     ['too long', GOOD, { ...GOOD_SET, length: 2000 }, /rebuild/],
