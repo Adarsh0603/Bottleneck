@@ -61,7 +61,7 @@ export const PROJECTS: Project[] = [
   { id: 'key-value-store', name: 'Key-value store', short: 'KV store', tier: 1, x: 660, y: 492, needs: ['Consistent hashing', 'Replication', 'CAP', 'Consensus'] },
   { id: 'payments', name: 'Payments', short: 'Payments', tier: 2, x: 380, y: 445, needs: ['Idempotency', 'Sagas', 'Circuit breakers', 'Consensus'] },
   { id: 'ride-sharing', name: 'Ride sharing', short: 'Rides', tier: 2, x: 230, y: 400, needs: ['Geospatial', 'Sharding', 'Pub/sub', 'Consensus'] },
-  { id: 'twitter-timeline', name: 'Twitter timeline', short: 'Twitter', tier: 3, x: 540, y: 295, needs: ['Fan-out', 'Caching', 'Sharding', 'Message queues', 'Consistent hashing'] },
+  { id: 'twitter-timeline', name: 'Twitter timeline', short: 'Twitter', tier: 3, x: 540, y: 310, needs: ['Fan-out', 'Caching', 'Sharding', 'Message queues', 'Consistent hashing'] },
   { id: 'doc-qa', name: 'Document Q&A', short: 'Doc Q&A', tier: 4, x: 1245, y: 395, needs: ['Embeddings and vector search', 'Chunking and retrieval', 'Caching'] },
   { id: 'semantic-search', name: 'Semantic search', short: 'Vector', tier: 4, x: 1310, y: 465, needs: ['Embeddings and vector search', 'Sharding', 'Caching'] },
   { id: 'llm-gateway', name: 'LLM gateway', short: 'Gateway', tier: 4, x: 1475, y: 460, needs: ['Rate limiting', 'Semantic caching', 'Circuit breakers', 'Message queues', 'Cost and latency budgets'] },
