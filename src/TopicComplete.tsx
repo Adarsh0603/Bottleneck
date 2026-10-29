@@ -36,7 +36,7 @@ export default function TopicComplete({ topic, onClose }: { topic: TopicEntry; o
           {complete ? '✓' : '…'}
         </div>
 
-        <div className="mt-5 font-mono text-[11px] uppercase tracking-widest text-muted">{complete ? 'Topic complete' : 'Almost there'}</div>
+        <div className="mt-5 font-mono text-xs uppercase tracking-widest text-muted">{complete ? 'Topic complete' : 'Almost there'}</div>
         <h2 className="mt-1 text-2xl font-semibold tracking-tight">{topic.title}</h2>
 
         {!complete && (

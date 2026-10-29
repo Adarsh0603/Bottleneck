@@ -1,4 +1,5 @@
 import { createElement } from 'react'
+import { hintFromReview } from '../../core/build/hint'
 import { Tag } from '../../core/iso/primitives'
 import type { BuildTask, Placement, Requirement, Settings } from '../../core/build/types'
 import type { FlowSim } from '../../core/flow/engine'
@@ -279,6 +280,7 @@ export const FIRST_DESIGN: BuildTask = {
     const c = chatOf.get(flow)
     return c ? symptom(c) : null
   },
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, ['Gateways', 'Pub/sub topic']),
   check(_m, _raw, _settings, flow) {
     const c = flow && chatOf.get(flow)
     return !!c && flow.tick >= FIRST_SETTLED && passed(c, false)
@@ -314,6 +316,7 @@ export const SCALE_UP: BuildTask = {
     const c = chatOf.get(flow)
     return c ? symptom(c) : null
   },
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines),
   check(_m, _raw, _settings, flow) {
     const c = flow && chatOf.get(flow)
     return !!c && flow.tick >= SCALE_SETTLED && passed(c, true)

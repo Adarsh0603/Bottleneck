@@ -174,7 +174,6 @@ export function castleHeight(p: Project) {
 export function Castle({ p, state, scale = 1, selected = false }: { p: Project; state: ProjectState; scale?: number; selected?: boolean }) {
   const s = skin(state, selected)
   const pl = plan(p.tier)
-  const reach = Math.max(...pl.parts.map((q) => Math.max(Math.abs(q.u) + q.a, Math.abs(q.v) + q.b)))
   const [fu, fv, fz] = pl.flag
   const pole = iso(p.x, p.y, fu, fv, fz)
   const k = bannerScale(p.tier)
@@ -183,11 +182,6 @@ export function Castle({ p, state, scale = 1, selected = false }: { p: Project; 
   const flagFill = s.done ? 'var(--srv-3)' : 'var(--iso-top)'
   return (
     <g opacity={state === 'fog' ? 0.85 : 1} transform={scale === 1 ? undefined : `translate(${p.x} ${p.y}) scale(${scale}) translate(${-p.x} ${-p.y})`}>
-      <polygon
-        points={pts([iso(p.x + 8, p.y + 4, -reach, -reach), iso(p.x + 8, p.y + 4, reach, -reach), iso(p.x + 8, p.y + 4, reach, reach), iso(p.x + 8, p.y + 4, -reach, reach)])}
-        fill="var(--fg)"
-        opacity={0.08}
-      />
       {pl.parts.map((q, i) => (
         <Block key={i} x={p.x} y={p.y} p={q} s={s} />
       ))}

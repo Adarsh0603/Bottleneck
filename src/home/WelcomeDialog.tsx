@@ -59,7 +59,7 @@ export default function WelcomeDialog() {
           <path d="M12 3 4 6v6c0 4.5 3.2 7.8 8 9 4.8-1.2 8-4.5 8-9V6Z" />
           <path d="M9 9v7M9 9h6l-1.5 2.5L15 14H9" />
         </svg>
-        <div className="mt-3 font-mono text-[10px] uppercase tracking-widest text-muted">
+        <div className="mt-3 font-mono text-xs uppercase tracking-widest text-muted">
           Conquer each system
         </div>
         <h2

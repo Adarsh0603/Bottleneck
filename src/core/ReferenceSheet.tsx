@@ -17,11 +17,11 @@ export default function ReferenceSheet({ reference, title, sub }: { reference: R
   return (
     <div className="caption-in absolute inset-0 z-10 overflow-y-auto bg-bg px-4 pb-44 pt-20 sm:pb-40 sm:pt-24">
       <div className="mx-auto max-w-3xl">
-        <div className="font-mono text-[10px] uppercase tracking-widest text-muted">Cheat sheet</div>
+        <div className="font-mono text-xs uppercase tracking-widest text-muted">Cheat sheet</div>
         <h2 className="mt-1 text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h2>
         {sub && <p className="mt-1 text-sm text-muted sm:text-base">{sub}</p>}
 
-        <div className="mt-8 font-mono text-[10px] uppercase tracking-widest text-muted">Say this</div>
+        <div className="mt-8 font-mono text-xs uppercase tracking-widest text-muted">Say this</div>
         <ol className="mt-3 divide-y divide-line border-y border-line">
           {reference.interview.map((point, i) => {
             const { lead, rest } = splitLead(point)
@@ -38,7 +38,7 @@ export default function ReferenceSheet({ reference, title, sub }: { reference: R
         </ol>
 
         <div className="mt-8 flex items-center justify-between">
-          <div className="font-mono text-[10px] uppercase tracking-widest text-muted">Know these</div>
+          <div className="font-mono text-xs uppercase tracking-widest text-muted">Know these</div>
           <button
             onClick={() => setOpen(all ? new Set() : new Set(reference.cards.map((c) => c.title)))}
             className="font-mono text-xs text-muted underline-offset-4 transition hover:text-fg hover:underline"

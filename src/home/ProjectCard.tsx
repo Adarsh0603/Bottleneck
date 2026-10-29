@@ -46,7 +46,7 @@ export default function ProjectCard({
           style={{ left: `calc(50% + ${pointer}px)` }}
         />
       )}
-      <div className="font-mono text-[11px] uppercase tracking-widest text-muted">
+      <div className="font-mono text-xs uppercase tracking-widest text-muted">
         {TIER_NAMES[project.tier]} · System {projectNumber(project)} ·{" "}
         <span className={state === "next" ? "text-danger" : ""}>
           {STATE_TEXT[state]}
@@ -57,7 +57,7 @@ export default function ProjectCard({
       </h2>
       {topic?.pitch && <p className="mt-1 text-sm text-muted">{topic.pitch}</p>}
 
-      <div className="mt-3 font-mono text-[11px] uppercase tracking-widest text-muted">
+      <div className="mt-3 font-mono text-xs uppercase tracking-widest text-muted">
         Tactics you will use
       </div>
       <div className="mt-2 flex flex-wrap gap-1.5">

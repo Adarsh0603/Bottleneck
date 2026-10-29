@@ -319,7 +319,7 @@ function LessonPlayer<S, Sim, M, B extends BaseBeat<S, Sim, M>>({
           >
             {asking && predict ? (
               <>
-                <div className="font-mono text-[10px] uppercase tracking-widest text-muted">
+                <div className="font-mono text-xs uppercase tracking-widest text-muted">
                   Paused · tap your guess
                 </div>
                 <h2

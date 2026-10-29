@@ -1,4 +1,5 @@
 import { createElement } from 'react'
+import { hintFromReview } from '../../core/build/hint'
 import { Tag } from '../../core/iso/primitives'
 import type { BuildTask, Placement, Requirement, Settings } from '../../core/build/types'
 import type { FlowSim } from '../../core/flow/engine'
@@ -383,6 +384,7 @@ export const FIRST_DESIGN: BuildTask = {
     const l = layout(raw)
     return missing(l) ?? l.jam?.why ?? symptom(f)
   },
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, ['Timeline server', 'Workers', 'Store']),
   check(_m, _raw, _settings, flow) {
     const f = flow && timelineOf.get(flow)
     if (!f || flow.tick < FIRST_SETTLED) return false

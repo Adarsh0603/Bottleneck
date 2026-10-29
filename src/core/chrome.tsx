@@ -40,7 +40,7 @@ export function TopBar({
           <span className="truncate font-medium">{chapter.title}</span>
           <span className="text-muted">▾</span>
         </button>
-        <span className="hidden rounded-full border border-line bg-bg/80 px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-muted backdrop-blur sm:inline">
+        <span className="hidden rounded-full border border-line bg-bg/80 px-2 py-0.5 font-mono text-xs uppercase tracking-widest text-muted backdrop-blur sm:inline">
           {chapter.level}
         </span>
         {menuOpen && (

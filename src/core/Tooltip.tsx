@@ -75,7 +75,7 @@ export default function Tooltip({
         createPortal(
           <span
             role="tooltip"
-            className="pointer-events-none fixed z-[100] max-w-[220px] rounded-md bg-fg px-2 py-1 text-center font-mono text-[11px] leading-snug text-bg shadow-md"
+            className="pointer-events-none fixed z-[100] max-w-[220px] rounded-md bg-fg px-2 py-1 text-center font-mono text-xs leading-snug text-bg shadow-md"
             style={{ left: spot.x, top: spot.y, transform: `translate(-50%, ${spot.below ? '0' : '-100%'})` }}
           >
             {text}

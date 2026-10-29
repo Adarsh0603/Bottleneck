@@ -22,7 +22,7 @@ export default function Toolbox() {
   return (
     <div className="mt-14">
       <div className="max-w-[2200px] pt-10  sm:pt-14 ">
-        <div className="font-mono text-[11px] uppercase tracking-widest text-muted">
+        <div className="font-mono text-xs uppercase tracking-widest text-muted">
           MASTER ANY TACTIC
         </div>
         <h1 className="mt-3 font-mono text-[24px]">
@@ -43,7 +43,7 @@ export default function Toolbox() {
               <h2 className="text-lg font-semibold tracking-tight">
                 {track.title}
               </h2>
-              <span className="rounded-full border border-line bg-bg px-2 py-0.5 font-mono text-[10px] uppercase tracking-widest text-muted">
+              <span className="rounded-full border border-line bg-bg px-2 py-0.5 font-mono text-xs uppercase tracking-widest text-muted">
                 {track.level}
               </span>
             </div>
@@ -67,7 +67,7 @@ export default function Toolbox() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between font-mono text-xs text-muted">
                       <span>Planned</span>
-                      <span className="rounded-full border border-line px-2 py-0.5 text-[10px] uppercase tracking-widest">
+                      <span className="rounded-full border border-line px-2 py-0.5 text-xs uppercase tracking-widest">
                         Soon
                       </span>
                     </div>
@@ -147,7 +147,7 @@ function TopicCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between font-mono text-xs text-muted">
             <span>{label}</span>
-            <span className="rounded-full border border-line px-2 py-0.5 text-[10px] uppercase tracking-widest">
+            <span className="rounded-full border border-line px-2 py-0.5 text-xs uppercase tracking-widest">
               Soon
             </span>
           </div>
@@ -174,15 +174,15 @@ function TopicCard({
         <div className="flex w-full items-center justify-between font-mono text-xs text-muted">
           <span>{label}</span>
           {status === "done" ? (
-            <span className="rounded-full bg-fg px-2 py-0.5 text-[10px] uppercase tracking-widest text-bg">
+            <span className="rounded-full bg-fg px-2 py-0.5 text-xs uppercase tracking-widest text-bg">
               ✓ Completed
             </span>
           ) : isNext ? (
-            <span className="rounded-full bg-fg px-2 py-0.5 text-[10px] uppercase tracking-widest text-bg">
+            <span className="rounded-full bg-fg px-2 py-0.5 text-xs uppercase tracking-widest text-bg">
               Next
             </span>
           ) : status === "started" ? (
-            <span className="rounded-full border border-fg px-2 py-0.5 text-[10px] uppercase tracking-widest text-fg">
+            <span className="rounded-full border border-fg px-2 py-0.5 text-xs uppercase tracking-widest text-fg">
               In progress
             </span>
           ) : null}
@@ -192,7 +192,7 @@ function TopicCard({
           {topic.pitch}
         </p>
 
-        <div className="mt-3 w-full text-right font-mono text-[11px] text-muted transition group-hover:text-fg">
+        <div className="mt-3 w-full text-right font-mono text-xs text-muted transition group-hover:text-fg">
           {actionLabel(status)} →
         </div>
       </div>

@@ -69,7 +69,7 @@ export default function Home() {
   return (
     <main className="pb-10 sm:pb-14">
       <div className="mx-auto max-w-[2200px] px-6 pt-6 sm:px-10 sm:pt-14 lg:px-16">
-        <div className="font-mono text-[11px] uppercase tracking-widest text-muted">
+        <div className="font-mono text-xs uppercase tracking-widest text-muted">
           Conquer each system
         </div>
         <h1 className="mt-3 font-mono text-[24px]">
@@ -115,7 +115,7 @@ export default function Home() {
             </div>
           ))}
         </div>
-        <div className="relative mx-auto max-w-[2200px] px-4">
+        <div className="relative mx-auto max-w-[2200px] px-4 max-sm:px-0 [@media(max-height:520px)]:px-0">
           <RealmMap
             states={states}
             selected={project.id}

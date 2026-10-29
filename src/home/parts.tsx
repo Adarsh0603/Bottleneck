@@ -24,7 +24,7 @@ export function ContinueButton({ className = "" }: { className?: string }) {
       className={`flex w-full max-w-md items-center justify-between gap-4 rounded-2xl bg-fg px-5 py-4 text-left text-bg transition hover:opacity-90 ${className}`}
     >
       <span>
-        <span className="block font-mono text-[10px] uppercase tracking-widest opacity-70">
+        <span className="block font-mono text-xs uppercase tracking-widest opacity-70">
           Continue
         </span>
         <span className="mt-0.5 block font-medium">{topic.title}</span>

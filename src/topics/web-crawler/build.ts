@@ -1,4 +1,5 @@
 import { createElement } from 'react'
+import { hintFromReview } from '../../core/build/hint'
 import { Tag } from '../../core/iso/primitives'
 import type { BuildTask, Placement, Requirement, Settings } from '../../core/build/types'
 import type { FlowSim } from '../../core/flow/engine'
@@ -291,6 +292,7 @@ export const FIRST_DESIGN: BuildTask = {
     if (flow.tick >= FIRST_SETTLED && c.got() < Math.ceil(NEED_FIRST * c.wanted)) return `Only ${c.got()} of ${c.wanted} pages were downloaded.`
     return null
   },
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, ['Seen-set', 'Frontier', 'Manners', 'robots.txt']),
   check(_m, raw, settings, flow) {
     const c = flow && crawlerOf.get(flow)
     if (!c || flow.tick < FIRST_SETTLED) return false
@@ -354,6 +356,7 @@ export const SCALE_UP: BuildTask = {
     }
     return null
   },
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines),
   check(_m, raw, _settings, flow) {
     const c = flow && crawlerOf.get(flow)
     if (!c || flow.tick < SCALE_SETTLED) return false

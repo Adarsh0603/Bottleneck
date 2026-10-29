@@ -1,4 +1,5 @@
 import { createElement } from 'react'
+import { hintFromReview } from '../../core/build/hint'
 import { Tag } from '../../core/iso/primitives'
 import type { BuildTask, Placement, Requirement, Settings } from '../../core/build/types'
 import type { FlowSim } from '../../core/flow/engine'
@@ -339,6 +340,7 @@ export const FIRST_DESIGN: BuildTask = {
   requirements: [once, matched, served(FIRST_SETTLED)],
   assemble: (placed, settings, rng) => assemble(placed, settings, { phases: FIRST_PHASES, events: {}, hard: false, dupes: 0.25, errRate: 0.06, lostRate: 0.04 }, rng),
   problem,
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, ['Idempotency key']),
   check: (_m, _raw, _settings, flow) => {
     const p = flow && payOf.get(flow)
     return !!p && done(p, flow.tick, FIRST_SETTLED)
@@ -369,6 +371,7 @@ export const SCALE_UP: BuildTask = {
   requirements: [once, matched, served(SCALE_SETTLED)],
   assemble: (placed, settings, rng) => assemble(placed, settings, { phases: SCALE_PHASES, events: EVENTS, hard: true, dupes: 0.12, errRate: 0.04, lostRate: 0.02 }, rng),
   problem,
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines),
   check: (_m, _raw, _settings, flow) => {
     const p = flow && payOf.get(flow)
     return !!p && done(p, flow.tick, SCALE_SETTLED)

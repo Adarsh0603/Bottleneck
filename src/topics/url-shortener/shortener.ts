@@ -44,9 +44,10 @@ export interface Tally {
   slow: number // redirects that took too long
   done: Record<string, number>
   dupes: number // creates that were given a code already taken
+  at: Record<string, number> // redirects turned away by a full line, by the node that was full
 }
 
-const blankTally = (): Tally => ({ failed: {}, limited: {}, slow: 0, done: {}, dupes: 0 })
+const blankTally = (): Tally => ({ failed: {}, limited: {}, slow: 0, done: {}, dupes: 0, at: {} })
 
 // Counts what happened to each kind of request, by where it came from.
 class Net extends FlowSim {
@@ -58,6 +59,7 @@ class Net extends FlowSim {
     const from = job.from ?? '?'
     const bucket = node === this.gateKey ? this.tally.limited : this.tally.failed
     bucket[from] = (bucket[from] ?? 0) + 1
+    if (from === 'users' && node !== this.gateKey) this.tally.at[node] = (this.tally.at[node] ?? 0) + 1
   }
 
   complete(job: Job) {
@@ -317,6 +319,23 @@ export class Shortener {
   // Redirects that did not work: turned away, or too slow.
   redirectsFailed() {
     return (this.tally.failed.users ?? 0) + (this.tally.limited.users ?? 0) + this.tally.slow
+  }
+
+  // A part, named the way a learner sees it.
+  nameOf(key: string) {
+    if (key === 'db') return 'the database'
+    if (this.cfg.apps.includes(key)) return 'an app server'
+    if (this.cfg.replicas.includes(key)) return 'a read replica'
+    if (key === this.keys.cache) return 'the cache'
+    if (key === this.keys.queue) return 'the queue'
+    if (key === this.keys.lb) return 'the balancer'
+    return key
+  }
+
+  // The part that turned away the most redirects, and how many.
+  lostAt() {
+    const top = Object.entries(this.tally.at).sort((a, b) => b[1] - a[1])[0]
+    return top ? { key: top[0], what: this.nameOf(top[0]), count: top[1] } : null
   }
 
   // Real people whose new link was not made.

@@ -61,12 +61,12 @@ const HILLS: Hill[] = [
 ]
 
 // On a phone the writing is much bigger against the map, so each realm name moves to open
-// water beside its hill: left of the Expert and Advanced hills, right of the other two.
-const PHONE_NAMES: Record<string, { at: Pt; anchor?: 'start' | 'end' }> = {
-  EXPERT: { at: [20, 40] },
+// water beside its hill: left of the Expert and Advanced hills, below Intermediate and Starter.
+const PHONE_NAMES: Record<string, { at: Pt; anchor?: 'start' | 'middle' | 'end' }> = {
+  EXPERT: { at: [110, 40] },
   ADVANCED: { at: [10, 258] },
-  INTERMEDIATE: { at: [1040, 610] },
-  STARTER: { at: [600, 745] },
+  INTERMEDIATE: { at: [860, 736], anchor: 'middle' },
+  STARTER: { at: [330, 792], anchor: 'middle' },
 }
 const PHONE_NAME_LS = 2 // the most the realm names grow on a phone
 
@@ -151,6 +151,7 @@ function steps(b: Pt, c: Pt) {
 const W = 1600
 const H = 840
 const TOP = -40
+const PAD = 90 // open sea around the map that a zoomed view may pan into
 const ZOOM_MAX = 1.8 // the closest zoom; the drawing is laid out this large
 
 interface View {
@@ -189,7 +190,7 @@ function clampView(v: View, { a, minZ, maxZ }: Limits = DESK): View {
   const z = Math.min(Math.max(v.z, minZ), maxZ)
   const inside = (c: number, size: number, from: number, len: number) =>
     size >= len ? from + len / 2 : Math.min(Math.max(c, from + size / 2), from + len - size / 2)
-  return { z, cx: inside(v.cx, W / z, 0, W), cy: inside(v.cy, (a * W) / z, TOP, H) }
+  return { z, cx: inside(v.cx, W / z, -PAD, W + 2 * PAD), cy: inside(v.cy, (a * W) / z, TOP - PAD, H + 2 * PAD) }
 }
 
 // The chosen project's card, standing over its castle. It keeps one size on screen however
@@ -349,7 +350,7 @@ const Scene = memo(function Scene({ states, selected, ls, names, realms, phone, 
               const p = phone ? PHONE_NAMES[h.tier] : h
               return <RealmName key={h.tier} tier={h.tier} name={h.name} at={p.at} anchor={p.anchor} ls={phone ? Math.min(ls, PHONE_NAME_LS) : ls} />
             })}
-            <RealmName tier="AI" name="The Model Isles" at={[1400, 680]} anchor="middle" ls={phone ? Math.min(ls, PHONE_NAME_LS) : ls} />
+            <RealmName tier="AI" name="The Agentic Isles" at={[1400, 680]} anchor="middle" ls={phone ? Math.min(ls, PHONE_NAME_LS) : ls} />
           </>
         )}
         <g pointerEvents="none">
@@ -457,7 +458,7 @@ export default function RealmMap({
   // On a phone, far out shows the realm titles and short castle names; close in shows the full names.
   const near = !compact || shown.z >= LABEL_ZOOM
   // The writing on the map is grown to stay readable at the zoom its level is seen from.
-  const ls = compact ? Math.min(2.6, Math.max(1, Math.round((11 / (12 * (width / W) * (near ? LABEL_ZOOM : FAR_REF))) * 10) / 10)) : 1
+  const ls = compact ? Math.min(2.6, Math.max(1, Math.round((11 / (12 * (width / W) * (near ? LABEL_ZOOM : FAR_REF))) * 10) / 10)) : Math.min(1.35, Math.max(1, Math.round((11 / (12 * (width / W))) * 10) / 10))
   const live = useRef({ shown, limits, width, aspect })
   useEffect(() => {
     live.current = { shown, limits, width, aspect }
@@ -477,7 +478,7 @@ export default function RealmMap({
   const px = (width / W) * shown.z
   const left = shown.cx - W / shown.z / 2
   const topEdge = shown.cy - (aspect * W) / shown.z / 2
-  const place = `translate(${-left * px}px, ${-(topEdge - TOP) * px}px) scale(${shown.z / layoutZoom})`
+  const place = `translate(${-(left + PAD) * px}px, ${-(topEdge - TOP + PAD) * px}px) scale(${shown.z / layoutZoom})`
 
   // One finger pans the map once it is zoomed in; two fingers pinch it, keeping the map under
   // their midpoint where it was. A drag or pinch never counts as a tap on a castle.
@@ -555,11 +556,11 @@ export default function RealmMap({
       }}
     >
       <svg
-        viewBox={`0 ${TOP} ${W} ${H}`}
+        viewBox={`${-PAD} ${TOP - PAD} ${W + 2 * PAD} ${H + 2 * PAD}`}
         className={`absolute left-0 top-0 block select-none ${zoomed ? 'cursor-grab touch-none active:cursor-grabbing' : ''}`}
         style={{
-          width: `${layoutZoom * 100}%`,
-          aspectRatio: `${W} / ${H}`,
+          width: `${layoutZoom * 100 * (1 + (2 * PAD) / W)}%`,
+          aspectRatio: `${W + 2 * PAD} / ${H + 2 * PAD}`,
           transformOrigin: '0 0',
           transform: place,
           transition: dragging || reduced() ? 'none' : `transform ${FLIGHT_MS}ms cubic-bezier(0.33, 1, 0.68, 1)`,
@@ -596,7 +597,7 @@ export default function RealmMap({
     </div>
 
     {compact && !overlay && openedProject && (
-      <div ref={cardRef} className="mt-3 scroll-mb-4">
+      <div ref={cardRef} className="mx-4 mt-3 scroll-mb-4">
         <ProjectCard project={openedProject} state={states[openedProject.id] ?? 'fog'} plain />
       </div>
     )}

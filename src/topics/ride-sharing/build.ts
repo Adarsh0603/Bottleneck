@@ -1,4 +1,5 @@
 import { createElement } from 'react'
+import { hintFromReview } from '../../core/build/hint'
 import { Tag } from '../../core/iso/primitives'
 import type { BuildTask, Placement, Requirement, Settings } from '../../core/build/types'
 import type { FlowSim } from '../../core/flow/engine'
@@ -323,6 +324,7 @@ export const FIRST_DESIGN: BuildTask = {
   requirements: [oneCar, fresh, matched(FIRST_SETTLED)],
   assemble: (placed, settings, rng) => assemble(placed, settings, { phases: FIRST_PHASES, hard: false }, rng),
   problem,
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, ['Driver pings']),
   check: (_m, _raw, _settings, flow) => {
     const r = flow && rideOf.get(flow)
     return !!r && done(r, flow.tick, FIRST_SETTLED)
@@ -355,6 +357,7 @@ export const SCALE_UP: BuildTask = {
   requirements: [oneCar, fresh, matched(SCALE_SETTLED)],
   assemble: (placed, settings, rng) => assemble(placed, settings, { phases: SCALE_PHASES, crash: CRASH, hard: true }, rng),
   problem,
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines),
   check: (_m, _raw, _settings, flow) => {
     const r = flow && rideOf.get(flow)
     return !!r && done(r, flow.tick, SCALE_SETTLED)

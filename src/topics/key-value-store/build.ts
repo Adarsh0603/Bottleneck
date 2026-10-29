@@ -1,4 +1,5 @@
 import { createElement } from 'react'
+import { hintFromReview } from '../../core/build/hint'
 import { Tag } from '../../core/iso/primitives'
 import type { BuildTask, Placement, Requirement, Settings } from '../../core/build/types'
 import type { FlowSim } from '../../core/flow/engine'
@@ -295,6 +296,7 @@ export const FIRST_DESIGN: BuildTask = {
     if (l.jam) return l.jam.why
     return symptom(kv)
   },
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, ['Hash ring']),
   check(_m, _raw, _settings, flow) {
     const kv = flow && kvOf.get(flow)
     if (!kv || flow.tick < FIRST_SETTLED) return false
@@ -331,6 +333,7 @@ export const SCALE_UP: BuildTask = {
     if (l.jam) return l.jam.why
     return symptom(kv)
   },
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines),
   check(_m, _raw, _settings, flow) {
     const kv = flow && kvOf.get(flow)
     if (!kv || flow.tick < SCALE_SETTLED) return false

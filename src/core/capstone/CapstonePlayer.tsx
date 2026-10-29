@@ -118,7 +118,7 @@ function Requirements(props: CapstoneProps & { next: () => void }) {
 }
 
 const Label = ({ children }: { children: React.ReactNode }) => (
-  <div className="font-mono text-[10px] uppercase tracking-widest text-muted">{children}</div>
+  <div className="font-mono text-xs uppercase tracking-widest text-muted">{children}</div>
 )
 
 function Brief({ capstone }: { capstone: Capstone }) {

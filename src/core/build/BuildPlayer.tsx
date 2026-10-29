@@ -423,7 +423,7 @@ function Builder({
           <span className="min-w-0">{nameOf(kind)}</span>
         </span>
         {/* A phone has no room for the description under each name. It spans the whole card. */}
-        {!compact && sub(kind) && <span className="block pl-1 text-[10px] leading-tight text-muted">{sub(kind)}</span>}
+        {!compact && sub(kind) && <span className="block pl-1 text-xs leading-tight text-muted">{sub(kind)}</span>}
       </button>
     );
   });
@@ -587,7 +587,7 @@ function Builder({
       className={`pointer-events-none absolute inset-y-0 left-0 z-30 flex items-center justify-center p-4 ${side ? "right-88" : "right-0"}`}
     >
       <div className="pointer-events-auto flex max-h-full w-full max-w-lg flex-col rounded-2xl border border-line bg-bg p-5 shadow-xl">
-        <div className="font-mono text-[10px] uppercase tracking-widest text-muted">
+        <div className="font-mono text-xs uppercase tracking-widest text-muted">
           The situation
         </div>
         <div className="mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto text-base">
@@ -616,7 +616,7 @@ function Builder({
       >
         ✕
       </button>
-      <div className="pr-6 font-mono text-[10px] uppercase tracking-widest text-danger">
+      <div className="pr-6 font-mono text-xs uppercase tracking-widest text-danger">
         {failure ? `Build failed: ${failure.title}` : "What’s going wrong"}
       </div>
       <p className="mt-1">{problem}</p>
@@ -685,7 +685,7 @@ function Builder({
             )}
           </g>
         </svg>
-        <div className="mt-3 font-mono text-[10px] uppercase tracking-widest text-muted">
+        <div className="mt-3 font-mono text-xs uppercase tracking-widest text-muted">
           {finale ? "Conquered!" : "Built"}
         </div>
         {task.lesson ? (
@@ -760,7 +760,7 @@ function Builder({
       }`}
     >
       <div
-        className={`font-mono text-[10px] uppercase tracking-widest opacity-70 ${!side && (short || focus) ? "hidden" : ""}`}
+        className={`font-mono text-xs uppercase tracking-widest opacity-70 ${!side && (short || focus) ? "hidden" : ""}`}
       >
         {solved ? "Built" : "Goal"}
       </div>
@@ -812,7 +812,7 @@ function Builder({
               );
             })}
           </div>
-          <div className="mt-1 flex gap-px text-[9px] leading-tight">
+          <div className="mt-1 flex gap-px text-xs leading-tight">
             {timeline.phases.map((p, i) => {
               const to = timeline.phases[i + 1]?.from ?? timeline.end;
               return (
@@ -955,7 +955,7 @@ function Builder({
             <button
               onClick={() => setPinnedOpen((o) => !o)}
               aria-expanded={pinnedOpen}
-              className="flex w-full items-center justify-between gap-3 px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest text-muted"
+              className="flex w-full items-center justify-between gap-3 px-3 py-1.5 font-mono text-xs uppercase tracking-widest text-muted"
             >
               {task.pinned.title}
               <span>{pinnedOpen ? "▴" : "▾"}</span>
@@ -969,7 +969,7 @@ function Builder({
                 ))}
                 {task.requirements && (
                   <>
-                    <div className="pt-1 font-mono text-[10px] uppercase tracking-widest text-muted">It must</div>
+                    <div className="pt-1 font-mono text-xs uppercase tracking-widest text-muted">It must</div>
                     <ul className="space-y-1.5">
                       {task.requirements.map((r) => {
                         const { text, ok } = running ? r.read(run.flow, m) : { text: "", ok: true };
@@ -981,7 +981,7 @@ function Builder({
                             <span>
                               {r.says}
                               {running && text && (
-                                <span className={`block font-mono text-[11px] ${ok ? "text-muted" : "text-danger"}`}>{text}</span>
+                                <span className={`block font-mono text-xs ${ok ? "text-muted" : "text-danger"}`}>{text}</span>
                               )}
                             </span>
                           </li>
@@ -1006,7 +1006,7 @@ function Builder({
           {/* Desktop: the side panel is the inventory and the settings. */}
           <aside className="absolute inset-y-0 right-0 z-20 flex w-88 flex-col gap-5 overflow-y-auto border-l border-line bg-bg p-4">
             <section>
-              <div className="font-mono text-[10px] uppercase tracking-widest text-muted">
+              <div className="font-mono text-xs uppercase tracking-widest text-muted">
                 Pieces
               </div>
               <div className="mt-2 grid grid-cols-2 gap-2">
@@ -1015,7 +1015,7 @@ function Builder({
             </section>
             {[...new Set(shownSettings.map((s) => s.when))].map((when) => (
               <section key={when}>
-                <div className="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-muted">
+                <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-muted">
                   <PieceIcon kind={when} size={22} />
                   {nameOf(when)}
                 </div>

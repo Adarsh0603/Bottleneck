@@ -9,7 +9,7 @@ export function Chip({ icon, title, value, bad }: { icon: ReactNode; title: stri
         bad ? 'border-danger' : 'border-line'
       }`}
     >
-      <div className={`chip-title flex items-center gap-1.5 whitespace-nowrap text-[11px] font-medium ${bad ? 'text-danger' : 'text-muted'}`}>
+      <div className={`chip-title flex items-center gap-1.5 whitespace-nowrap text-xs font-medium ${bad ? 'text-danger' : 'text-muted'}`}>
         {icon}
         {title}
       </div>

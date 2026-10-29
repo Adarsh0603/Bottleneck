@@ -1,4 +1,5 @@
 import { createElement } from 'react'
+import { hintFromReview } from '../../core/build/hint'
 import { Tag } from '../../core/iso/primitives'
 import { PIECE_NAMES } from '../../core/build/types'
 import type { BuildTask, Placement, Requirement, Settings } from '../../core/build/types'
@@ -171,6 +172,16 @@ const missed = (n: Notifier, kind: Kind, settled: boolean) => {
   return (f.lost[kind] ?? 0) + (f.late[kind] ?? 0) + stuck + (kind === 'otp' ? n.parked(kind) : 0)
 }
 
+// What went missing and where, for a failure no sharper cause explains.
+const KIND_NAMES: Record<Kind, string> = { otp: 'login codes', orders: 'order updates', promo: 'marketing messages' }
+function missedWhy(n: Notifier, settled: boolean) {
+  const f = n.flow
+  const bits = KINDS.filter((k) => missed(n, k, settled) > 0).map((k) => `${missed(n, k, settled)} ${KIND_NAMES[k]} (${f.lost[k] ?? 0} lost, ${f.late[k] ?? 0} late)`)
+  const top = Object.entries(f.lostAt).sort((a, b) => b[1] - a[1])[0]
+  const where = top ? ` ${top[1]} were turned away at ${top[0] === n.keys.queue ? 'the queue' : top[0] === n.keys.gate ? 'the hold-back' : 'a full line'}.` : ''
+  return bits.length ? `Missed: ${bits.join(', ')}.${where}` : null
+}
+
 // The checks a finished design must pass. Shown live; the win needs all green.
 const arrives = (kind: Kind, label: string, limit: number, settledAt: number): Requirement => ({
   label,
@@ -300,11 +311,12 @@ export const FIRST_DESIGN: BuildTask = {
     const { placed, jam } = layout(raw)
     if (jam) return jam.why
     const { attempts } = chosen(settings)
-    if (!placed.q) return 'Nothing is holding messages. Add the queue, so the front door can take a message in and move on.'
-    if (placedSenders(placed).length === 0) return 'Messages are piling up in the queue with nobody sending them. Add a sender.'
-    if (attempts === 1 && KINDS.some((k) => n.lostOf(k) > 1)) return 'Providers drop about 1 call in 7, and with one try every dropped call is a message lost. Let a sender try again.'
-    return null
+    if (!placed.q) return 'Messages are being turned away at the front door: nothing holds a message while the providers are busy.'
+    if (placedSenders(placed).length === 0) return 'Messages are piling up in the queue and nobody is sending them.'
+    if (attempts === 1 && KINDS.some((k) => n.lostOf(k) > 1)) return 'Providers drop about 1 call in 7, and with one try every dropped call is a message lost.'
+    return missedWhy(n, false)
   },
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, ['Intake', 'Senders', 'Failed calls']),
   check(_m, raw, _settings, flow) {
     const { placed, jam } = layout(raw)
     const n = flow && notifierOf.get(flow)
@@ -367,23 +379,24 @@ export const SCALE_UP: BuildTask = {
     const { attempts, lanes, pace } = chosen(settings)
     const f = n.flow
     const senders = placedSenders(placed).length
-    if (!placed.q || senders === 0) return 'Add the queue and the senders first.'
+    if (!placed.q || senders === 0) return 'Messages have nowhere to wait, or nothing to send them.'
     if (n.duplicates > 0) {
       if (!placed.dedupe && attempts > 1) return 'The SMS provider sent the text but its answer was lost. The sender thought it failed and sent it again, so people got two.'
       if (!placed.dedupe) return 'People got the same text twice.'
     }
     if (tick >= T(6) && missed(n, 'otp', false) > 5 && !lanes) return 'Login codes are stuck behind the marketing blast in the same line. Someone waiting at a login screen should never queue behind an email campaign.'
     if ((f.lostAt.q ?? 0) > 0 && f.lost.promo > 8) {
-      if (!placed.gate) return 'The blast arrives faster than the email provider takes it, and the queue overflows. Hold marketing back and release it at the provider’s pace.'
+      if (!placed.gate) return 'The blast arrives faster than the email provider takes it, and the queue overflows.'
     }
     if (placed.gate && pace > 12 && n.providers.email.turnedAway > 5) return `The email provider takes about 12 a second and you are releasing ${pace}. It turns the extra away, and every turned-away call is retried.`
     if (placed.gate && pace < 6 && tick >= T(40) && n.flow.node(n.keys.gate)!.load!() > 20) return `Marketing is released at ${pace} a second. The blast will take over a minute to clear.`
     if (tick >= T(24) && n.providers.push.down && attempts <= 3 && !placed.dead && missed(n, 'orders', false) > 2) return 'The push provider is down and the sender ran out of tries before it came back. With nowhere to park them, those order updates are lost.'
     if (senders < 3 && tick >= T(8) && (n.queue?.load() ?? 0) > 30) return 'The senders cannot keep up. Each waits on its provider with a call open.'
-    if (decoyOn(raw, 'cache')) return 'A cache remembers answers to repeated questions. Every notification is different, so it holds nothing useful. Take it off.'
-    if (decoyOn(raw, 'balancer')) return 'A load balancer spreads requests over identical servers. Here the queue already hands work to the senders, so it does nothing. Take it off.'
-    return null
+    if (decoyOn(raw, 'cache')) return 'A cache remembers answers to repeated questions. Every notification is different, so it holds nothing useful.'
+    if (decoyOn(raw, 'balancer')) return 'A load balancer spreads requests over identical servers. Here the queue already hands work to the senders, so it does nothing.'
+    return missedWhy(n, true)
   },
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines),
   check(_m, _placed, _settings, flow) {
     const n = flow && notifierOf.get(flow)
     if (!n || flow.tick < SCALE_SETTLED) return false

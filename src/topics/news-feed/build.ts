@@ -1,4 +1,5 @@
 import { createElement } from 'react'
+import { hintFromReview } from '../../core/build/hint'
 import { Tag } from '../../core/iso/primitives'
 import type { BuildTask, Placement, Requirement, Settings } from '../../core/build/types'
 import type { FlowSim } from '../../core/flow/engine'
@@ -273,6 +274,7 @@ export const FIRST_DESIGN: BuildTask = {
     if (l.jam) return l.jam.why
     return symptom(f)
   },
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, ['Feed cache', 'Workers', 'Store']),
   check(_m, _raw, _settings, flow) {
     const f = flow && feedOf.get(flow)
     if (!f || flow.tick < FIRST_SETTLED) return false
@@ -312,6 +314,7 @@ export const SCALE_UP: BuildTask = {
     if (l.jam) return l.jam.why
     return symptom(f)
   },
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines),
   check(_m, _raw, _settings, flow) {
     const f = flow && feedOf.get(flow)
     if (!f || flow.tick < SCALE_SETTLED) return false
