@@ -132,9 +132,6 @@ body {
   transform-box: fill-box;
   transform-origin: center;
 }
-.realm-mist {
-  animation: realm-drift 24s ease-in-out infinite alternate;
-}
 @keyframes sea-drift {
   to { transform: translate3d(80px, 0, 0); }
 }
@@ -158,16 +155,12 @@ body {
 .sea-boat > svg {
   animation: boat-rock 4s ease-in-out infinite;
 }
-.realm-moving .realm-mist, .realm-moving .realm-pulse { animation-play-state: paused; }
+.realm-moving .realm-pulse { animation-play-state: paused; }
 @keyframes realm-pulse {
   0%, 100% { opacity: 0.35; transform: scale(1); }
   50% { opacity: 1; transform: scale(1.18); }
 }
-@keyframes realm-drift {
-  from { transform: translateX(-14px); }
-  to { transform: translateX(14px); }
-}
 @media (prefers-reduced-motion: reduce) {
-  .realm-pulse, .realm-mist, .sea-drift { animation: none; }
+  .realm-pulse, .sea-drift { animation: none; }
   .sea-boat { display: none; }
 }

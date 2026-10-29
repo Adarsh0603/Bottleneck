@@ -38,7 +38,7 @@ export const trackOf = (topic: TopicEntry) => TRACKS.find((t) => t.id === topic.
 export const actionLabel = (status: TopicStatus) =>
   status === 'done' ? 'Review' : status === 'started' ? 'Continue' : 'Start'
 
-// On the realm map a project is built, the next one to take on, or still under mist.
+// On the realm map a project is built, the next one to take on, or not yet explored.
 export type ProjectState = 'done' | 'next' | 'fog'
 
 export function projectStates(progress: Progress): Record<string, ProjectState> {

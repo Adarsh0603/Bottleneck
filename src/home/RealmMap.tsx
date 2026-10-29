@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useId, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { memo, useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { COMPACT, SHORT, useMedia } from '../core/useMedia'
 import ProjectCard from './ProjectCard'
 import { PROJECTS, isBuilt, projectNumber, type Project } from './projects'
@@ -7,7 +7,7 @@ import type { ProjectState } from './shared'
 
 // The home map: each realm is its own hill, higher the harder it is, with a
 // capital in its middle and the other castles around it. A single road runs
-// through every castle in order, crossing from one hill to the next by a bridge. Castles under mist are not reached yet, but nothing is locked. The AI
+// through every castle in order, crossing from one hill to the next by a bridge. Castles not reached yet are drawn fainter, but nothing is locked. The AI
 // isles float apart and have no road.
 
 type Pt = [number, number]
@@ -146,14 +146,6 @@ function steps(b: Pt, c: Pt) {
   })
 }
 
-// Mist over the lands not yet reached: centre x, y, radii, strength.
-const MIST: [number, number, number, number, number][] = [
-  [770, 565, 260, 110, 0.45],
-  [320, 430, 200, 90, 0.7],
-  [800, 235, 430, 170, 1],
-  [1400, 380, 230, 150, 0.9],
-]
-
 // The whole map in viewBox units, and how far it zooms.
 // TOP leaves headroom above the tallest banners.
 const W = 1600
@@ -268,60 +260,7 @@ function RealmName({ tier, name, at, anchor = 'start', ls }: { tier: string; nam
 // chosen castle changes, not on every frame of a fly-in or a drag.
 // `ls` grows the writing on a small screen, where the map is shrunk to a fraction of its size.
 // `names` shows every castle's name (the chosen one always shows); `realms` shows the realm titles.
-// A see-through mist over each region whose castles are not open yet: soft puffs on a loose grid
-// over the region, using the same fade as the mist below.
-const unbuiltRegions = (() => {
-  // The ground of each realm: its hill, or the big AI isle.
-  const ground: Record<number, { c: Pt; rx: number; ry: number }> = {
-    0: HILLS[3],
-    1: HILLS[2],
-    2: HILLS[1],
-    3: HILLS[0],
-    4: { c: [1400, 380], rx: 190, ry: 110 },
-  }
-  const hash = (n: number) => {
-    const v = Math.sin(n * 127.1 + 311.7) * 43758.5453
-    return v - Math.floor(v)
-  }
-  const tiers = new Set(PROJECTS.filter((p) => !isBuilt(p)).map((p) => p.tier))
-  return [...tiers].map((tier) => {
-    const g = ground[tier]
-    // Lifted a little so it also covers the towers standing on the ground.
-    const lift = 40
-    const cx = g.c[0]
-    const cy = g.c[1] - lift * 0.5
-    const rx = g.rx
-    const ry = g.ry + lift * 0.5
-    const puffs: [number, number, number][] = []
-    const sx = 76
-    const sy = 48
-    for (let j = 0; j * sy <= 2 * ry; j++)
-      for (let i = 0; i * sx <= 2 * rx; i++) {
-        const n = j * 100 + i
-        const x = cx - rx + i * sx + (j % 2) * (sx / 2) + (hash(n) - 0.5) * 30
-        const y = cy - ry + j * sy + (hash(n + 7) - 0.5) * 22
-        if (((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2 > 0.85) continue
-        puffs.push([x, y, 56 + hash(n + 13) * 30])
-      }
-    return puffs
-  })
-})()
-
-function CloudBanks({ fog }: { fog: string }) {
-  return (
-    <g className="realm-mist" pointerEvents="none">
-      {unbuiltRegions.map((puffs, r) => (
-        <g key={r}>
-          {puffs.map(([x, y, rad], i) => (
-            <circle key={i} cx={x} cy={y} r={rad} fill={`url(#${fog}haze)`} />
-          ))}
-        </g>
-      ))}
-    </g>
-  )
-}
-
-const Scene = memo(function Scene({ states, selected, fog, ls, names, realms, phone, onOpen, onBack }: { states: Record<string, ProjectState>; selected: string; fog: string; ls: number; names: boolean; realms: boolean; phone: boolean; onOpen: (p: Project) => void; onBack: () => void }) {
+const Scene = memo(function Scene({ states, selected, ls, names, realms, phone, onOpen, onBack }: { states: Record<string, ProjectState>; selected: string; ls: number; names: boolean; realms: boolean; phone: boolean; onOpen: (p: Project) => void; onBack: () => void }) {
   // The road joins the mainland only; the AI isles float apart.
   const road = PROJECTS.filter((p) => p.tier < 4)
   const litUntil = road.findIndex((p) => states[p.id] !== 'done')
@@ -403,16 +342,7 @@ const Scene = memo(function Scene({ states, selected, fog, ls, names, realms, ph
           )
         })}
 
-        <CloudBanks fog={fog} />
-
-        {/* Mist drifts over what is not reached yet. It never blocks a tap. */}
-        <g className="realm-mist" pointerEvents="none">
-          {MIST.map(([cx, cy, rx, ry, o]) => (
-            <ellipse key={`${cx}-${cy}`} cx={cx} cy={cy} rx={rx} ry={ry} fill={`url(#${fog})`} opacity={o} />
-          ))}
-        </g>
-
-        {/* Names sit above the mist so they stay readable. */}
+        {/* Names sit above the castles so they stay readable. */}
         {realms && (
           <>
             {HILLS.map((h) => {
@@ -453,8 +383,6 @@ export default function RealmMap({
   selected: string
   onSelect: (id: string) => void
 }) {
-  const uid = useId().replace(/:/g, '')
-  const fog = `fog${uid}`
 
   // The map opens whole. Tapping a castle flies in on it and opens its card.
   // The drawing is laid out once at the closest zoom and only moved and scaled by CSS, so a
@@ -646,21 +574,7 @@ export default function RealmMap({
           if (shown.z > limits.minZ && !(e.target as Element).closest('[role="button"], foreignObject')) showAll()
         }}
         role="group" aria-label="Map of the system design projects: a hill for each realm, from the Starter shire to the Expert kingdoms, joined by one road, with the AI isles floating apart.">
-        <defs>
-          <radialGradient id={fog}>
-            <stop offset="0" style={{ stopColor: 'var(--bg)' }} stopOpacity={0.55} />
-            <stop offset="0.6" style={{ stopColor: 'var(--bg)' }} stopOpacity={0.35} />
-            <stop offset="1" style={{ stopColor: 'var(--bg)' }} stopOpacity={0} />
-          </radialGradient>
-          {/* The haze over unopened regions is a soft grey, so it shows against the page too. */}
-          <radialGradient id={`${fog}haze`}>
-            <stop offset="0" style={{ stopColor: 'var(--muted)' }} stopOpacity={0.16} />
-            <stop offset="0.55" style={{ stopColor: 'var(--muted)' }} stopOpacity={0.1} />
-            <stop offset="1" style={{ stopColor: 'var(--muted)' }} stopOpacity={0} />
-          </radialGradient>
-        </defs>
-
-        <Scene states={states} selected={selected} fog={fog} ls={ls} names={near} realms={!compact || !near} phone={compact} onOpen={open} onBack={back} />
+        <Scene states={states} selected={selected} ls={ls} names={near} realms={!compact || !near} phone={compact} onOpen={open} onBack={back} />
 
         {/* The chosen project, over its castle. Last, so nothing draws on top of it. */}
         {(() => {

@@ -11,7 +11,7 @@ import { openTopic, type ProjectState } from "./shared";
 const STATE_TEXT: Record<ProjectState, string> = {
   done: "Conquered",
   next: "Next on the road",
-  fog: "Under mist",
+  fog: "Not yet explored",
 };
 
 // The chosen project: what it is, which concepts it needs, and a way in.
