@@ -1,7 +1,7 @@
 import { TOPICS } from '../topics/registry'
 
 // The projects on the realm map: interview-style systems, easy to hard. Each
-// lists the concepts it needs, which link to the lessons. See ROADMAP.md.
+// lists the concepts it needs, which link to the lessons.
 
 export type Tier = 0 | 1 | 2 | 3 | 4
 export const TIER_NAMES = ['Starter', 'Intermediate', 'Advanced', 'Expert', 'AI'] as const

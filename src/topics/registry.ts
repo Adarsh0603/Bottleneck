@@ -437,7 +437,7 @@ export const TOPICS: TopicEntry[] = [
 ]
 
 // Topics still to build, shown in the list under their track. They are not in
-// TOPICS: the map has a fixed number of spots per district. See ROADMAP.md.
+// TOPICS: the map has a fixed number of spots per district.
 export interface PlannedTopic {
   id: string
   title: string
