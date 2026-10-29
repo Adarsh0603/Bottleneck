@@ -11,9 +11,13 @@ const WAVES = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'
 
 // The boats: height on the sea (%), seconds to cross, how far along the crossing they start, size, strength.
 const BOATS = [
-  { top: 14, secs: 110, phase: 20, size: 16, fade: 0.4 },
-  { top: 48, secs: 80, phase: 55, size: 20, fade: 0.5 },
-  { top: 78, secs: 130, phase: 100, size: 14, fade: 0.35 },
+  { top: 14, secs: 220, phase: 40, size: 16, fade: 0.4 },
+  { top: 48, secs: 160, phase: 110, size: 20, fade: 0.5 },
+  { top: 78, secs: 260, phase: 200, size: 14, fade: 0.35 },
+  { top: 5, secs: 190, phase: 140, size: 14, fade: 0.35 },
+  { top: 31, secs: 240, phase: 60, size: 18, fade: 0.45 },
+  { top: 63, secs: 200, phase: 30, size: 16, fade: 0.4 },
+  { top: 86, secs: 170, phase: 120, size: 15, fade: 0.3 },
 ];
 
 function Boat({ size }: { size: number }) {
