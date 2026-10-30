@@ -1,3 +1,5 @@
+import { markSeen, useSeenTips } from '../core/tips'
+import Tip from './Tip'
 import { memo, useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { COMPACT, SHORT, useMedia } from '../core/useMedia'
 import ProjectCard from './ProjectCard'
@@ -418,7 +420,7 @@ export default function RealmMap({
     return compact && sel ? { z: COMPACT_FAR, cx: 0, cy: sel.y - 40 } : FIT
   })
   const [opened, setOpened] = useState<string | null>(null)
-  const [touched, setTouched] = useState(false)
+  const seen = useSeenTips()
   const [moving, setMoving] = useState(false)
   const timer = useRef(0)
   const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -437,7 +439,7 @@ export default function RealmMap({
   }
   useEffect(() => () => clearTimeout(timer.current), [])
   const openCastle = (p: Project) => {
-    setTouched(true)
+    markSeen('start')
     onSelect(p.id)
     setOpened(null)
     // Bring the whole map box into the page's view, under the sticky header, so the card is not cut off by the screen.
@@ -449,6 +451,7 @@ export default function RealmMap({
     flyTo(clampView({ z, cx, cy: p.y - (castleHeight(p) * (CAPITALS[p.id] ?? 1)) / 2 }, limits), () => setOpened(p.id))
   }
   const showAll = () => {
+    markSeen('drag')
     setOpened(null)
     flyTo(compact ? { ...shown, z: limits.minZ } : FIT)
   }
@@ -529,6 +532,7 @@ export default function RealmMap({
       const dist = b ? Math.hypot(a[0] - b[0], a[1] - b[1]) : 0
       if (!g.moved && (Math.hypot(mid[0] - g.at[0], mid[1] - g.at[1]) > 4 || Math.abs(dist - g.dist) > 4)) {
         g.moved = true
+        markSeen('drag')
         setDragging(true)
       }
       if (!g.moved) return
@@ -597,7 +601,7 @@ export default function RealmMap({
           if (shown.z > limits.minZ && !(e.target as Element).closest('[role="button"], foreignObject')) showAll()
         }}
         role="group" aria-label="Map of the system design projects: a hill for each realm, from the Starter shire to the Expert kingdoms, joined by one road, with the AI isles floating apart.">
-        <Scene states={states} selected={selected} ls={ls} names={near} realms={!compact || !near} phone={compact} startHere={fresh && !touched} onOpen={open} onBack={back} />
+        <Scene states={states} selected={selected} ls={ls} names={near} realms={!compact || !near} phone={compact} startHere={fresh && !seen.includes('start')} onOpen={open} onBack={back} />
 
         {/* The chosen project, over its castle. Last, so nothing draws on top of it. */}
         {(() => {
@@ -607,6 +611,13 @@ export default function RealmMap({
           return <Bubble p={sel} state={states[sel.id] ?? 'fog'} top={castleHeight(sel) * k} labelDy={LABEL_DY[sel.tier] * k} zoom={shown.z} width={width} />
         })()}
       </svg>
+
+      {/* Second card onward, once the tactics tip is done: how to move around the zoomed map. */}
+      {openedProject && !compact && seen.includes('tactics') && !seen.includes('drag') && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center">
+          <Tip nudge={false}>Drag to look around</Tip>
+        </div>
+      )}
 
       {overlay && openedProject && (
         <div className="absolute inset-y-2 right-2 z-10 w-[min(22rem,50%)] overflow-y-auto overscroll-contain">

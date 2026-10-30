@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { markSeen, useSeenTips } from "../core/tips";
 import { TOPICS } from "../topics/registry";
 import {
   conceptOf,
@@ -7,6 +9,7 @@ import {
   type Project,
 } from "./projects";
 import { openTopic, type ProjectState } from "./shared";
+import Tip from "./Tip";
 
 const STATE_TEXT: Record<ProjectState, string> = {
   done: "Conquered",
@@ -34,6 +37,17 @@ export default function ProjectCard({
 }) {
   const built = isBuilt(project);
   const topic = TOPICS.find((t) => t.id === project.id);
+  // A first-time visitor is pointed at the tactics on the first card they open.
+  const seen = useSeenTips();
+  const [tip] = useState(() => (built && !seen.includes("tactics") ? "tactics" : null));
+  // Closing the card after a good look counts as having seen the tip.
+  useEffect(() => {
+    if (!tip) return;
+    const at = Date.now();
+    return () => {
+      if (Date.now() - at > 800) markSeen(tip);
+    };
+  }, [tip]);
   return (
     <section
       className="relative rounded-2xl border border-line bg-bg p-4 shadow-xl"
@@ -57,8 +71,9 @@ export default function ProjectCard({
       </h2>
       {topic?.pitch && <p className="mt-1 text-sm text-muted">{topic.pitch}</p>}
 
-      <div className="mt-3 font-mono text-xs uppercase tracking-widest text-muted">
+      <div className="mt-3 flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-muted">
         Tactics you will use
+        {tip === "tactics" && <Tip>Learn these first</Tip>}
       </div>
       <div className="mt-2 flex flex-wrap gap-1.5">
         {project.needs.map((name) => {
@@ -67,8 +82,11 @@ export default function ProjectCard({
           return lesson ? (
             <button
               key={name}
-              onClick={() => openTopic(lesson)}
-              className="cursor-pointer rounded-full border border-line px-2.5 py-1 font-mono text-xs transition hover:border-fg"
+              onClick={() => {
+                markSeen("tactics");
+                openTopic(lesson);
+              }}
+              className={`cursor-pointer rounded-full border border-line px-2.5 py-1 font-mono text-xs transition hover:border-fg ${tip === "tactics" ? "tip-ring" : ""}`}
             >
               {name}
             </button>
@@ -86,8 +104,11 @@ export default function ProjectCard({
       <div className="mt-4 flex flex-wrap items-center gap-3">
         {built && topic ? (
           <button
-            onClick={() => openTopic(topic)}
-            className="cursor-pointer rounded-full bg-fg px-6 py-2 text-sm font-medium text-bg transition hover:opacity-90"
+            onClick={() => {
+              markSeen("tactics");
+              openTopic(topic);
+            }}
+            className={`cursor-pointer rounded-full bg-fg px-6 py-2 text-sm font-medium text-bg transition hover:opacity-90`}
           >
             Enter
           </button>

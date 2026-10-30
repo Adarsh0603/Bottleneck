@@ -3,6 +3,7 @@ import { GoogleAuthProvider, getAuth, onAuthStateChanged, signInWithPopup, signO
 import { doc, getDoc, getFirestore, setDoc } from 'firebase/firestore'
 import { allBuilds, mergeBuilds, onBuildsChange, parse as parseBuilds, replaceBuilds, whenBuildsLoaded } from '../build/saved'
 import { setBusy, showNotice, type CloudUser } from './session'
+import { resetTips, currentTips, mergeTips, onTipsChange, parse as parseTips, replaceTips } from '../tips'
 import { currentProgress, mergeProgress, onProgressChange, parse as parseProgress, replaceProgress } from '../progress'
 
 // Sign in with Google and keep progress and builds in Firestore, one document
@@ -37,9 +38,10 @@ async function startSync(uid: string, alive: () => boolean) {
   const remote = snap.exists() ? snap.data() : {}
   replaceProgress(mergeProgress(currentProgress(), parseProgress(typeof remote.progress === 'string' ? remote.progress : null)))
   replaceBuilds(mergeBuilds(allBuilds(), parseBuilds(typeof remote.builds === 'string' ? remote.builds : null)))
+  replaceTips(mergeTips(currentTips(), parseTips(typeof remote.tips === 'string' ? remote.tips : null)))
 
   const push = () =>
-    setDoc(ref, { progress: JSON.stringify(currentProgress()), builds: JSON.stringify(allBuilds()), updatedAt: Date.now() })
+    setDoc(ref, { progress: JSON.stringify(currentProgress()), builds: JSON.stringify(allBuilds()), tips: JSON.stringify(currentTips()), updatedAt: Date.now() })
   await push()
   if (!alive()) return
   if (announce) {
@@ -57,7 +59,7 @@ async function startSync(uid: string, alive: () => boolean) {
     clearTimeout(timer)
     timer = setTimeout(() => void push().catch(() => {}), PUSH_DELAY)
   }
-  const offs = [onProgressChange(schedule), onBuildsChange(schedule)]
+  const offs = [onProgressChange(schedule), onBuildsChange(schedule), onTipsChange(schedule)]
   stopSync = () => {
     clearTimeout(timer)
     offs.forEach((off) => off())
@@ -121,5 +123,6 @@ export async function logOut() {
   stopSync = null
   replaceProgress({})
   replaceBuilds({})
+  resetTips()
   await signOut(auth)
 }

@@ -3,6 +3,7 @@ import { askConfirm } from "../core/ConfirmDialog";
 import { openSignIn, useSession } from "../core/cloud/session";
 import { clearAllBuilds } from "../core/build/saved";
 import { resetProgress, useProgress } from "../core/progress";
+import { resetTips } from "../core/tips";
 import { PLANNED, TOPICS, TRACKS, type TopicEntry } from "../topics/registry";
 import { Credit } from "./parts";
 import Thumb from "./thumbs";
@@ -171,6 +172,7 @@ export default function Toolbox() {
                 });
                 if (ok) {
                   resetProgress();
+                  resetTips();
                   clearAllBuilds();
                 }
               }}
