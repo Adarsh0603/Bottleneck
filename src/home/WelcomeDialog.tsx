@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const SEEN_KEY = "bottleneck.welcome";
+const SEEN_KEY = "systemlands.welcome";
 
 function readSeen() {
   try {

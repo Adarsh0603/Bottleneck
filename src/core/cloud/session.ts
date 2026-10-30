@@ -17,10 +17,11 @@ export interface Notice {
 interface Session {
   user: CloudUser | null
   dialog: boolean
+  busy: boolean // a sign-in is under way: the popup, then the first sync
   notice: Notice | null // the result of a sign-in, shown once it is done
 }
 
-let state: Session = { user: null, dialog: false, notice: null }
+let state: Session = { user: null, dialog: false, busy: false, notice: null }
 const listeners = new Set<() => void>()
 
 function set(next: Session) {
@@ -40,9 +41,12 @@ export function useSession(): Session {
   )
 }
 
-// Signing in closes the dialog.
-export const setUser = (user: CloudUser | null) => set({ ...state, user, dialog: user ? false : state.dialog })
-export const showNotice = (notice: Notice) => set({ ...state, notice })
+// Signing in closes the dialog, except while the first sync runs: it stays up with a loader until the result.
+export const setUser = (user: CloudUser | null) =>
+  set({ ...state, user, dialog: user && !state.busy ? false : state.dialog })
+export const setBusy = (busy: boolean) => set({ ...state, busy })
+// The result of a sign-in ends the wait and takes the dialog's place.
+export const showNotice = (notice: Notice) => set({ ...state, notice, busy: false, dialog: false })
 export const closeNotice = () => set({ ...state, notice: null })
 export const openSignIn = () => set({ ...state, dialog: true })
-export const closeSignIn = () => set({ ...state, dialog: false })
+export const closeSignIn = () => set({ ...state, dialog: false, busy: false })

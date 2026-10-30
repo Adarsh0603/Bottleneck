@@ -14,7 +14,7 @@ export interface TopicProgress {
 
 export type Progress = Record<string, TopicProgress>
 
-const KEY = 'bottleneck.progress.v1'
+const KEY = 'systemlands.progress.v1'
 const EMPTY: TopicProgress = { done: [], solved: [], updatedAt: 0 }
 
 export const topicProgress = (p: Progress, topic: string): TopicProgress => p[topic] ?? EMPTY

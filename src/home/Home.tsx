@@ -43,7 +43,7 @@ function Boat({ size }: { size: number }) {
 // One tile holding a single dot: only its shape is used, as a mask.
 const PEGS = "radial-gradient(circle, black 1.2px, transparent 1.6px)";
 
-const NOTE_KEY ="bottleneck.desktop-note";
+const NOTE_KEY ="systemlands.desktop-note";
 
 function readDismissed() {
   try {

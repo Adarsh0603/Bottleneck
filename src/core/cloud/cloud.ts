@@ -2,7 +2,7 @@ import { initializeApp } from 'firebase/app'
 import { GoogleAuthProvider, getAuth, onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth'
 import { doc, getDoc, getFirestore, setDoc } from 'firebase/firestore'
 import { allBuilds, mergeBuilds, onBuildsChange, parse as parseBuilds, replaceBuilds, whenBuildsLoaded } from '../build/saved'
-import { showNotice, type CloudUser } from './session'
+import { setBusy, showNotice, type CloudUser } from './session'
 import { currentProgress, mergeProgress, onProgressChange, parse as parseProgress, replaceProgress } from '../progress'
 
 // Sign in with Google and keep progress and builds in Firestore, one document
@@ -96,10 +96,12 @@ export function watchUser(onUser: (user: CloudUser | null) => void): () => void 
 
 export async function signIn() {
   announce = true
+  setBusy(true)
   try {
     await signInWithPopup(auth, new GoogleAuthProvider())
   } catch (e) {
     announce = false
+    setBusy(false)
     const code = (e as { code?: string }).code
     if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') return
     showNotice({ title: 'Sign in failed', body: 'Something went wrong signing in. Please try again.' })

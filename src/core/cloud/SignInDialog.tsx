@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { closeNotice, closeSignIn, useSession } from './session'
+import { closeNotice, closeSignIn, setBusy, showNotice, useSession } from './session'
 
 const GoogleG = () => (
   <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden>
@@ -13,7 +13,7 @@ const GoogleG = () => (
 // Opens from the header's Sign in button and the footer note: keep going in
 // this browser, or sign in to sync across devices.
 export default function SignInDialog() {
-  const { dialog, notice } = useSession()
+  const { dialog, notice, busy, user } = useSession()
 
   useEffect(() => {
     if (!dialog && !notice) return
@@ -51,7 +51,13 @@ export default function SignInDialog() {
     )
   }
   if (!dialog) return null
-  const google = () => void import('./cloud').then((m) => m.signIn())
+  // The wait starts at the click: loading the sign-in code, the popup, then the first sync.
+  const google = () => {
+    setBusy(true)
+    void import('./cloud')
+      .then((m) => m.signIn())
+      .catch(() => showNotice({ title: 'Sign in failed', body: 'Something went wrong signing in. Please try again.' }))
+  }
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={closeSignIn}>
       <div
@@ -70,12 +76,18 @@ export default function SignInDialog() {
         </p>
         <button
           onClick={google}
-          className="mt-4 flex h-10 w-full items-center justify-center gap-2 rounded-full bg-fg px-4 text-sm font-medium text-bg transition hover:opacity-85"
+          disabled={busy}
+          aria-busy={busy}
+          className="mt-4 flex h-10 w-full items-center justify-center gap-2 rounded-full bg-fg px-4 text-sm font-medium text-bg transition hover:opacity-85 disabled:cursor-wait disabled:opacity-70"
         >
-          <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white">
-            <GoogleG />
-          </span>
-          Sign in with Google
+          {busy ? (
+            <span aria-hidden className="h-4 w-4 animate-spin rounded-full border-2 border-bg border-t-transparent" />
+          ) : (
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white">
+              <GoogleG />
+            </span>
+          )}
+          {busy ? (user ? 'Syncing your progress…' : 'Signing in…') : 'Sign in with Google'}
         </button>
         <button
           onClick={closeSignIn}

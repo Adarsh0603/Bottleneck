@@ -1,6 +1,6 @@
 import { TOPICS } from '../topics/registry'
 
-// The projects on the realm map: interview-style systems, easy to hard. Each
+// The projects on the realm map: interview-style systems, easy to hard. The list is the road's order, with the AI isles last, after every expert project. Each
 // lists the concepts it needs, which link to the lessons.
 
 export type Tier = 0 | 1 | 2 | 3 | 4
@@ -63,13 +63,6 @@ export const PROJECTS: Project[] = [
   { id: 'payments', name: 'Payments', short: 'Payments', tier: 2, x: 380, y: 445, needs: ['Idempotency', 'Sagas', 'Circuit breakers', 'Consensus'] },
   { id: 'ride-sharing', name: 'Ride sharing', short: 'Rides', tier: 2, x: 230, y: 400, needs: ['Geospatial', 'Sharding', 'Pub/sub', 'Consensus'] },
   { id: 'twitter-timeline', name: 'Twitter timeline', short: 'Twitter', tier: 3, x: 540, y: 310, needs: ['Fan-out', 'Caching', 'Sharding', 'Message queues', 'Consistent hashing'] },
-  { id: 'doc-qa', name: 'Document Q&A', short: 'Doc Q&A', tier: 4, x: 1245, y: 395, needs: ['Embeddings and vector search', 'Chunking and retrieval', 'Caching'] },
-  { id: 'semantic-search', name: 'Semantic search', short: 'Vector', tier: 4, x: 1310, y: 465, needs: ['Embeddings and vector search', 'Sharding', 'Caching'] },
-  { id: 'llm-gateway', name: 'LLM gateway', short: 'Gateway', tier: 4, x: 1475, y: 460, needs: ['Rate limiting', 'Semantic caching', 'Circuit breakers', 'Message queues', 'Cost and latency budgets'] },
-  { id: 'support-agent', name: 'Support agent', short: 'Support', tier: 4, x: 1545, y: 395, needs: ['Agent loop and tools', 'Idempotency', 'Guardrails', 'Evals'] },
-  { id: 'coding-assistant', name: 'Coding assistant', short: 'Coder', tier: 4, x: 1470, y: 300, needs: ['Chunking and retrieval', 'Agent loop and tools', 'Sandboxing', 'Streaming'] },
-  { id: 'llm-serving', name: 'ChatGPT-style serving', short: 'Serving', tier: 4, x: 1400, y: 350, needs: ['LLM serving', 'Autoscaling', 'Message queues', 'Sharding', 'Streaming'] },
-  { id: 'multi-agent', name: 'Multi-agent workflow', short: 'Agents', tier: 4, x: 1320, y: 290, needs: ['Agent loop and tools', 'Sagas', 'Message queues', 'Evals', 'Observability'] },
   { id: 'youtube', name: 'YouTube', short: 'YouTube', tier: 3, x: 720, y: 355, needs: ['CDN', 'Autoscaling', 'Message queues', 'Caching', 'Adaptive streaming'] },
   { id: 'dropbox', name: 'Dropbox', short: 'Dropbox', tier: 3, x: 920, y: 355, needs: ['Chunking and dedupe', 'CDN', 'Sharding', 'Replication', 'Message queues'] },
   { id: 'whatsapp', name: 'WhatsApp', short: 'WhatsApp', tier: 3, x: 1060, y: 330, needs: ['Real-time messaging', 'Pub/sub', 'Replication', 'Idempotency', 'Sharding'] },
@@ -79,6 +72,13 @@ export const PROJECTS: Project[] = [
   { id: 'stripe', name: 'Stripe', short: 'Stripe', tier: 3, x: 530, y: 150, needs: ['Idempotency', 'Sagas', 'Circuit breakers', 'Consensus', 'Ledger design'] },
   { id: 'google-search', name: 'Google Search', short: 'Google', tier: 3, x: 640, y: 255, needs: ['Inverted index', 'Sharding', 'Caching', 'Bloom filters'] },
   { id: 'google-docs', name: 'Google Docs', short: 'Docs', tier: 3, x: 830, y: 232, needs: ['OT / CRDT', 'Real-time messaging', 'Consensus'] },
+  { id: 'doc-qa', name: 'Document Q&A', short: 'Doc Q&A', tier: 4, x: 1245, y: 395, needs: ['Embeddings and vector search', 'Chunking and retrieval', 'Caching'] },
+  { id: 'semantic-search', name: 'Semantic search', short: 'Vector', tier: 4, x: 1310, y: 465, needs: ['Embeddings and vector search', 'Sharding', 'Caching'] },
+  { id: 'llm-gateway', name: 'LLM gateway', short: 'Gateway', tier: 4, x: 1475, y: 460, needs: ['Rate limiting', 'Semantic caching', 'Circuit breakers', 'Message queues', 'Cost and latency budgets'] },
+  { id: 'support-agent', name: 'Support agent', short: 'Support', tier: 4, x: 1545, y: 395, needs: ['Agent loop and tools', 'Idempotency', 'Guardrails', 'Evals'] },
+  { id: 'coding-assistant', name: 'Coding assistant', short: 'Coder', tier: 4, x: 1470, y: 300, needs: ['Chunking and retrieval', 'Agent loop and tools', 'Sandboxing', 'Streaming'] },
+  { id: 'llm-serving', name: 'ChatGPT-style serving', short: 'Serving', tier: 4, x: 1400, y: 350, needs: ['LLM serving', 'Autoscaling', 'Message queues', 'Sharding', 'Streaming'] },
+  { id: 'multi-agent', name: 'Multi-agent workflow', short: 'Agents', tier: 4, x: 1320, y: 290, needs: ['Agent loop and tools', 'Sagas', 'Message queues', 'Evals', 'Observability'] },
 ]
 
 // A project's number: its place on the road, counted apart for the mainland (tiers 0-3) and the AI isles.

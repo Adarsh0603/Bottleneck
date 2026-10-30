@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { askConfirm } from "../core/ConfirmDialog";
 import { openSignIn, useSession } from "../core/cloud/session";
 import { clearAllBuilds } from "../core/build/saved";
@@ -13,11 +14,32 @@ import {
   topicNumber,
 } from "./shared";
 
+// The page header's height: the search bar sticks right under it.
+const BAR_TOP = 57;
+
+const has = (text: string, q: string) => text.toLowerCase().includes(q);
+
+// The chapters of a topic that the search words land in.
+const chapterHits = (t: TopicEntry, q: string) =>
+  q ? (t.chapters ?? []).filter((c) => has(c, q)) : [];
+
+const matches = (t: { title: string; pitch: string; chapters?: string[] }, q: string) =>
+  !q || has(t.title, q) || has(t.pitch, q) || (t.chapters ?? []).some((c) => has(c, q));
+
 // Every concept, by track. Open any of them whenever you like.
 export default function Toolbox() {
   const progress = useProgress();
   const next = nextTopic(progress);
   const { user } = useSession();
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const tracks = TRACKS.filter((track) => track.id !== "capstones")
+    .map((track) => ({
+      track,
+      topics: TOPICS.filter((t) => t.track === track.id && matches(t, q)),
+      planned: PLANNED.filter((t) => t.track === track.id && matches(t, q)),
+    }))
+    .filter((g) => g.topics.length + g.planned.length > 0);
 
   return (
     <div className="mt-14">
@@ -34,11 +56,48 @@ export default function Toolbox() {
         </h1>
       </div>
 
+      {/* Stays under the page header while the tracks scroll past: search topics and their chapters. */}
+      <div
+        className="sticky z-20 -mx-6 mt-6 border-b border-line bg-bg/90 px-6 py-2 backdrop-blur-md sm:-mx-10 sm:px-10 lg:-mx-16 lg:px-16"
+        style={{ top: BAR_TOP }}
+      >
+        <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap sm:gap-3">
+          <div className="relative w-full sm:w-72 sm:shrink-0">
+            <input
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Escape" && setQuery("")}
+              placeholder="Search topics and chapters"
+              aria-label="Search topics and chapters"
+              className="w-full rounded-full border border-line bg-bg px-4 py-1.5 text-sm outline-none transition focus:border-fg [&::-webkit-search-cancel-button]:appearance-none"
+            />
+            {query && (
+              <button
+                onClick={() => setQuery("")}
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full px-2 font-mono text-xs text-muted transition hover:text-fg"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {q && tracks.length === 0 && (
+        <p className="mt-12 text-center text-sm text-muted">
+          Nothing matches “{query.trim()}”. Try another word.
+        </p>
+      )}
+
       {/* The projects live on the map, so their track is left out here. */}
-      {TRACKS.filter((track) => track.id !== "capstones").map((track) => {
-        const topics = TOPICS.filter((t) => t.track === track.id);
+      {tracks.map(({ track, topics, planned }) => {
         return (
-          <section key={track.id} className="mt-12">
+          <section
+            key={track.id}
+            className="mt-12"
+          >
             <div className="mb-4 flex items-baseline gap-3">
               <h2 className="text-lg font-semibold tracking-tight">
                 {track.title}
@@ -53,10 +112,11 @@ export default function Toolbox() {
                   key={t.id}
                   topic={t}
                   isNext={t === next}
+                  hits={chapterHits(t, q)}
                   onOpen={() => openTopic(t)}
                 />
               ))}
-              {PLANNED.filter((t) => t.track === track.id).map((t) => (
+              {planned.map((t) => (
                 <div
                   key={t.id}
                   className="flex gap-3 rounded-2xl border border-dashed border-line bg-bg p-4"
@@ -128,10 +188,12 @@ export default function Toolbox() {
 function TopicCard({
   topic,
   isNext,
+  hits,
   onOpen,
 }: {
   topic: TopicEntry;
   isNext: boolean;
+  hits: string[];
   onOpen: () => void;
 }) {
   const progress = useProgress();
@@ -140,7 +202,7 @@ function TopicCard({
 
   if (status === "soon" || !topic.chapters) {
     return (
-      <div className="flex gap-3 rounded-2xl border cursor-pointer border-dashed border-line bg-bg p-4">
+      <div className="flex gap-3 rounded-2xl border border-dashed border-line bg-bg p-4">
         <div className="h-20 w-20 shrink-0 sm:h-24 sm:w-24">
           <Thumb id={topic.id} muted />
         </div>
@@ -191,6 +253,18 @@ function TopicCard({
         <p className="mt-1 flex-1 text-sm leading-6 text-muted">
           {topic.pitch}
         </p>
+        {hits.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {hits.map((c) => (
+              <span
+                key={c}
+                className="rounded-full border border-line px-2 py-0.5 font-mono text-xs"
+              >
+                {c}
+              </span>
+            ))}
+          </div>
+        )}
 
         <div className="mt-3 w-full text-right font-mono text-xs text-muted transition group-hover:text-fg">
           {actionLabel(status)} →

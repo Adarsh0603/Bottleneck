@@ -18,7 +18,7 @@ export interface BuildBackend {
   remove(key: string): Promise<void>
 }
 
-const KEY = 'bottleneck.builds.v1'
+const KEY = 'systemlands.builds.v1'
 
 // Anything unexpected in storage (old format, hand-edited) is ignored rather
 // than crashing the app.
