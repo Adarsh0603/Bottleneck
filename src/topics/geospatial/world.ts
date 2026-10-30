@@ -2,8 +2,9 @@
 // is (u, v), each from 0 to 1, and cars and riders stand on it.
 
 import type { V3 } from '../../core/types'
+import { TICKS_PER_SECOND } from '../../core/flow/time'
 
-export const TICKS_PER_SECOND = 20
+export { TICKS_PER_SECOND }
 export const MS_PER_TICK = 1000 / TICKS_PER_SECOND
 
 export const MAP = 9 // side of the floor, in scene units

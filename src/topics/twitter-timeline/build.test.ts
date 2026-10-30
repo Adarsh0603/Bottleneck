@@ -93,7 +93,7 @@ describe('where it breaks', () => {
     const run = new Running(SCALE_UP.assemble(GOOD, settings))
     for (let t = 0; t < 72 * 20 && SCALE_UP.requirements!.every((r) => r.read(run.flow, run.metrics()).ok); t++) run.step()
     const problem = SCALE_UP.problem?.(run.metrics(), GOOD, settings, run.flow)
-    expect(problem).toMatch(/given up on|lost|took|Opening|stayed|still showing/)
+    expect(problem).toMatch(/gave up|lost|took|Opening|stayed|still showing/)
     expect(problem).not.toMatch(/rebuild|collapse/i)
     expect(timelineOf.get(run.flow)).toBeDefined()
   })
@@ -141,14 +141,14 @@ describe('the hint after repeated failures', () => {
   it.each([
     ['celebrity written', GOOD, { ...GOOD_SET, line: 6 }, /celebrity/],
     ['mid accounts looked up', GOOD, { ...GOOD_SET, line: 1 }, /bigger accounts/],
-    ['full copies', GOOD, { ...GOOD_SET, holds: 0 }, /only the id/],
+    ['full copies', GOOD, { ...GOOD_SET, holds: 0 }, /delete must find and rewrite every copy/],
     ['too short', GOOD, { ...GOOD_SET, length: 200 }, /scrolls/],
     ['too long', GOOD, { ...GOOD_SET, length: 2000 }, /rebuild/],
     ['no queue', without(GOOD, 'a0'), GOOD_SET, /hold them/],
-    ['two workers', without(GOOD, 'w3'), GOOD_SET, /at least 3/],
+    ['two workers', without(GOOD, 'w3'), GOOD_SET, /A worker writes 120/],
     ['one cache', without(GOOD, 'a2'), GOOD_SET, /cache/],
     ['three shards', without(GOOD, 's4'), GOOD_SET, /shard answers 120/],
-    ['every open rebuilds', GOOD, { ...GOOD_SET, rebuild: 0 }, /one open rebuild/i],
+    ['every open rebuilds', GOOD, { ...GOOD_SET, rebuild: 0 }, /same reads hit the store again/],
   ])('names the cause: %s', (_name, placed, settings, says) => {
     expect(hint(placed as Placement, settings as Settings)).toMatch(says)
   })

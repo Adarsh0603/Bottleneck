@@ -13,8 +13,9 @@ import { FlowSim } from '../../core/flow/engine'
 import { Source, Worker } from '../../core/flow/nodes'
 import { pick, zipfTable } from '../../core/flow/popularity'
 import type { CachingState } from './types'
+import { TICKS_PER_SECOND } from '../../core/flow/time'
 
-export const TICKS_PER_SECOND = 20
+export { TICKS_PER_SECOND }
 export const MS_PER_TICK = 1000 / TICKS_PER_SECOND
 
 export const ITEMS = 40 // distinct things users can ask for

@@ -3,6 +3,7 @@ import { FlowSim, type FlowNode, type Job } from '../../core/flow/engine'
 import { Router, Source, Worker } from '../../core/flow/nodes'
 import { Fifo } from '../../core/flow/queue'
 import { pick, zipfTable } from '../../core/flow/popularity'
+import { SECOND, TICKS_PER_SECOND } from '../../core/flow/time'
 
 // The URL shortener, as a running system. Three kinds of traffic:
 //   users  → redirects (a short code in, the long link out). Most of the load.
@@ -11,8 +12,7 @@ import { pick, zipfTable } from '../../core/flow/popularity'
 // Every redirect also records a click. Creates need a fresh code, picked by
 // the app server with the scheme the learner chose.
 
-export const TICKS_PER_SECOND = 20
-export const SECOND = TICKS_PER_SECOND
+export { SECOND, TICKS_PER_SECOND }
 export const CODES = 200 // distinct short links people ask for
 const SLOW_AFTER = 2 * SECOND // a redirect slower than this is a failure: the person left
 const READ_WORK = 10

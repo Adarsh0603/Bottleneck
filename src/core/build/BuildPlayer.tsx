@@ -29,6 +29,7 @@ import { MS_PER_TICK, TICKS_PER_SECOND, startRun, type Running } from "./run";
 import {
   PIECE_NAMES,
   type BuildTask,
+  type Diagnosis,
   type PieceKind,
   type Placement,
   type Settings,
@@ -136,7 +137,7 @@ function Builder({
   const [pinnedOpen, setPinnedOpen] = useState(true);
   const [running, setRunning] = useState(!task.manualStart);
   // Set the moment a fail-fast task's requirement breaks: the run freezes there.
-  const [failure, setFailure] = useState<{ title: string; text: string; at: number; hint?: string } | null>(null);
+  const [failure, setFailure] = useState<{ title: string; text: string; at: number; hint?: string; diag?: Diagnosis; broke?: string } | null>(null);
   // Failed runs so far on this stage; from the fifth, the card also says why.
   const [fails, setFails] = useState(0);
   // The problem text the learner closed; it stays hidden until the text changes.
@@ -260,9 +261,17 @@ function Builder({
     const broken = task.requirements?.find((r) => !r.read(run.flow, m).ok);
     if (!broken) return;
     const { text } = broken.read(run.flow, m);
-    const why = task.problem?.(m, placed, settings, run.flow) ?? broken.says;
+    const diag = task.diagnose?.(m, placed, settings, run.flow) ?? undefined;
+    const why = diag?.because ?? task.problem?.(m, placed, settings, run.flow) ?? broken.says;
     const hint = fails >= HINT_AFTER ? task.hint?.(m, placed, settings, run.flow) : null;
-    setFailure({ title: broken.label, text: `${text}. ${why}`, at: tick, hint: hint ?? undefined });
+    setFailure({
+      title: broken.label,
+      text: diag ? why : `${text}. ${why}`,
+      at: tick,
+      hint: hint ?? undefined,
+      diag,
+      broke: broken.says.split('. ')[0],
+    });
     setFails(fails + 1);
     setRunning(false);
     play("drum");
@@ -278,8 +287,9 @@ function Builder({
             sum + (n instanceof Source ? n.rate * TICKS_PER_SECOND : 0),
           0,
         ));
+  // A task with a diagnosis speaks only when the build fails, never while it runs.
   const raw =
-    solved || tick === 0
+    solved || tick === 0 || task.diagnose
       ? null
       : (task.problem?.(m, placed, settings, run.flow) ?? null);
   // A problem only shows once it has lasted a moment, and never while the goal
@@ -293,6 +303,7 @@ function Builder({
       ? raw
       : null;
   const problem = failure ? failure.text : found;
+  const shownDiag = failure?.diag;
   // On a small screen the goal and title can be folded away to show more floor.
   const focus = compact && !detailsOpen && !solved;
   // On a phone a started run clears the panel down to the goal and the
@@ -619,7 +630,15 @@ function Builder({
       <div className="pr-6 font-mono text-xs uppercase tracking-widest text-danger">
         {failure ? `Build failed: ${failure.title}` : "What’s going wrong"}
       </div>
-      <p className="mt-1">{problem}</p>
+      {shownDiag ? (
+        <div className="mt-1 space-y-1">
+          {failure?.broke && <p>{failure.broke}.</p>}
+          <p>{shownDiag.because}</p>
+          <p className="font-medium">{shownDiag.look}</p>
+        </div>
+      ) : (
+        <p className="mt-1">{problem}</p>
+      )}
       {failure?.hint && (
         <p className="mt-1.5 border-t border-danger/30 pt-1.5">
           <span className="font-medium">Hint: </span>

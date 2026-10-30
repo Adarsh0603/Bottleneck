@@ -1,9 +1,10 @@
 import type { FlowSim } from '../flow/engine'
 import { Worker } from '../flow/nodes'
+import { TICKS_PER_SECOND } from '../flow/time'
 import { freshRng } from './day'
 import type { BuildMetrics, BuildTask, Placement, Settings } from './types'
 
-export const TICKS_PER_SECOND = 20
+export { TICKS_PER_SECOND }
 export const MS_PER_TICK = 1000 / TICKS_PER_SECOND
 const WINDOW = TICKS_PER_SECOND * 3
 const LATENCY_SAMPLES = 60

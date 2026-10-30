@@ -1,4 +1,6 @@
 import { FlowSim, type FlowNode, type Job } from '../../core/flow/engine'
+import { SECOND, TICKS_PER_SECOND } from '../../core/flow/time'
+import { Limiter, Net, Pool } from '../../core/flow/parts'
 
 // A chat app, as a running system. A message travels
 //   sender → (limiter) → gateway → chat service → store, and once it is stored
@@ -8,8 +10,7 @@ import { FlowSim, type FlowNode, type Job } from '../../core/flow/engine'
 // an ack (the sender sends again), and a gateway may crash (its phones all reconnect).
 // Every piece is optional, so a bad design shows how it fails.
 
-export const TICKS_PER_SECOND = 20
-export const SECOND = TICKS_PER_SECOND
+export { SECOND, TICKS_PER_SECOND }
 
 export type Kind = 'dm' | 'group' | 'big'
 // Recipients of one message of each kind. A real big group has far more; this stands for them.
@@ -90,56 +91,6 @@ interface Msg {
   counted: boolean
 }
 
-// Tells the system when something was thrown away on its way.
-class Net extends FlowSim {
-  onLoss?: (job: Job) => void
-  drop(job: Job, node: string) {
-    super.drop(job, node)
-    this.onLoss?.(job)
-  }
-}
-
-// Takes a few jobs at a time: a gateway or the store.
-class Pool implements FlowNode {
-  alive = true
-  active: Job[] = []
-  queue: Job[] = []
-  readonly key: string
-  private slots: number
-  private line: number
-  private done: (job: Job, sim: FlowSim) => void
-  refuse?: () => boolean
-  constructor(key: string, slots: number, line: number, done: (job: Job, sim: FlowSim) => void) {
-    this.key = key
-    this.slots = slots
-    this.line = line
-    this.done = done
-  }
-  receive(job: Job, sim: FlowSim) {
-    if (!this.alive || this.queue.length >= this.line || this.refuse?.()) return sim.drop(job, this.key)
-    job.remaining = job.work
-    this.queue.push(job)
-  }
-  process(sim: FlowSim) {
-    while (this.active.length < this.slots && this.queue.length) this.active.push(this.queue.shift()!)
-    const left: Job[] = []
-    for (const job of this.active) {
-      if (--job.remaining > 0) left.push(job)
-      else this.done(job, sim)
-    }
-    this.active = left
-  }
-  load() {
-    return this.active.length + this.queue.length
-  }
-  lose() {
-    const lost = [...this.active, ...this.queue]
-    this.active = []
-    this.queue = []
-    return lost
-  }
-}
-
 // The phones: they send, and send again when no ack comes.
 class Senders implements FlowNode {
   alive = true
@@ -177,29 +128,6 @@ class Receivers implements FlowNode {
   receive(job: Job, sim: FlowSim) {
     sim.complete(job)
     this.chat.reached(job, sim)
-  }
-}
-
-// Lets only so many messages a second through; the rest are turned away.
-class Limiter implements FlowNode {
-  alive = true
-  readonly key: string
-  private chat: Chat
-  private tokens = LIMIT_RATE
-  private last = 0
-  constructor(key: string, chat: Chat) {
-    this.key = key
-    this.chat = chat
-  }
-  receive(job: Job, sim: FlowSim) {
-    this.tokens = Math.min(LIMIT_RATE, this.tokens + ((sim.tick - this.last) * LIMIT_RATE) / SECOND)
-    this.last = sim.tick
-    if (this.tokens < 1) {
-      this.chat.tally.limited++
-      return sim.drop(job, this.key)
-    }
-    this.tokens--
-    this.chat.pass(job, this.key, sim)
   }
 }
 
@@ -323,7 +251,7 @@ export class Chat {
     }
     flow.add(new Senders(this))
     flow.add(new Receivers(this))
-    for (const key of cfg.limits) flow.add(new Limiter(key, this))
+    for (const key of cfg.limits) flow.add(new Limiter(key, LIMIT_RATE, () => this.tally.limited++, (job, sim) => this.pass(job, key, sim)))
     for (const key of cfg.gateways) {
       const gate = flow.add(new Pool(key, GATE_SLOTS, GATE_LINE, (job, sim) => this.passed(job, key, sim)))
       gate.refuse = () => this.storming()

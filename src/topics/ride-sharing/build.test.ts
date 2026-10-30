@@ -72,7 +72,7 @@ describe('where it breaks', () => {
     const run = new Running(SCALE_UP.assemble(GOOD, settings))
     for (let t = 0; t < 60 * 20 && !SCALE_UP.requirements?.some((r) => !r.read(run.flow, run.metrics()).ok); t++) run.step()
     const problem = SCALE_UP.problem?.(run.metrics(), GOOD, settings, run.flow)
-    expect(problem).toMatch(/Dispatch crashed with \d+ rides being matched\. \d+ of them were lost/)
+    expect(problem).toMatch(/Dispatch crashed with rides being matched\. Some of them were lost/)
     expect(problem).not.toMatch(/log|replay/i)
   })
   it('names the symptom, not the cause', () => {

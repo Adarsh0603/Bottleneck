@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '../../core/flow/time'
 // Where things stand on the floor, left to right:
 //
 //   Phone ──▶ Payments ──▶ Ledger
@@ -7,7 +8,7 @@
 
 export type Place = 'phone' | 'server' | 'ledger'
 
-export const TICKS_PER_SECOND = 20
+export { TICKS_PER_SECOND }
 export const MS_PER_TICK = 1000 / TICKS_PER_SECOND
 
 export const SPOT: Record<Place, { x: number; z: number }> = {

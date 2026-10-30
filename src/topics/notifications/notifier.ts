@@ -6,6 +6,7 @@ import { Provider } from '../../core/flow/provider'
 import { Fifo } from '../../core/flow/queue'
 import { Router, Source } from '../../core/flow/nodes'
 import { DeadLetters, DedupeStore, Sender } from '../../core/flow/sender'
+import { SECOND } from '../../core/flow/time'
 
 // The notification service, as a running system. Three kinds of message:
 //   otp    → login codes, by SMS. Someone is waiting on their phone.
@@ -14,7 +15,7 @@ import { DeadLetters, DedupeStore, Sender } from '../../core/flow/sender'
 // Each goes out through an outside provider we cannot change: it has its own
 // speed and rate limit, and it fails in its own ways.
 
-export const SECOND = 20
+export { SECOND }
 export const KINDS = ['otp', 'orders', 'promo'] as const
 export type Kind = (typeof KINDS)[number]
 export const CHANNEL: Record<Kind, string> = { otp: 'sms', orders: 'push', promo: 'email' }

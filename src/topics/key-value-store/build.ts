@@ -1,7 +1,7 @@
 import { createElement } from 'react'
-import { hintFromReview } from '../../core/build/hint'
+import { ORDER_LOOK, hintFromReview } from '../../core/build/hint'
 import { Tag } from '../../core/iso/primitives'
-import type { BuildTask, Placement, Requirement, Settings } from '../../core/build/types'
+import type { BuildTask, Diagnosis, Placement, Requirement, Settings } from '../../core/build/types'
 import type { FlowSim } from '../../core/flow/engine'
 import type { Capstone, Intro, Review } from '../../core/capstone/types'
 import { Kv, SECOND, type Config, type Events, type Phase } from './kv'
@@ -262,13 +262,13 @@ function common(): Pick<BuildTask, 'pinned' | 'manualStart' | 'rps' | 'shot' | '
 }
 
 // What the learner sees going wrong, in numbers. It says what happened, never why.
-function symptom(kv: Kv) {
+function symptom(kv: Kv): Diagnosis | null {
   const t = kv.tally
-  if (t.stale > STALE_LIMIT) return `${t.stale} read${t.stale > 1 ? 's' : ''} returned an older value than one written before. Hint: ask which nodes a read listens to, and how a value is judged to be the newest.`
-  if (kv.failShare() > FAIL_LIMIT) return `${t.failed} operations failed so far${t.limited ? `, ${t.limited} turned away by a rate limiter` : ''}. Hint: look at which nodes are overloaded or out of reach when they fail, and what the rest can do about it.`
-  if (kv.wait() > WAIT_LIMIT) return `Operations take ${kv.wait().toFixed(1)} s on average. Hint: are some nodes much busier than others? Look at how the keys are shared out.`
-  if ((kv.atRecovery ?? 0) > DIVERGED_LIMIT) return `${kv.atRecovery} copies were still out of date 5 seconds after a node came back. Hint: think about the writes it missed while it was away.`
-  if (kv.cfg.events.crash && kv.flow.tick >= T(70) && kv.diverged() > DIVERGED_LIMIT) return `${kv.diverged()} copies of keys are out of date.`
+  if (t.stale > STALE_LIMIT) return { because: 'Some reads returned an older value than one written before.', look: 'Which nodes does a read listen to, and how is a value judged to be the newest?' }
+  if (kv.failShare() > FAIL_LIMIT) return { because: `Some operations failed.${t.limited ? ' Some were turned away by a rate limiter.' : ''}`, look: 'Which nodes are overloaded or out of reach when operations fail, and what can the rest do about it?' }
+  if (kv.wait() > WAIT_LIMIT) return { because: 'Some operations are slow.', look: 'Are some nodes much busier than others? Look at how the keys are shared out.' }
+  if ((kv.atRecovery ?? 0) > DIVERGED_LIMIT) return { because: 'After a node came back, some copies were still out of date.', look: 'Think about the writes it missed while it was away.' }
+  if (kv.cfg.events.crash && kv.flow.tick >= T(70) && kv.diverged() > DIVERGED_LIMIT) return { because: 'Some copies of keys are out of date.', look: 'Think about the writes a node missed while it was away.' }
   return null
 }
 
@@ -289,14 +289,15 @@ export const FIRST_DESIGN: BuildTask = {
   ],
   requirements: [answering(FIRST_SETTLED)],
   assemble: (placed, settings, rng) => assemble(placed, settings, { phases: FIRST_PHASES, events: {}, hard: false }, rng),
-  problem(_m, raw, _settings, flow) {
+  diagnose(_m, raw, _settings, flow) {
     const kv = kvOf.get(flow)
     if (!kv) return null
     const l = layout(raw)
-    if (l.jam) return l.jam.why
+    if (l.jam) return { because: l.jam.why, look: ORDER_LOOK }
     return symptom(kv)
   },
-  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, ['Hash ring']),
+  problem: (m, raw, settings, flow) => FIRST_DESIGN.diagnose!(m, raw, settings, flow)?.because ?? null,
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, ['Hash ring'], false),
   check(_m, _raw, _settings, flow) {
     const kv = flow && kvOf.get(flow)
     if (!kv || flow.tick < FIRST_SETTLED) return false
@@ -326,14 +327,15 @@ export const SCALE_UP: BuildTask = {
   settings: SETTINGS,
   requirements: [answering(SCALE_SETTLED), fresh, agree],
   assemble: (placed, settings, rng) => assemble(placed, settings, { phases: SCALE_PHASES, events: EVENTS, hard: true }, rng),
-  problem(_m, raw, _settings, flow) {
+  diagnose(_m, raw, _settings, flow) {
     const kv = kvOf.get(flow)
     if (!kv) return null
     const l = layout(raw)
-    if (l.jam) return l.jam.why
+    if (l.jam) return { because: l.jam.why, look: ORDER_LOOK }
     return symptom(kv)
   },
-  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines),
+  problem: (m, raw, settings, flow) => SCALE_UP.diagnose!(m, raw, settings, flow)?.because ?? null,
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, undefined, false),
   check(_m, _raw, _settings, flow) {
     const kv = flow && kvOf.get(flow)
     if (!kv || flow.tick < SCALE_SETTLED) return false

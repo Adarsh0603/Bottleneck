@@ -1,7 +1,7 @@
 import { createElement } from 'react'
-import { hintFromReview } from '../../core/build/hint'
+import { ORDER_LOOK, hintFromReview } from '../../core/build/hint'
 import { Tag } from '../../core/iso/primitives'
-import type { BuildTask, Placement, Requirement, Settings } from '../../core/build/types'
+import type { BuildTask, Diagnosis, Placement, Requirement, Settings } from '../../core/build/types'
 import type { FlowSim } from '../../core/flow/engine'
 import type { Capstone, Intro, Review } from '../../core/capstone/types'
 import { Pay, SECOND, type Config, type Events, type LaneKind, type Phase } from './payments'
@@ -291,29 +291,29 @@ function common(): Pick<BuildTask, 'pinned' | 'manualStart' | 'rps' | 'shot' | '
 }
 
 // What the learner sees going wrong, in numbers. It says what happened, never why.
-function symptom(p: Pay) {
-  const s = (n: number) => (n === 1 ? '' : 's')
+function symptom(p: Pay): Diagnosis | null {
   const doubles = p.doubles()
-  if (doubles > 0) return `${doubles} customer${s(doubles)} charged twice so far.`
+  if (doubles > 0) return { because: 'Some customers were charged twice.', look: 'What happens if the same payment request arrives more than once?' }
   const orphans = p.orphans()
-  if (orphans > 0) return `${orphans} customer${s(orphans)} charged, with no order written down.`
+  if (orphans > 0) return { because: 'Some customers were charged, with no order written down.', look: 'Between charging the card and writing the order, what can go wrong?' }
   const failed = p.failed()
   const crash = p.crashLoss()
-  if (crash.lost > 0 && failed > FAIL_LIMIT) return `Checkout crashed with ${crash.hit} orders in progress. ${crash.lost} of them were lost, ${crash.charged} after the card was charged.`
-  if (failed > FAIL_LIMIT) return `${failed} shoppers turned away so far${p.limited ? `, ${p.limited} by a rate limiter` : ''}.`
+  if (crash.lost > 0 && failed > FAIL_LIMIT) return { because: `Checkout crashed with orders in progress. Some of them were lost${crash.charged > 0 ? ', some after the card was charged' : ''}.`, look: 'What is kept of an order in progress if the machine handling it disappears?' }
+  if (failed > FAIL_LIMIT) return { because: `Some shoppers were turned away.${p.limited ? ' Some were turned away by a rate limiter.' : ''}`, look: 'Which part is overloaded when shoppers arrive together?' }
   const late = p.late()
-  if (late > 0) return `${late} order${s(late)} still not charged after a minute.`
-  if (p.wait() > WAIT_LIMIT) return `Paying takes ${p.wait().toFixed(1)} s on average.`
+  if (late > 0) return { because: 'Some orders were still not charged after a minute.', look: 'Where do orders wait, and what is slow about the step after the wait?' }
+  if (p.wait() > WAIT_LIMIT) return { because: 'Paying is slow.', look: 'Which part does every payment pass through, and how busy is it?' }
   return null
 }
 
-function problem(_m: unknown, raw: Placement, _settings: Settings, flow: FlowSim) {
+function diagnose(_m: unknown, raw: Placement, _settings: Settings, flow: FlowSim): Diagnosis | null {
   const p = payOf.get(flow)
   if (!p) return null
   const l = layout(raw)
-  if (l.jam) return l.jam.why
+  if (l.jam) return { because: l.jam.why, look: ORDER_LOOK }
   return symptom(p)
 }
+const problem = (m: unknown, raw: Placement, settings: Settings, flow: FlowSim) => diagnose(m, raw, settings, flow)?.because ?? null
 
 // Once the traffic is over, every order must be finished.
 function done(p: Pay, tick: number, settled: number) {
@@ -339,8 +339,9 @@ export const FIRST_DESIGN: BuildTask = {
   watch: [{ kind: 'note', label: 'Orders saved', read: (flow) => ({ text: String(payOf.get(flow)?.savedCount() ?? 0), bad: false }) }],
   requirements: [once, matched, served(FIRST_SETTLED)],
   assemble: (placed, settings, rng) => assemble(placed, settings, { phases: FIRST_PHASES, events: {}, hard: false, dupes: 0.25, errRate: 0.06, lostRate: 0.04 }, rng),
+  diagnose,
   problem,
-  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, ['Idempotency key']),
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, ['Idempotency key'], false),
   check: (_m, _raw, _settings, flow) => {
     const p = flow && payOf.get(flow)
     return !!p && done(p, flow.tick, FIRST_SETTLED)
@@ -370,8 +371,9 @@ export const SCALE_UP: BuildTask = {
   watch: [{ kind: 'note', label: 'Orders saved', read: (flow) => ({ text: String(payOf.get(flow)?.savedCount() ?? 0), bad: false }) }],
   requirements: [once, matched, served(SCALE_SETTLED)],
   assemble: (placed, settings, rng) => assemble(placed, settings, { phases: SCALE_PHASES, events: EVENTS, hard: true, dupes: 0.12, errRate: 0.04, lostRate: 0.02 }, rng),
+  diagnose,
   problem,
-  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines),
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, undefined, false),
   check: (_m, _raw, _settings, flow) => {
     const p = flow && payOf.get(flow)
     return !!p && done(p, flow.tick, SCALE_SETTLED)

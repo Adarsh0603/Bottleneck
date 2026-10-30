@@ -1,4 +1,6 @@
 import { FlowSim, type FlowNode, type Job } from '../../core/flow/engine'
+import { SECOND, TICKS_PER_SECOND } from '../../core/flow/time'
+import { Jam, Limiter, Net, Pool, Queue } from '../../core/flow/parts'
 
 // The Twitter timeline, as a running system. Two paths share the same machines:
 //   an open:  reader → (timeline cache) → timeline server → tweet store, as lookups
@@ -11,8 +13,7 @@ import { FlowSim, type FlowNode, type Job } from '../../core/flow/engine'
 // A cache that loses its timelines sends every reader to the store to be rebuilt. If the
 // store turns lookups away and the readers retry at once, the retries pile on top.
 
-export const TICKS_PER_SECOND = 20
-export const SECOND = TICKS_PER_SECOND
+export { SECOND, TICKS_PER_SECOND }
 
 export type Kind = 'small' | 'mid' | 'star'
 export const KINDS: Kind[] = ['small', 'mid', 'star']
@@ -101,55 +102,6 @@ export interface Tally {
 
 const blank = (): Tally => ({ opened: 0, failed: 0, retried: 0, hits: 0, posted: 0, lost: 0, delivered: 0, starLost: 0, deleted: 0, delLost: 0, gone: 0, limited: 0 })
 
-// Tells the system when something was thrown away on its way.
-class Net extends FlowSim {
-  onLoss?: (job: Job) => void
-  drop(job: Job, node: string) {
-    super.drop(job, node)
-    this.onLoss?.(job)
-  }
-}
-
-// Workers that take a few at a time: a server or a shard of the store.
-class Pool implements FlowNode {
-  alive = true
-  active: Job[] = []
-  queue: Job[] = []
-  readonly key: string
-  private slots: number
-  private line: number
-  private done: (job: Job, sim: FlowSim) => void
-  constructor(key: string, slots: number, line: number, done: (job: Job, sim: FlowSim) => void) {
-    this.key = key
-    this.slots = slots
-    this.line = line
-    this.done = done
-  }
-  receive(job: Job, sim: FlowSim) {
-    if (!this.alive || this.queue.length >= this.line) return sim.drop(job, this.key)
-    job.remaining = job.work
-    this.queue.push(job)
-  }
-  process(sim: FlowSim) {
-    while (this.active.length < this.slots && this.queue.length) this.active.push(this.queue.shift()!)
-    const left: Job[] = []
-    for (const job of this.active) {
-      if (--job.remaining > 0) left.push(job)
-      else this.done(job, sim)
-    }
-    this.active = left
-  }
-  load() {
-    return this.active.length + this.queue.length
-  }
-  lose() {
-    const lost = [...this.active, ...this.queue]
-    this.active = []
-    this.queue = []
-    return lost
-  }
-}
-
 // Holds the timelines of the readers it is responsible for. Opens and writes share its slots.
 class TimelineCache extends Pool {
   readonly warm = new Set<number>() // readers whose timeline is here
@@ -195,71 +147,6 @@ class Traffic implements FlowNode {
       f.releaseRetries(sim)
       if (coldAt === sim.tick) f.wipe()
     } else if (stars.includes(sim.tick)) f.post(sim, 'star', false)
-  }
-}
-
-// A part standing where requests cannot get through.
-class Jam implements FlowNode {
-  alive = true
-  readonly key: string
-  constructor(key: string) {
-    this.key = key
-  }
-  receive(job: Job, sim: FlowSim) {
-    sim.drop(job, this.key)
-  }
-}
-
-// Lets only so many requests a second through; the rest are turned away.
-class Limiter implements FlowNode {
-  alive = true
-  readonly key: string
-  private feed: Timeline
-  private lane: 'read' | 'write'
-  private rate: number
-  private tokens: number
-  private last = 0
-  constructor(limit: Limit, feed: Timeline) {
-    this.key = limit.key
-    this.lane = limit.lane
-    this.rate = limit.rate
-    this.tokens = limit.rate
-    this.feed = feed
-  }
-  receive(job: Job, sim: FlowSim) {
-    this.tokens = Math.min(this.rate, this.tokens + ((sim.tick - this.last) * this.rate) / SECOND)
-    this.last = sim.tick
-    if (this.tokens < 1) {
-      this.feed.tally.limited++
-      return sim.drop(job, this.key)
-    }
-    this.tokens--
-    this.feed.pass(job, this.lane, this.key, sim)
-  }
-}
-
-// Holds tweets until a worker is free.
-class Queue implements FlowNode {
-  alive = true
-  jobs: Job[] = []
-  readonly key: string
-  private feed: Timeline
-  constructor(key: string, feed: Timeline) {
-    this.key = key
-    this.feed = feed
-  }
-  receive(job: Job, sim: FlowSim) {
-    if (this.jobs.length >= QUEUE_CAPACITY) return sim.drop(job, this.key)
-    this.jobs.push(job)
-  }
-  process(sim: FlowSim) {
-    for (const w of this.feed.fanouts) {
-      if (this.jobs.length === 0) break
-      if (w.alive && sim.pending(w) === 0) sim.forward(this.jobs.shift()!, this.key, w.key)
-    }
-  }
-  load() {
-    return this.jobs.length
   }
 }
 
@@ -352,7 +239,7 @@ export class Timeline {
     flow.add(new Traffic(this, true))
     flow.add(new Traffic(this, false))
     for (const l of cfg.limits ?? []) {
-      flow.add(new Limiter(l, this))
+      flow.add(new Limiter(l.key, l.rate, () => this.tally.limited++, (job, sim) => this.pass(job, l.lane, l.key, sim)))
       this.route[l.lane].push(l.key)
     }
     this.cacheKeys = cfg.caches
@@ -378,7 +265,7 @@ export class Timeline {
       for (const sv of cfg.servers) flow.link(sv, key, 6)
       for (const c of cfg.caches) flow.link(c, key, 6)
     }
-    if (cfg.queue) flow.add(cfg.jam?.includes(cfg.keys.queue) ? new Jam(cfg.keys.queue) : new Queue(cfg.keys.queue, this))
+    if (cfg.queue) flow.add(cfg.jam?.includes(cfg.keys.queue) ? new Jam(cfg.keys.queue) : new Queue(cfg.keys.queue, QUEUE_CAPACITY, () => this.fanouts))
     for (const key of cfg.workers) {
       const w = flow.add(new Fanout(key, this))
       this.fanouts.push(w)

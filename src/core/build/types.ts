@@ -107,6 +107,13 @@ export interface Requirement {
   read: (flow: FlowSim, m: BuildMetrics) => { text: string; ok: boolean }
 }
 
+// A build problem told as cause and pointer, not as numbers: why it broke, and which
+// part of the design to look at, without saying what to put there.
+export interface Diagnosis {
+  because: string
+  look: string
+}
+
 export interface BuildTask {
   title: string
   // A capstone's client brief: pinned on screen the whole time, not a popup.
@@ -169,6 +176,8 @@ export interface BuildTask {
   // Says what's going wrong with the build right now, if anything, so the
   // learner knows why it isn't working.
   problem?: (m: BuildMetrics, placed: Placement, settings: Settings, flow: FlowSim) => string | null
+  // The same, as cause + where to look. When set, the cards show it instead of `problem`.
+  diagnose?: (m: BuildMetrics, placed: Placement, settings: Settings, flow: FlowSim) => Diagnosis | null
   // Every run gets its own day (a little more traffic, a later restart), so a design
   // tuned to the exact numbers of one run fails the next. The task reads it from `rng`.
   freshDay?: boolean

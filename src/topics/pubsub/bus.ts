@@ -19,6 +19,7 @@
 import { FlowSim, type FlowNode, type Job } from '../../core/flow/engine'
 import { Log, Reader } from '../../core/flow/log'
 import { Source, Worker } from '../../core/flow/nodes'
+import { TICKS_PER_SECOND } from '../../core/flow/time'
 
 export type Team = 'email' | 'stats' | 'stock'
 export const TEAMS: Team[] = ['email', 'stats', 'stock']
@@ -29,7 +30,7 @@ export type Mode = 'queue' | 'topic' | 'stream'
 export type KeyBy = 'none' | 'order' | 'product'
 export type Commit = 'before' | 'after'
 
-export const TICKS_PER_SECOND = 20
+export { TICKS_PER_SECOND }
 export const PRODUCTS = 3
 export const MAX_PARTITIONS = 4
 

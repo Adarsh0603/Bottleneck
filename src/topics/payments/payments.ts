@@ -1,4 +1,6 @@
 import { FlowSim, type FlowNode, type Job } from '../../core/flow/engine'
+import { SECOND, TICKS_PER_SECOND } from '../../core/flow/time'
+import { Jam, Net, TokenBucket } from '../../core/flow/parts'
 
 // A checkout, as a running system. Every order is one or more clicks on Pay:
 //   shoppers → (limiter) → checkout → road → provider, which charges the card
@@ -8,8 +10,7 @@ import { FlowSim, type FlowNode, type Job } from '../../core/flow/engine'
 // The pieces are all optional, so a bad design shows how it fails: charged twice, charged
 // with no order, or no checkout at all.
 
-export const TICKS_PER_SECOND = 20
-export const SECOND = TICKS_PER_SECOND
+export { SECOND, TICKS_PER_SECOND }
 
 const SLOTS = 16 // calls checkout can have open at once
 const LINE = 20 // clicks that may wait for a free slot
@@ -84,15 +85,6 @@ interface Work {
   fromQueue: boolean
 }
 
-// Tells the system when something was thrown away on its way.
-class Net extends FlowSim {
-  onLoss?: (job: Job) => void
-  drop(job: Job, node: string) {
-    super.drop(job, node)
-    this.onLoss?.(job)
-  }
-}
-
 // Where requests start: shoppers pressing Pay.
 class Shoppers implements FlowNode {
   alive = true
@@ -112,43 +104,25 @@ class Shoppers implements FlowNode {
   }
 }
 
-// A part standing where requests cannot get through.
-class Jam implements FlowNode {
-  alive = true
-  readonly key: string
-  constructor(key: string) {
-    this.key = key
-  }
-  receive(job: Job, sim: FlowSim) {
-    sim.drop(job, this.key)
-  }
-}
-
 // Lets only so many requests a second through. In front of checkout it turns shoppers away;
 // on the road it makes a charge fail.
 class Cap implements FlowNode {
   alive = true
   readonly key: string
   private pay: Pay
-  private rate: number
-  private tokens: number
-  private last = 0
+  private bucket: TokenBucket
   private front: boolean
   constructor(key: string, rate: number, front: boolean, pay: Pay) {
     this.key = key
-    this.rate = rate
-    this.tokens = rate
+    this.bucket = new TokenBucket(rate)
     this.front = front
     this.pay = pay
   }
   receive(job: Job, sim: FlowSim) {
-    this.tokens = Math.min(this.rate, this.tokens + ((sim.tick - this.last) * this.rate) / SECOND)
-    this.last = sim.tick
-    if (this.tokens < 1) {
+    if (!this.bucket.take(sim.tick)) {
       this.pay.limited++
       return this.front ? sim.drop(job, this.key) : this.pay.answer(job, false, 'limiter', sim)
     }
-    this.tokens--
     if (this.front) sim.forward(job, this.key, this.pay.nextInFront(this.key))
     else this.pay.onward(job, this.key, sim)
   }

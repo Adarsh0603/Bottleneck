@@ -7,6 +7,7 @@
 
 import type { V3 } from '../../core/types'
 import { MAX_NODES, pointSpot } from './ring'
+import { TICKS_PER_SECOND } from '../../core/flow/time'
 
 export const USERS = { x: -8, z: 0 }
 export const APP = { x: -5, z: 0, w: 1.5, h: 1.5 }
@@ -14,7 +15,7 @@ export const RING = { x: 4.2, z: 0, r: 4 }
 export const DB = { x: RING.x, z: RING.z, r: 0.8, h: 1.5 }
 export const NODE = { r: 0.85, h: 1.3 }
 
-export const TICKS_PER_SECOND = 20
+export { TICKS_PER_SECOND }
 export const MS_PER_TICK = 1000 / TICKS_PER_SECOND
 
 export const nodeKey = (i: number) => `node-${i}`

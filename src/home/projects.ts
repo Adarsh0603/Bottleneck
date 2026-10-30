@@ -55,7 +55,7 @@ export const PROJECTS: Project[] = [
   { id: 'url-shortener', name: 'URL shortener', short: 'URL', tier: 0, x: 200, y: 690, needs: ['Caching', 'Replication', 'Sharding', 'Bloom filters', 'Rate limiting'] },
   { id: 'notifications', name: 'Notifications', short: 'Notify', tier: 0, x: 340, y: 652, needs: ['Message queues', 'Pub/sub', 'Rate limiting', 'Idempotency'] },
   { id: 'web-crawler', name: 'Web crawler', short: 'Crawler', tier: 0, x: 470, y: 685, needs: ['Message queues', 'Bloom filters', 'Rate limiting', 'Consistent hashing'] },
-  { id: 'news-feed', name: 'News feed', short: 'Feed', tier: 1, x: 630, y: 615, needs: ['Caching', 'Fan-out', 'Message queues', 'Sharding'] },
+  { id: 'news-feed', name: 'Social feed', short: 'Feed', tier: 1, x: 630, y: 615, needs: ['Caching', 'Fan-out', 'Message queues', 'Sharding'] },
   { id: 'chat', name: 'Chat app', short: 'Chat', tier: 1, x: 770, y: 572, needs: ['Real-time messaging', 'Pub/sub', 'Replication', 'Consistent hashing'] },
   { id: 'video-streaming', name: 'Video streaming', short: 'Video', tier: 1, x: 930, y: 560, needs: ['CDN', 'Message queues', 'Autoscaling', 'Caching'] },
   { id: 'key-value-store', name: 'Key-value store', short: 'KV store', tier: 1, x: 660, y: 492, needs: ['Consistent hashing', 'Replication', 'CAP', 'Consensus'] },

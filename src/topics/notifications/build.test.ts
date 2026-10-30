@@ -114,6 +114,17 @@ describe('clarity', () => {
     const run = runTo(decoys, 10)
     expect(SCALE_UP.problem!(run.metrics(), decoys, GOOD_SET, run.flow)).toMatch(/cache/i)
   })
+  it('tells the cause and where to look, without naming the fix', () => {
+    const run = runTo(without(GOOD, 'dead'), 30)
+    const d = SCALE_UP.diagnose!(run.metrics(), without(GOOD, 'dead'), GOOD_SET, run.flow)
+    if (d) {
+      expect(d.because.length).toBeGreaterThan(0)
+      expect(d.look).toMatch(/\?|\.$/)
+    }
+    const none = FIRST_DESIGN.diagnose!(new Running(FIRST_DESIGN.assemble({}, {})).metrics(), {}, {}, new Running(FIRST_DESIGN.assemble({}, {})).flow)
+    expect(none?.look).toMatch(/between the front door/)
+    expect(none?.because).not.toMatch(/\d/)
+  })
   it('lets any piece go on any pad', () => {
     for (const task of [FIRST_DESIGN, SCALE_UP])
       for (const pad of task.pads) for (const { kind } of task.toolbox) expect(canDrop(task, {}, pad.id, kind)).toBe(true)

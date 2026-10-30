@@ -1,4 +1,6 @@
 import { FlowSim, type FlowNode, type Job } from '../../core/flow/engine'
+import { SECOND, TICKS_PER_SECOND } from '../../core/flow/time'
+import { Jam, Limiter, Net, Pool, Queue } from '../../core/flow/parts'
 
 // A video site, as a running system. Two kinds of request:
 //   an upload: uploader → (limiter) → (queue) → transcoder → video store, one task per segment
@@ -7,8 +9,7 @@ import { FlowSim, type FlowNode, type Job } from '../../core/flow/engine'
 // The CDN has a few edges that keep the videos watched most, and may ask one shared cache
 // before it asks the origin. Every piece is optional, so a bad design shows how it fails.
 
-export const TICKS_PER_SECOND = 20
-export const SECOND = TICKS_PER_SECOND
+export { SECOND, TICKS_PER_SECOND }
 
 export const SEG_WORK = 30 // ticks one transcoder needs for one segment, in one quality
 export const FILM_SEGS = 12 // segments in a long film
@@ -109,55 +110,6 @@ interface Flight {
   waiters: Job[]
 }
 
-// Tells the system when something was thrown away on its way.
-class Net extends FlowSim {
-  onLoss?: (job: Job, node: string) => void
-  drop(job: Job, node: string) {
-    super.drop(job, node)
-    this.onLoss?.(job, node)
-  }
-}
-
-// Takes a few jobs at a time: the origin or the video store.
-class Pool implements FlowNode {
-  alive = true
-  active: Job[] = []
-  queue: Job[] = []
-  readonly key: string
-  private slots: number
-  private line: number
-  private done: (job: Job, sim: FlowSim) => void
-  constructor(key: string, slots: number, line: number, done: (job: Job, sim: FlowSim) => void) {
-    this.key = key
-    this.slots = slots
-    this.line = line
-    this.done = done
-  }
-  receive(job: Job, sim: FlowSim) {
-    if (!this.alive || this.queue.length >= this.line) return sim.drop(job, this.key)
-    job.remaining = job.work
-    this.queue.push(job)
-  }
-  process(sim: FlowSim) {
-    while (this.active.length < this.slots && this.queue.length) this.active.push(this.queue.shift()!)
-    const left: Job[] = []
-    for (const job of this.active) {
-      if (--job.remaining > 0) left.push(job)
-      else this.done(job, sim)
-    }
-    this.active = left
-  }
-  load() {
-    return this.active.length + this.queue.length
-  }
-  lose() {
-    const lost = [...this.active, ...this.queue]
-    this.active = []
-    this.queue = []
-    return lost
-  }
-}
-
 // The people uploading: they also run the script of the day.
 class Uploaders implements FlowNode {
   alive = true
@@ -192,75 +144,6 @@ class Viewers implements FlowNode {
     const phase = this.video.phaseAt(sim.tick)
     if (phase) this.due += phase.plays / SECOND
     for (; this.due >= 1; this.due--) this.video.play(sim)
-  }
-}
-
-// A part standing where requests cannot get through.
-class Jam implements FlowNode {
-  alive = true
-  readonly key: string
-  constructor(key: string) {
-    this.key = key
-  }
-  receive(job: Job, sim: FlowSim) {
-    sim.drop(job, this.key)
-  }
-}
-
-// Lets only so many requests a second through; the rest are turned away.
-class Limiter implements FlowNode {
-  alive = true
-  readonly key: string
-  private video: Video
-  private lane: 'upload' | 'watch'
-  private rate: number
-  private tokens: number
-  private last = 0
-  constructor(limit: Limit, video: Video) {
-    this.key = limit.key
-    this.lane = limit.lane
-    this.rate = limit.rate
-    this.tokens = limit.rate
-    this.video = video
-  }
-  receive(job: Job, sim: FlowSim) {
-    this.tokens = Math.min(this.rate, this.tokens + ((sim.tick - this.last) * this.rate) / SECOND)
-    this.last = sim.tick
-    if (this.tokens < 1) {
-      this.video.tally.limited++
-      return sim.drop(job, this.key)
-    }
-    this.tokens--
-    this.video.pass(job, this.lane, this.key, sim)
-  }
-}
-
-// Holds upload tasks until a transcoder is free.
-class Queue implements FlowNode {
-  alive = true
-  jobs: Job[] = []
-  readonly key: string
-  private video: Video
-  constructor(key: string, video: Video) {
-    this.key = key
-    this.video = video
-  }
-  receive(job: Job, sim: FlowSim) {
-    if (this.jobs.length >= QUEUE_CAPACITY) return sim.drop(job, this.key)
-    this.jobs.push(job)
-  }
-  // A task a crashed transcoder was holding goes back to the front.
-  requeue(job: Job) {
-    this.jobs.unshift(job)
-  }
-  process(sim: FlowSim) {
-    for (const w of this.video.fleet) {
-      if (this.jobs.length === 0) break
-      if (w.alive && sim.pending(w) === 0) sim.forward(this.jobs.shift()!, this.key, w.key)
-    }
-  }
-  load() {
-    return this.jobs.length
   }
 }
 
@@ -350,7 +233,7 @@ export class Video {
     flow.add(new Uploaders(this))
     flow.add(new Viewers(this))
     for (const l of cfg.limits) {
-      flow.add(new Limiter(l, this))
+      flow.add(new Limiter(l.key, l.rate, () => this.tally.limited++, (job, sim) => this.pass(job, l.lane, l.key, sim)))
       this.route[l.lane].push(l.key)
     }
     if (cfg.cdn) {
@@ -363,7 +246,7 @@ export class Video {
     if (cfg.queue) {
       this.route.upload.push(cfg.queue)
       if (cfg.jam?.includes(cfg.queue)) flow.add(new Jam(cfg.queue))
-      else this.queue = flow.add(new Queue(cfg.queue, this))
+      else this.queue = flow.add(new Queue(cfg.queue, QUEUE_CAPACITY, () => this.fleet))
     }
     const keys = [...cfg.encoders, ...(cfg.autoscale ? Array.from({ length: SCALE_MAX }, (_, i) => `spare-${i + 1}`) : [])]
     for (const key of keys) {

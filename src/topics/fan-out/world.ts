@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '../../core/flow/time'
 // Where things stand on the floor, left to right:
 //
 //   People you follow ──▶ Post store ◀──▶ Feed server ◀──▶ You
@@ -11,7 +12,7 @@
 export type AuthorPlace = 'a0' | 'a1' | 'a2' | 'a3'
 export type Place = AuthorPlace | 'store' | 'server' | 'reader' | 'inbox'
 
-export const TICKS_PER_SECOND = 20
+export { TICKS_PER_SECOND }
 export const MS_PER_TICK = 1000 / TICKS_PER_SECOND
 
 // People shown on the floor. The last spot is the celebrity, when there is one.

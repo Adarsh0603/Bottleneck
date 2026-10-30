@@ -2,7 +2,7 @@ import type { Reference } from '../../core/types'
 
 export const REFERENCE: Reference = {
   interview: [
-    'Fan-out is one event reaching many recipients. A news feed is the classic case: a post by one account must show up in the feed of every follower. The same idea sits behind push notifications, group chat, webhooks and pub/sub.',
+    'Fan-out is one event reaching many recipients. A social feed is the classic case: a post by one account must show up in the feed of every follower. The same idea sits behind push notifications, group chat, webhooks and pub/sub.',
     'Fan-out on read (pull) does nothing when a post is made. When a user opens the app, the server looks up the newest posts of every account they follow and merges them. Posting is one cheap write. Reading costs one lookup per followed account, so it gets slow as the follow count grows.',
     'Fan-out on write (push) copies each post into a feed or inbox for every follower when it is made, usually through a queue and a pool of workers. Reading is then one lookup in the reader’s own inbox, which is fast. Posting costs one write per follower. Since feeds are read far more often than they are written, this is the common choice.',
     'The celebrity problem breaks push. An account with millions of followers turns one post into millions of writes. The queue backs up and posts from everyone else are delayed behind it. Most of those followers are inactive, so much of the work is wasted.',

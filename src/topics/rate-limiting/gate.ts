@@ -18,9 +18,9 @@
 
 import { FlowSim, type FlowNode, type Job } from '../../core/flow/engine'
 import { Worker } from '../../core/flow/nodes'
+import { SECOND, TICKS_PER_SECOND } from '../../core/flow/time'
 
-export const TICKS_PER_SECOND = 20
-export const SECOND = TICKS_PER_SECOND
+export { SECOND, TICKS_PER_SECOND }
 
 export type Algo = 'fixed' | 'sliding' | 'token' | 'leaky'
 export const ALGO_NAMES: Record<Algo, string> = { fixed: 'Fixed window', sliding: 'Sliding window', token: 'Token bucket', leaky: 'Leaky bucket' }

@@ -6,6 +6,7 @@
 //   users ─▶ East database
 
 import type { V3 } from '../../core/types'
+import { TICKS_PER_SECOND } from '../../core/flow/time'
 
 export const REGIONS = ['west', 'east'] as const
 export type Region = (typeof REGIONS)[number]
@@ -18,7 +19,7 @@ export const DB_X = 0
 export const USERS_X = -7
 const ROW_Z: Record<Region, number> = { west: -4, east: 4 }
 
-export const TICKS_PER_SECOND = 20
+export { TICKS_PER_SECOND }
 export const MS_PER_TICK = 1000 / TICKS_PER_SECOND
 
 export const usersKey = (r: Region) => `users-${r}`

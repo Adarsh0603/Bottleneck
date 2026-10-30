@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '../../core/flow/time'
 // The autoscaling world: users on the left, a load balancer, and a row of six
 // server slots on the right. A slot is empty, booting, running or shutting
 // down. Traffic follows a pattern: steady, a whole day, or repeating spikes.
@@ -12,7 +13,7 @@ const SPACING = 1.7
 const FILL_ORDER = [2, 3, 1, 4, 0, 5]
 export const slotZ = (slot: number) => (FILL_ORDER[slot] - (MAX_SERVERS - 1) / 2) * SPACING
 
-export const TICKS_PER_SECOND = 20
+export { TICKS_PER_SECOND }
 export const MS_PER_TICK = 1000 / TICKS_PER_SECOND
 export const TRIP_TICKS = 8
 

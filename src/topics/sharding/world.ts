@@ -6,6 +6,7 @@
 //                                   shard 3
 
 import type { V3 } from '../../core/types'
+import { TICKS_PER_SECOND } from '../../core/flow/time'
 
 export const USERS = { x: -7.5, z: 0 }
 export const APP = { x: -3.8, z: 0, w: 1.5, h: 1.5 }
@@ -14,7 +15,7 @@ export const SHARD = { r: 0.75, h: 1.4 }
 export const MAX_SHARDS = 6
 const GAP = 2.3
 
-export const TICKS_PER_SECOND = 20
+export { TICKS_PER_SECOND }
 export const MS_PER_TICK = 1000 / TICKS_PER_SECOND
 
 export const shardKey = (i: number) => `shard-${i}`

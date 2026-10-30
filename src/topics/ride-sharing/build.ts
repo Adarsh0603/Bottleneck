@@ -1,7 +1,7 @@
 import { createElement } from 'react'
-import { hintFromReview } from '../../core/build/hint'
+import { ORDER_LOOK, hintFromReview } from '../../core/build/hint'
 import { Tag } from '../../core/iso/primitives'
-import type { BuildTask, Placement, Requirement, Settings } from '../../core/build/types'
+import type { BuildTask, Diagnosis, Placement, Requirement, Settings } from '../../core/build/types'
 import type { FlowSim } from '../../core/flow/engine'
 import type { Capstone, Intro, Review } from '../../core/capstone/types'
 import { Ride, SECOND, type Config, type Phase } from './ride'
@@ -274,27 +274,27 @@ function common(): Pick<BuildTask, 'pinned' | 'manualStart' | 'rps' | 'shot' | '
 }
 
 // What the learner sees going wrong, in numbers. It says what happened, never why.
-function symptom(r: Ride) {
-  const s = (n: number) => (n === 1 ? '' : 's')
+function symptom(r: Ride): Diagnosis | null {
   const doubles = r.doubles()
-  if (doubles > 0) return `${doubles} rider${s(doubles)} sent a car that was already on its way to someone else.`
+  if (doubles > 0) return { because: 'Some riders were sent a car that was already on its way to someone else.', look: 'Two riders can ask for the same car at nearly the same moment. What decides who gets it?' }
   const lag = r.lag()
-  if (lag > LAG_LIMIT) return `The cars on the map are ${lag.toFixed(1)} s old, and the gap keeps growing.`
+  if (lag > LAG_LIMIT) return { because: 'The cars on the map are out of date, and getting more so.', look: 'How many driver pings arrive, and what has to handle each one?' }
   const failed = r.failed()
   const crash = r.crashLoss()
-  if (crash.lost > 0 && failed > FAIL_LIMIT) return `Dispatch crashed with ${crash.hit} rides being matched. ${crash.lost} of them were lost.`
-  if (failed > FAIL_LIMIT) return `${failed} riders gave up or were turned away so far${r.limited ? `, ${r.limited} by a rate limiter` : ''}.`
-  if (r.wait() > WAIT_LIMIT) return `Finding a car takes ${r.wait().toFixed(1)} s on average.`
+  if (crash.lost > 0 && failed > FAIL_LIMIT) return { because: 'Dispatch crashed with rides being matched. Some of them were lost.', look: 'What is kept of a ride being matched if the machine handling it disappears?' }
+  if (failed > FAIL_LIMIT) return { because: `Some riders gave up or were turned away.${r.limited ? ' Some were turned away by a rate limiter.' : ''}`, look: 'Which part is overloaded when requests arrive?' }
+  if (r.wait() > WAIT_LIMIT) return { because: 'Finding a car is slow.', look: 'Which step does every ride request wait on?' }
   return null
 }
 
-function problem(_m: unknown, raw: Placement, _settings: Settings, flow: FlowSim) {
+function diagnose(_m: unknown, raw: Placement, _settings: Settings, flow: FlowSim): Diagnosis | null {
   const r = rideOf.get(flow)
   if (!r) return null
   const l = layout(raw)
-  if (l.jam) return l.jam.why
+  if (l.jam) return { because: l.jam.why, look: ORDER_LOOK }
   return symptom(r)
 }
+const problem = (m: unknown, raw: Placement, settings: Settings, flow: FlowSim) => diagnose(m, raw, settings, flow)?.because ?? null
 
 // Once the traffic is over, every rider must have a car.
 function done(r: Ride, tick: number, settled: number) {
@@ -323,8 +323,9 @@ export const FIRST_DESIGN: BuildTask = {
   watch: [tripsSaved],
   requirements: [oneCar, fresh, matched(FIRST_SETTLED)],
   assemble: (placed, settings, rng) => assemble(placed, settings, { phases: FIRST_PHASES, hard: false }, rng),
+  diagnose,
   problem,
-  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, ['Driver pings']),
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, ['Driver pings'], false),
   check: (_m, _raw, _settings, flow) => {
     const r = flow && rideOf.get(flow)
     return !!r && done(r, flow.tick, FIRST_SETTLED)
@@ -356,8 +357,9 @@ export const SCALE_UP: BuildTask = {
   watch: [tripsSaved],
   requirements: [oneCar, fresh, matched(SCALE_SETTLED)],
   assemble: (placed, settings, rng) => assemble(placed, settings, { phases: SCALE_PHASES, crash: CRASH, hard: true }, rng),
+  diagnose,
   problem,
-  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines),
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, undefined, false),
   check: (_m, _raw, _settings, flow) => {
     const r = flow && rideOf.get(flow)
     return !!r && done(r, flow.tick, SCALE_SETTLED)

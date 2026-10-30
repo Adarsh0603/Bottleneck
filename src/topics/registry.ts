@@ -366,7 +366,7 @@ export const TOPICS: TopicEntry[] = [
   },
   {
     id: 'news-feed',
-    title: 'News feed',
+    title: 'Social feed',
     track: 'capstones',
     pitch: 'Fan out posts to millions of followers.',
     chapters: [...NEWS_FEED.stages],

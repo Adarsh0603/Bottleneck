@@ -1,5 +1,5 @@
 import { createElement } from 'react'
-import { hintFromReview } from '../../core/build/hint'
+import { ORDER_LOOK, hintFromReview } from '../../core/build/hint'
 import { Tag } from '../../core/iso/primitives'
 import { PIECE_NAMES } from '../../core/build/types'
 import type { BuildTask, Placement, Requirement, Settings } from '../../core/build/types'
@@ -182,6 +182,12 @@ function missedWhy(n: Notifier, settled: boolean) {
   return bits.length ? `Missed: ${bits.join(', ')}.${where}` : null
 }
 
+// When no sharper cause fits: say so plainly and send the learner to watch where messages wait or drop.
+const missedDiagnosis = (missing: string | null) =>
+  missing
+    ? { because: 'Some messages did not arrive in time.', look: 'Watch where messages pile up or get turned away, and ask what that part is missing.' }
+    : null
+
 // The checks a finished design must pass. Shown live; the win needs all green.
 const arrives = (kind: Kind, label: string, limit: number, settledAt: number): Requirement => ({
   label,
@@ -305,18 +311,19 @@ export const FIRST_DESIGN: BuildTask = {
   watch: [waiting],
   requirements: [arrives('otp', 'Login codes', 2, Infinity), arrives('orders', 'Order updates', 2, Infinity), arrives('promo', 'Marketing', 2, Infinity)],
   assemble: (placed, settings, rng) => assemble(placed, settings, FIRST_PROFILE, rng),
-  problem(_m, raw, settings, flow) {
+  diagnose(_m, raw, settings, flow) {
     const n = notifierOf.get(flow)
     if (!n) return null
     const { placed, jam } = layout(raw)
-    if (jam) return jam.why
+    if (jam) return { because: jam.why, look: ORDER_LOOK }
     const { attempts } = chosen(settings)
-    if (!placed.q) return 'Messages are being turned away at the front door: nothing holds a message while the providers are busy.'
-    if (placedSenders(placed).length === 0) return 'Messages are piling up in the queue and nobody is sending them.'
-    if (attempts === 1 && KINDS.some((k) => n.lostOf(k) > 1)) return 'Providers drop about 1 call in 7, and with one try every dropped call is a message lost.'
-    return missedWhy(n, false)
+    if (!placed.q) return { because: 'Messages are turned away at the front door. Nothing holds a message while the providers are busy.', look: 'What sits between the front door and the providers when a provider is slow?' }
+    if (placedSenders(placed).length === 0) return { because: 'Messages are waiting and nothing is taking them out.', look: 'Who makes the actual calls to the providers?' }
+    if (attempts === 1 && KINDS.some((k) => n.lostOf(k) > 1)) return { because: 'Providers sometimes drop a call. With a single try, every dropped call is a message lost.', look: 'What should a sender do when a call fails?' }
+    return missedDiagnosis(missedWhy(n, false))
   },
-  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, ['Intake', 'Senders', 'Failed calls']),
+  problem: (m, raw, settings, flow) => FIRST_DESIGN.diagnose!(m, raw, settings, flow)?.because ?? null,
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, ['Intake', 'Senders', 'Failed calls'], false),
   check(_m, raw, _settings, flow) {
     const { placed, jam } = layout(raw)
     const n = flow && notifierOf.get(flow)
@@ -370,33 +377,32 @@ export const SCALE_UP: BuildTask = {
     sentOnce(),
   ],
   assemble: (placed, settings, rng) => assemble(placed, settings, SCALE_PROFILE, rng),
-  problem(_m, raw, settings, flow) {
+  diagnose(_m, raw, settings, flow) {
     const n = notifierOf.get(flow)
     if (!n) return null
     const { placed, jam } = layout(raw)
-    if (jam) return jam.why
+    if (jam) return { because: jam.why, look: ORDER_LOOK }
     const tick = flow.tick
     const { attempts, lanes, pace } = chosen(settings)
     const f = n.flow
     const senders = placedSenders(placed).length
-    if (!placed.q || senders === 0) return 'Messages have nowhere to wait, or nothing to send them.'
+    if (!placed.q || senders === 0) return { because: 'Messages have nowhere to wait, or nothing to send them.', look: 'Is there a place for messages to wait, and someone to take them out?' }
     if (n.duplicates > 0) {
-      if (!placed.dedupe && attempts > 1) return 'The SMS provider sent the text but its answer was lost. The sender thought it failed and sent it again, so people got two.'
-      if (!placed.dedupe) return 'People got the same text twice.'
+      if (!placed.dedupe && attempts > 1) return { because: 'A provider sent the text but its answer was lost. The sender thought it failed and sent it again.', look: 'What lets the system know a message already went out before it sends it again?' }
+      if (!placed.dedupe) return { because: 'People got the same text twice.', look: 'What remembers what was already sent?' }
     }
-    if (tick >= T(6) && missed(n, 'otp', false) > 5 && !lanes) return 'Login codes are stuck behind the marketing blast in the same line. Someone waiting at a login screen should never queue behind an email campaign.'
-    if ((f.lostAt.q ?? 0) > 0 && f.lost.promo > 8) {
-      if (!placed.gate) return 'The blast arrives faster than the email provider takes it, and the queue overflows.'
-    }
-    if (placed.gate && pace > 12 && n.providers.email.turnedAway > 5) return `The email provider takes about 12 a second and you are releasing ${pace}. It turns the extra away, and every turned-away call is retried.`
-    if (placed.gate && pace < 6 && tick >= T(40) && n.flow.node(n.keys.gate)!.load!() > 20) return `Marketing is released at ${pace} a second. The blast will take over a minute to clear.`
-    if (tick >= T(24) && n.providers.push.down && attempts <= 3 && !placed.dead && missed(n, 'orders', false) > 2) return 'The push provider is down and the sender ran out of tries before it came back. With nowhere to park them, those order updates are lost.'
-    if (senders < 3 && tick >= T(8) && (n.queue?.load() ?? 0) > 30) return 'The senders cannot keep up. Each waits on its provider with a call open.'
-    if (decoyOn(raw, 'cache')) return 'A cache remembers answers to repeated questions. Every notification is different, so it holds nothing useful.'
-    if (decoyOn(raw, 'balancer')) return 'A load balancer spreads requests over identical servers. Here the queue already hands work to the senders, so it does nothing.'
-    return missedWhy(n, true)
+    if (tick >= T(6) && missed(n, 'otp', false) > 5 && !lanes) return { because: 'Login codes are waiting behind the marketing blast in the same line.', look: 'Should every kind of message wait in the same line? Think about who is watching the clock.' }
+    if ((f.lostAt.q ?? 0) > 0 && f.lost.promo > 8 && !placed.gate) return { because: 'The blast arrives faster than the email provider takes it, and the queue overflows.', look: 'Can anything slow marketing down before it reaches the queue?' }
+    if (placed.gate && pace > 12 && n.providers.email.turnedAway > 5) return { because: 'Marketing is released faster than the email provider accepts. It turns the extra away, and each turned-away call is retried.', look: 'Compare the marketing pace with how fast the email provider takes messages.' }
+    if (placed.gate && pace < 6 && tick >= T(40) && n.flow.node(n.keys.gate)!.load!() > 20) return { because: 'Marketing is released so slowly that the blast is still being sent long after the deadline.', look: 'Compare the marketing pace with how fast the email provider takes messages.' }
+    if (tick >= T(24) && n.providers.push.down && attempts <= 3 && !placed.dead && missed(n, 'orders', false) > 2) return { because: 'The push provider was down and the sender ran out of tries before it came back. Those order updates went nowhere.', look: 'What happens to a message after its last try?' }
+    if (senders < 3 && tick >= T(8) && (n.queue?.load() ?? 0) > 30) return { because: 'The senders cannot keep up. Each waits on its provider with a call open.', look: 'How many messages can be in flight to a slow provider at once?' }
+    if (decoyOn(raw, 'cache')) return { because: 'A cache remembers answers to repeated questions. Every notification is different, so it holds nothing useful.', look: 'Which piece on the board is not helping this system?' }
+    if (decoyOn(raw, 'balancer')) return { because: 'A load balancer spreads requests over identical servers. Here the queue already hands work to the senders, so it does nothing.', look: 'Which piece on the board is not helping this system?' }
+    return missedDiagnosis(missedWhy(n, true))
   },
-  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines),
+  problem: (m, raw, settings, flow) => SCALE_UP.diagnose!(m, raw, settings, flow)?.because ?? null,
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, undefined, false),
   check(_m, _placed, _settings, flow) {
     const n = flow && notifierOf.get(flow)
     if (!n || flow.tick < SCALE_SETTLED) return false

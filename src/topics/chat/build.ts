@@ -1,7 +1,7 @@
 import { createElement } from 'react'
-import { hintFromReview } from '../../core/build/hint'
+import { ORDER_LOOK, hintFromReview } from '../../core/build/hint'
 import { Tag } from '../../core/iso/primitives'
-import type { BuildTask, Placement, Requirement, Settings } from '../../core/build/types'
+import type { BuildTask, Diagnosis, Placement, Requirement, Settings } from '../../core/build/types'
 import type { FlowSim } from '../../core/flow/engine'
 import type { Capstone, Intro, Review } from '../../core/capstone/types'
 import { CONN_CAP, Chat, SECOND, type Phase } from './chat'
@@ -245,14 +245,14 @@ const WATCH: BuildTask['watch'] = [
 ]
 
 // What the learner sees going wrong, in numbers. It says what happened, never why.
-function symptom(c: Chat) {
+function symptom(c: Chat): Diagnosis | null {
   const t = c.tally
-  if (c.longestWait > WAIT_LIMIT) return `${Math.round(c.waiting)} phones could not connect for over ${WAIT_LIMIT} seconds.`
-  if (t.lost > 0) return `${t.lost} message${t.lost > 1 ? 's' : ''} lost so far${t.limited ? `, ${t.limited} turned away by a rate limiter` : ''}.`
-  if (t.missed > 0) return `${t.missed} message${t.missed > 1 ? 's' : ''} did not reach everyone they were sent to.`
-  if (t.duplicates > 0) return `${t.duplicates} message${t.duplicates > 1 ? 's' : ''} showed up twice.`
-  if (t.misordered > 0) return `${t.misordered} message${t.misordered > 1 ? 's' : ''} arrived before one sent earlier.`
-  if (c.slowest() > FRESH_LIMIT) return `A message took ${c.slowest().toFixed(1)} s to arrive. ${c.backlog()} writes waiting.`
+  if (c.longestWait > WAIT_LIMIT) return { because: 'Some phones could not connect for too long.', look: 'Follow what happens to the phones a gateway carries when the load rises or a gateway crashes.' }
+  if (t.lost > 0) return { because: `Some messages were lost.${t.limited ? ' Some were turned away by a rate limiter.' : ''}`, look: 'Follow one message from the sender. What holds it when the next step is busy or away?' }
+  if (t.missed > 0) return { because: 'Some messages did not reach everyone they were sent to.', look: 'The sender and the recipient may be connected to different places. How does a message get from one to the other?' }
+  if (t.duplicates > 0) return { because: 'Some messages showed up twice.', look: 'What happens when the phone never hears that its message arrived?' }
+  if (t.misordered > 0) return { because: 'Some messages arrived before ones sent earlier.', look: 'Messages can take different routes. What tells the phone where each one belongs?' }
+  if (c.slowest() > FRESH_LIMIT) return { because: 'Messages are arriving too slowly.', look: 'Where are writes waiting, and what are they waiting for?' }
   return null
 }
 
@@ -276,11 +276,12 @@ export const FIRST_DESIGN: BuildTask = {
   watch: WATCH,
   requirements: [online(), messages, fast],
   assemble: (placed, settings, rng) => assemble(placed, settings, { phases: FIRST_PHASES, bigs: [], hard: false }, rng),
-  problem(_m, _raw, _settings, flow) {
+  diagnose(_m, _raw, _settings, flow) {
     const c = chatOf.get(flow)
     return c ? symptom(c) : null
   },
-  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, ['Gateways', 'Pub/sub topic']),
+  problem: (m, raw, settings, flow) => FIRST_DESIGN.diagnose!(m, raw, settings, flow)?.because ?? null,
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, ['Gateways', 'Pub/sub topic'], false),
   check(_m, _raw, _settings, flow) {
     const c = flow && chatOf.get(flow)
     return !!c && flow.tick >= FIRST_SETTLED && passed(c, false)
@@ -312,11 +313,12 @@ export const SCALE_UP: BuildTask = {
   watch: WATCH,
   requirements: [online(), messages, fast, once, inOrder],
   assemble: (placed, settings, rng) => assemble(placed, settings, { phases: SCALE_PHASES, bigs: BIGS, hard: true }, rng),
-  problem(_m, _raw, _settings, flow) {
+  diagnose(_m, _raw, _settings, flow) {
     const c = chatOf.get(flow)
     return c ? symptom(c) : null
   },
-  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines),
+  problem: (m, raw, settings, flow) => SCALE_UP.diagnose!(m, raw, settings, flow)?.because ?? null,
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, undefined, false),
   check(_m, _raw, _settings, flow) {
     const c = flow && chatOf.get(flow)
     return !!c && flow.tick >= SCALE_SETTLED && passed(c, true)

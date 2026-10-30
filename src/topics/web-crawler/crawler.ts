@@ -1,5 +1,6 @@
 import { FlowSim, type FlowNode, type Job } from '../../core/flow/engine'
 import { Worker } from '../../core/flow/nodes'
+import { SECOND, TICKS_PER_SECOND } from '../../core/flow/time'
 
 // The web crawler, as a running system. URLs are the requests:
 //   seeds → seen-set ("have I met this one?") → frontier (the to-do list)
@@ -7,8 +8,7 @@ import { Worker } from '../../core/flow/nodes'
 // Every page a fetcher downloads lists links; each link goes back to the seen-set.
 // The pieces are all optional, so a bad design shows how it fails.
 
-export const TICKS_PER_SECOND = 20
-export const SECOND = TICKS_PER_SECOND
+export { SECOND, TICKS_PER_SECOND }
 const FETCH_WORK = 30 // a page takes a second and a half to download
 const ROBOTS_WORK = 8 // reading a site's robots.txt the first time
 const SLOTS = 4

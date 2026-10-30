@@ -20,9 +20,9 @@
 import { FlowSim, type FlowNode, type Job } from '../../core/flow/engine'
 import { Worker } from '../../core/flow/nodes'
 import type { BreakerState } from '../../core/build/pieces'
+import { SECOND, TICKS_PER_SECOND } from '../../core/flow/time'
 
-export const TICKS_PER_SECOND = 20
-export const SECOND = TICKS_PER_SECOND
+export { SECOND, TICKS_PER_SECOND }
 
 export type Dep = 'pay' | 'rev'
 export type Mode = 'ok' | 'slow' | 'mixed' | 'blip' | 'outage' | 'down'

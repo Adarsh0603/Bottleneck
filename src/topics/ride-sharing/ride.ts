@@ -1,4 +1,5 @@
 import { FlowSim, type FlowNode, type Job } from '../../core/flow/engine'
+import { SECOND, TICKS_PER_SECOND } from '../../core/flow/time'
 
 // A ride-hailing service, as a running system. Two streams run at once:
 //   drivers → (road) → live map or trips database: a location ping every few seconds, thousands a second
@@ -6,8 +7,7 @@ import { FlowSim, type FlowNode, type Job } from '../../core/flow/engine'
 // Every piece is optional, so a bad design shows how it fails: a stale map, a hot city centre,
 // two riders sent the same car, or requests lost when dispatch crashes.
 
-export const TICKS_PER_SECOND = 20
-export const SECOND = TICKS_PER_SECOND
+export { SECOND, TICKS_PER_SECOND }
 
 const SERVE = 8 // lookups a second one map shard answers
 const OFFER = SECOND // ticks a driver takes to answer an offer

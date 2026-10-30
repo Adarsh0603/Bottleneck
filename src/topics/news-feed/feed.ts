@@ -1,14 +1,15 @@
 import { FlowSim, type FlowNode, type Job } from '../../core/flow/engine'
+import { SECOND, TICKS_PER_SECOND } from '../../core/flow/time'
+import { Jam, Limiter, Net, Pool, Queue } from '../../core/flow/parts'
 
-// The news feed, as a running system. Two kinds of request:
+// The social feed, as a running system. Two kinds of request:
 //   an open:  reader → (cache) → feed server → feed store, which answers with lookups
 //   a post:   writer → (queue) → fan-out worker → feed store, as one write per follower
 // Accounts come in three sizes: small, mid and a celebrity. A cutoff decides which
 // sizes are looked up when a feed opens; the rest are copied into every follower's
 // inbox when they post. The pieces are all optional, so a bad design shows how it fails.
 
-export const TICKS_PER_SECOND = 20
-export const SECOND = TICKS_PER_SECOND
+export { SECOND, TICKS_PER_SECOND }
 
 export type Kind = 'small' | 'mid' | 'star'
 export const KINDS: Kind[] = ['small', 'mid', 'star']
@@ -76,55 +77,6 @@ export interface Tally {
 
 const blank = (): Tally => ({ opened: 0, failed: 0, hits: 0, posted: 0, lost: 0, delivered: 0, starLost: 0, limited: 0 })
 
-// Tells the system when something was thrown away on its way.
-class Net extends FlowSim {
-  onLoss?: (job: Job) => void
-  drop(job: Job, node: string) {
-    super.drop(job, node)
-    this.onLoss?.(job)
-  }
-}
-
-// Workers that take a few at a time: a server or a shard of the store.
-class Pool implements FlowNode {
-  alive = true
-  active: Job[] = []
-  queue: Job[] = []
-  readonly key: string
-  private slots: number
-  private line: number
-  private done: (job: Job, sim: FlowSim) => void
-  constructor(key: string, slots: number, line: number, done: (job: Job, sim: FlowSim) => void) {
-    this.key = key
-    this.slots = slots
-    this.line = line
-    this.done = done
-  }
-  receive(job: Job, sim: FlowSim) {
-    if (!this.alive || this.queue.length >= this.line) return sim.drop(job, this.key)
-    job.remaining = job.work
-    this.queue.push(job)
-  }
-  process(sim: FlowSim) {
-    while (this.active.length < this.slots && this.queue.length) this.active.push(this.queue.shift()!)
-    const left: Job[] = []
-    for (const job of this.active) {
-      if (--job.remaining > 0) left.push(job)
-      else this.done(job, sim)
-    }
-    this.active = left
-  }
-  load() {
-    return this.active.length + this.queue.length
-  }
-  lose() {
-    const lost = [...this.active, ...this.queue]
-    this.active = []
-    this.queue = []
-    return lost
-  }
-}
-
 // Where requests start: the readers opening the app, or the writers posting.
 class Traffic implements FlowNode {
   alive = true
@@ -158,46 +110,6 @@ class Traffic implements FlowNode {
   }
 }
 
-// A part standing where requests cannot get through.
-class Jam implements FlowNode {
-  alive = true
-  readonly key: string
-  constructor(key: string) {
-    this.key = key
-  }
-  receive(job: Job, sim: FlowSim) {
-    sim.drop(job, this.key)
-  }
-}
-
-// Lets only so many requests a second through; the rest are turned away.
-class Limiter implements FlowNode {
-  alive = true
-  readonly key: string
-  private feed: Feed
-  private lane: 'read' | 'write'
-  private rate: number
-  private tokens: number
-  private last = 0
-  constructor(limit: Limit, feed: Feed) {
-    this.key = limit.key
-    this.lane = limit.lane
-    this.rate = limit.rate
-    this.tokens = limit.rate
-    this.feed = feed
-  }
-  receive(job: Job, sim: FlowSim) {
-    this.tokens = Math.min(this.rate, this.tokens + ((sim.tick - this.last) * this.rate) / SECOND)
-    this.last = sim.tick
-    if (this.tokens < 1) {
-      this.feed.tally.limited++
-      return sim.drop(job, this.key)
-    }
-    this.tokens--
-    this.feed.pass(job, this.lane, this.key, sim)
-  }
-}
-
 // Remembers each reader's feed for a few seconds.
 class Cache implements FlowNode {
   alive = true
@@ -215,31 +127,6 @@ class Cache implements FlowNode {
       return sim.complete(job)
     }
     this.feed.pass(job, 'read', this.key, sim)
-  }
-}
-
-// Holds posts until a worker is free.
-class Queue implements FlowNode {
-  alive = true
-  jobs: Job[] = []
-  readonly key: string
-  private feed: Feed
-  constructor(key: string, feed: Feed) {
-    this.key = key
-    this.feed = feed
-  }
-  receive(job: Job, sim: FlowSim) {
-    if (this.jobs.length >= QUEUE_CAPACITY) return sim.drop(job, this.key)
-    this.jobs.push(job)
-  }
-  process(sim: FlowSim) {
-    for (const w of this.feed.fanouts) {
-      if (this.jobs.length === 0) break
-      if (w.alive && sim.pending(w) === 0) sim.forward(this.jobs.shift()!, this.key, w.key)
-    }
-  }
-  load() {
-    return this.jobs.length
   }
 }
 
@@ -318,7 +205,7 @@ export class Feed {
     flow.add(new Traffic(this, true))
     flow.add(new Traffic(this, false))
     for (const l of cfg.limits ?? []) {
-      flow.add(new Limiter(l, this))
+      flow.add(new Limiter(l.key, l.rate, () => this.tally.limited++, (job, sim) => this.pass(job, l.lane, l.key, sim)))
       this.route[l.lane].push(l.key)
     }
     if (cfg.cache) this.route.read.push(cfg.keys.cache)
@@ -331,7 +218,7 @@ export class Feed {
       this.shards.push(shard)
       flow.link('feed', key, 6)
     }
-    if (cfg.queue) flow.add(cfg.jam?.includes(cfg.keys.queue) ? new Jam(cfg.keys.queue) : new Queue(cfg.keys.queue, this))
+    if (cfg.queue) flow.add(cfg.jam?.includes(cfg.keys.queue) ? new Jam(cfg.keys.queue) : new Queue(cfg.keys.queue, QUEUE_CAPACITY, () => this.fanouts))
     for (const key of cfg.workers) {
       const w = flow.add(new Fanout(key, this))
       this.fanouts.push(w)

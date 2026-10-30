@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '../../core/flow/time'
 // Where things stand on the floor, left to right:
 //
 //   Sign-up form ──▶ Filter ──▶ Database
@@ -7,7 +8,7 @@
 
 export type Place = 'form' | 'filter' | 'db'
 
-export const TICKS_PER_SECOND = 20
+export { TICKS_PER_SECOND }
 export const MS_PER_TICK = 1000 / TICKS_PER_SECOND
 
 export const SPOT: Record<Place, { x: number; z: number }> = {

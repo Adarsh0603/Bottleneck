@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { LoadBalancerSim } from './engine'
+import { TICKS_PER_SECOND } from '../../core/flow/time'
 
-export const TICKS_PER_SECOND = 20
+export { TICKS_PER_SECOND }
 export const MS_PER_TICK = 1000 / TICKS_PER_SECOND
 
 // Rolling window for throughput and drop rate, so the numbers recover after

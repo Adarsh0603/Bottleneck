@@ -6,6 +6,7 @@
 //   Ben ─┘        ◯
 
 import type { V3 } from '../../core/types'
+import { TICKS_PER_SECOND } from '../../core/flow/time'
 
 export type Client = 'ana' | 'ben'
 export const CLIENTS: Client[] = ['ana', 'ben']
@@ -16,7 +17,7 @@ export const CLIENT_ID: Record<Client, number> = { ana: -1, ben: -2 }
 export const clientOf = (id: number): Client | undefined => (id === CLIENT_ID.ana ? 'ana' : id === CLIENT_ID.ben ? 'ben' : undefined)
 
 export const MAX_NODES = 5
-export const TICKS_PER_SECOND = 20
+export { TICKS_PER_SECOND }
 export const MS_PER_TICK = 1000 / TICKS_PER_SECOND
 
 export const NODE = { r: 0.8, h: 1.1 }

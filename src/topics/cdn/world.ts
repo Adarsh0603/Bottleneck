@@ -2,6 +2,7 @@
 // different distances from it. Travel time grows with distance on the floor.
 
 import type { V3 } from '../../core/types'
+import { TICKS_PER_SECOND } from '../../core/flow/time'
 
 export type RegionId = 'us' | 'eu' | 'asia'
 
@@ -16,7 +17,7 @@ export const REGIONS: { id: RegionId; name: string; x: number; z: number }[] = [
 // Slower than this, and a region's label turns red.
 export const SLOW_MS = 750
 
-export const TICKS_PER_SECOND = 20
+export { TICKS_PER_SECOND }
 export const MS_PER_TICK = 1000 / TICKS_PER_SECOND
 const TICKS_PER_UNIT = 2
 

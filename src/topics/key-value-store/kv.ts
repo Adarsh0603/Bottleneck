@@ -1,4 +1,6 @@
 import { FlowSim, type FlowNode, type Job } from '../../core/flow/engine'
+import { SECOND, TICKS_PER_SECOND } from '../../core/flow/time'
+import { Jam, Limiter, Net } from '../../core/flow/parts'
 
 // A key-value store, as a running system. Every operation takes this road:
 //   client → (limiter) → (hot-key cache) → coordinator → (hash ring) → storage nodes
@@ -6,8 +8,7 @@ import { FlowSim, type FlowNode, type Job } from '../../core/flow/engine'
 // once W have answered. A read asks R of them and takes the newest answer. Every piece
 // is optional, so a bad design shows how it fails.
 
-export const TICKS_PER_SECOND = 20
-export const SECOND = TICKS_PER_SECOND
+export { SECOND, TICKS_PER_SECOND }
 
 export const KEYS = 30 // keys in use; key 0 is the one everybody wants
 export const HOT = 0
@@ -108,14 +109,6 @@ interface Meta {
   hintFor?: string
 }
 
-class Net extends FlowSim {
-  onLoss?: (job: Job, node: string) => void
-  drop(job: Job, node: string) {
-    super.drop(job, node)
-    this.onLoss?.(job, node)
-  }
-}
-
 // The clients: they also run the script of the day.
 class Clients implements FlowNode {
   alive = true
@@ -131,39 +124,6 @@ class Clients implements FlowNode {
     const phase = this.kv.phaseAt(sim.tick)
     if (phase) this.due += phase.ops / SECOND
     for (; this.due >= 1; this.due--) this.kv.start(sim)
-  }
-}
-
-class Jam implements FlowNode {
-  alive = true
-  readonly key: string
-  constructor(key: string) {
-    this.key = key
-  }
-  receive(job: Job, sim: FlowSim) {
-    sim.drop(job, this.key)
-  }
-}
-
-class Limiter implements FlowNode {
-  alive = true
-  readonly key: string
-  private kv: Kv
-  private tokens = LIMIT_RATE
-  private last = 0
-  constructor(limit: Limit, kv: Kv) {
-    this.key = limit.key
-    this.kv = kv
-  }
-  receive(job: Job, sim: FlowSim) {
-    this.tokens = Math.min(LIMIT_RATE, this.tokens + ((sim.tick - this.last) * LIMIT_RATE) / SECOND)
-    this.last = sim.tick
-    if (this.tokens < 1) {
-      this.kv.tally.limited++
-      return sim.drop(job, this.key)
-    }
-    this.tokens--
-    this.kv.pass(job, this.key, sim)
   }
 }
 
@@ -296,7 +256,7 @@ export class Kv {
     flow.traffic = () => this.phaseAt(flow.tick)?.ops ?? 0
     flow.add(new Clients(this))
     for (const l of cfg.limits) {
-      flow.add(new Limiter(l, this))
+      flow.add(new Limiter(l.key, LIMIT_RATE, () => this.tally.limited++, (job, sim) => this.pass(job, l.key, sim)))
       this.front.push(l.key)
     }
     if (cfg.cache) {

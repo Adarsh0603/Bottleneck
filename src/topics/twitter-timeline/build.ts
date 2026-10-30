@@ -1,7 +1,7 @@
 import { createElement } from 'react'
-import { hintFromReview } from '../../core/build/hint'
+import { ORDER_LOOK, hintFromReview } from '../../core/build/hint'
 import { Tag } from '../../core/iso/primitives'
-import type { BuildTask, Placement, Requirement, Settings } from '../../core/build/types'
+import type { BuildTask, Diagnosis, Placement, Requirement, Settings } from '../../core/build/types'
 import type { FlowSim } from '../../core/flow/engine'
 import type { Capstone, Intro, Review } from '../../core/capstone/types'
 import { jitter, seeded } from '../../core/build/day'
@@ -139,10 +139,11 @@ function layout(saved: Placement) {
 }
 
 // What a bare board is missing before anything can be served at all.
-function missing(l: ReturnType<typeof layout>) {
-  if (!l.servers.length) return 'Nothing builds a timeline when a reader opens the app. The readers’ side has no machine.'
-  if (!l.workers.length) return 'Nothing writes a tweet into a timeline. The writers’ side has no machine.'
-  if (!l.shards.length) return 'The tweets are kept nowhere. The tweet store has no shard.'
+function missing(l: ReturnType<typeof layout>): Diagnosis | null {
+  const look = 'Every lane of the system needs a machine. Which lane has none?'
+  if (!l.servers.length) return { because: 'Nothing builds a timeline when a reader opens the app. The readers’ side has no machine.', look }
+  if (!l.workers.length) return { because: 'Nothing writes a tweet into a timeline. The writers’ side has no machine.', look }
+  if (!l.shards.length) return { because: 'The tweets are kept nowhere. The tweet store has no shard.', look }
   return null
 }
 
@@ -330,18 +331,17 @@ function common(): Pick<BuildTask, 'pinned' | 'manualStart' | 'rps' | 'shot' | '
 }
 
 // What the learner sees going wrong, in numbers. It says what happened, never why.
-function symptom(f: Timeline) {
-  const store = `Store ${Math.round(f.storeLoad() * 100)}% full`
+function symptom(f: Timeline): Diagnosis | null {
   const t = f.tally
-  const retried = t.retried ? `, ${t.retried} tried again` : ''
-  if (t.failed > FAIL_LIMIT) return `${t.failed} readers given up on so far${retried}${t.limited ? `, ${t.limited} by a rate limiter` : ''}. ${store}.`
-  if (t.lost > 0) return `${t.lost} tweet${t.lost > 1 ? 's' : ''} lost so far${t.limited ? `, ${t.limited} by a rate limiter` : ''}. ${f.backlog()} copies waiting.`
-  if (t.delLost > 0) return `${t.delLost} deleted tweet${t.delLost > 1 ? 's' : ''} still showing. ${f.backlog()} copies waiting.`
+  const limited = t.limited ? ' Some were turned away by a rate limiter.' : ''
+  if (t.failed > FAIL_LIMIT) return { because: `Readers gave up on opening the app.${limited}`, look: 'Which part fills up when timelines open, and where does it get what it shows?' }
+  if (t.lost > 0) return { because: `Some tweets were lost.${limited}`, look: 'Where does a tweet wait when the machine writing it is busy?' }
+  if (t.delLost > 0) return { because: 'Deleted tweets are still showing.', look: 'How many places hold a copy of a tweet, and what reaches each of them when it is deleted?' }
   const slow = Math.max(f.slowest(), f.slowest('star'))
-  if (slow > FRESH_LIMIT) return `A tweet took ${slow.toFixed(1)} s to reach its followers. ${f.backlog()} copies waiting.`
+  if (slow > FRESH_LIMIT) return { because: 'A tweet took too long to reach its followers.', look: 'How many timelines must be written for one tweet, and who writes them?' }
   const del = f.slowest('delete')
-  if (del > GONE_LIMIT) return `A deleted tweet stayed in timelines for ${del.toFixed(1)} s. ${f.backlog()} copies waiting.`
-  if (f.wait() > WAIT_LIMIT) return `Opening the app takes ${f.wait().toFixed(1)} s. ${store}.`
+  if (del > GONE_LIMIT) return { because: 'A deleted tweet stayed in timelines too long.', look: 'How many places hold a copy of a tweet, and what reaches each of them when it is deleted?' }
+  if (f.wait() > WAIT_LIMIT) return { because: 'Opening the app is slow.', look: 'What work happens each time a timeline opens?' }
   return null
 }
 
@@ -378,13 +378,14 @@ export const FIRST_DESIGN: BuildTask = {
   },
   requirements: [opens(FIRST_SETTLED), tweets, fresh],
   assemble: (placed, settings, rng) => assemble(placed, settings, { phases: FIRST_PHASES, stars: [] }, rng),
-  problem(_m, raw, _settings, flow) {
+  diagnose(_m, raw, _settings, flow) {
     const f = timelineOf.get(flow)
     if (!f) return null
     const l = layout(raw)
-    return missing(l) ?? l.jam?.why ?? symptom(f)
+    return missing(l) ?? (l.jam ? { because: l.jam.why, look: ORDER_LOOK } : null) ?? symptom(f)
   },
-  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, ['Timeline server', 'Workers', 'Store']),
+  problem: (m, raw, settings, flow) => FIRST_DESIGN.diagnose!(m, raw, settings, flow)?.because ?? null,
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, ['Timeline server', 'Workers', 'Store'], false),
   check(_m, _raw, _settings, flow) {
     const f = flow && timelineOf.get(flow)
     if (!f || flow.tick < FIRST_SETTLED) return false
@@ -397,16 +398,16 @@ function whyHint(raw: Placement, settings: Settings): string | null {
   const l = layout(raw)
   const s = chosen(settings)
   const wide = (n: number) => n.toLocaleString()
-  if (s.cutoff === 0) return `A celebrity tweet is about ${spoken(REAL_FOLLOWERS.star)} writes in one go, more than the workers can send in time. Look that account up when a timeline opens instead of writing it.`
-  if (s.cutoff >= 2) return `Looking up bigger accounts adds ${FOLLOWED.mid} reads of the store to every open. At ${PEAK.opens} opens a second that is far more than the store answers. Write those accounts into timelines instead.`
-  if (!s.thin) return 'A timeline that holds full copies means a delete must find and rewrite every copy. Keep only the id of each tweet, and a delete is one write.'
+  if (s.cutoff === 0) return `A celebrity tweet is about ${spoken(REAL_FOLLOWERS.star)} writes in one go, more than the workers can send in time.`
+  if (s.cutoff >= 2) return `Looking up bigger accounts adds ${FOLLOWED.mid} reads of the store to every open. At ${PEAK.opens} opens a second that is far more than the store answers.`
+  if (!s.thin) return 'A timeline that holds full copies means a delete must find and rewrite every copy.'
   if (s.length < LENGTH_FROM) return `A reader scrolls about ${LENGTH_FROM} tweets deep. A timeline of ${s.length} runs out first, and every scroll past it is another read of the store.`
-  if (s.length > LENGTH_TO) return `After a restart each lost timeline is rebuilt from the store, and a timeline of ${wide(s.length)} tweets costs ${wide(Math.round((s.length / LENGTH) * 12))} reads to rebuild. Keep it short enough to rebuild quickly.`
+  if (s.length > LENGTH_TO) return `After a restart each lost timeline is rebuilt from the store, and a timeline of ${wide(s.length)} tweets costs ${wide(Math.round((s.length / LENGTH) * 12))} reads to rebuild.`
   if (!l.queue) return 'Tweets arrive in bursts. With nothing to hold them, a worker that is busy turns the next one away.'
-  if (l.workers.length < NEED_WORKERS) return `On this board, at the peak the tweets need about ${COPIES} writes a second (${PEAK.posts} × ${FOLLOWERS.small} + ${PEAK.mids} × ${FOLLOWERS.mid}). A worker writes ${WRITES_A_SECOND}, so you need at least ${NEED_WORKERS}.`
+  if (l.workers.length < NEED_WORKERS) return `On this board, at the peak the tweets need about ${COPIES} writes a second (${PEAK.posts} × ${FOLLOWERS.small} + ${PEAK.mids} × ${FOLLOWERS.mid}). A worker writes ${WRITES_A_SECOND}.`
   if (l.caches.length < NEED_CACHES) return `Opens and timeline writes share the caches: about ${PEAK.opens + COPIES} operations a second at the peak, ${CACHE_OPS_A_SECOND} per cache. And one cache holds every timeline a restart can empty.`
   if (l.shards.length < NEED_SHARDS) return `Each open reads the store ${OPEN_READS} times (the celebrity, and the tweets the ids point to). ${PEAK.opens} opens a second is ${PEAK.opens * OPEN_READS} reads, and a shard answers ${LOOKUPS_A_SECOND}. After a restart, rebuilding the lost timelines needs room on top.`
-  if (!s.collapse) return 'After the restart, every open for a lost timeline rebuilds it, and the same reads hit the store again and again. Let one open rebuild it and the rest wait.'
+  if (!s.collapse) return 'After the restart, every open for a lost timeline rebuilds it, and the same reads hit the store again and again.'
   if (l.limits.length) return 'A rate limiter turns away real readers and real tweets. Nothing here is an attack to stop.'
   if (!l.servers.length) return null
   return null
@@ -447,12 +448,13 @@ export const SCALE_UP: BuildTask = {
     const r = rng ?? seeded(7)
     return assemble(placed, settings, scaleDay(r), r)
   },
-  problem(_m, raw, _settings, flow) {
+  diagnose(_m, raw, _settings, flow) {
     const f = timelineOf.get(flow)
     if (!f) return null
     const l = layout(raw)
-    return missing(l) ?? l.jam?.why ?? symptom(f)
+    return missing(l) ?? (l.jam ? { because: l.jam.why, look: ORDER_LOOK } : null) ?? symptom(f)
   },
+  problem: (m, raw, settings, flow) => SCALE_UP.diagnose!(m, raw, settings, flow)?.because ?? null,
   hint: (_m, raw, settings) => whyHint(raw, settings),
   result: (_m, _raw, _settings, flow) => {
     const f = timelineOf.get(flow)

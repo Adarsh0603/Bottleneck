@@ -79,7 +79,7 @@ describe('where it breaks', () => {
     const run = new Running(SCALE_UP.assemble(GOOD, settings))
     for (let t = 0; t < 70 * 20 && !SCALE_UP.requirements?.some((r) => !r.read(run.flow, run.metrics()).ok); t++) run.step()
     const problem = SCALE_UP.problem?.(run.metrics(), GOOD, settings, run.flow)
-    expect(problem).toMatch(/Checkout crashed with \d+ orders in progress\. \d+ of them were lost/)
+    expect(problem).toMatch(/Checkout crashed with orders in progress\. Some of them were lost/)
     expect(problem).not.toMatch(/written down|refund|recover/i)
   })
   it('names the symptom, not the cause', () => {

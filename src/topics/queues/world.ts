@@ -10,6 +10,7 @@
 //                                         worker 6
 
 import type { V3 } from '../../core/types'
+import { TICKS_PER_SECOND } from '../../core/flow/time'
 
 export const USERS = { x: -9, z: 0 }
 export const APP = { x: -5.8, z: 0, w: 1.5, h: 1.5 }
@@ -20,7 +21,7 @@ export const WORKER = { w: 1.1, h: 1.5 }
 export const MAX_WORKERS = 6
 const WORKER_Z = [-5.5, -3.3, -1.1, 1.1, 3.3, 5.5]
 
-export const TICKS_PER_SECOND = 20
+export { TICKS_PER_SECOND }
 export const MS_PER_TICK = 1000 / TICKS_PER_SECOND
 
 export const workerKey = (i: number) => `worker-${i}`

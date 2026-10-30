@@ -1,7 +1,7 @@
 import { createElement } from 'react'
-import { hintFromReview } from '../../core/build/hint'
+import { ORDER_LOOK, hintFromReview } from '../../core/build/hint'
 import { Tag } from '../../core/iso/primitives'
-import type { BuildTask, Placement, Requirement, Settings } from '../../core/build/types'
+import type { BuildTask, Diagnosis, Placement, Requirement, Settings } from '../../core/build/types'
 import type { FlowSim } from '../../core/flow/engine'
 import type { Capstone, Intro, Review } from '../../core/capstone/types'
 import { SECOND, Video, type Limit, type Phase } from './video'
@@ -258,13 +258,13 @@ function common(): Pick<BuildTask, 'pinned' | 'manualStart' | 'rps' | 'shot' | '
 }
 
 // What the learner sees going wrong, in numbers. It says what happened, never why.
-function symptom(v: Video) {
+function symptom(v: Video): Diagnosis | null {
   const t = v.tally
-  if (t.lost > 0) return `${t.lost} upload${t.lost > 1 ? 's' : ''} lost so far${t.limited ? `, ${t.limited} turned away by a rate limiter` : ''}.`
-  if (t.failed > FAIL_LIMIT) return `${t.failed} plays turned away so far${t.limited ? `, ${t.limited} by a rate limiter` : ''}. Origin ${Math.round(v.originLoad() * 100)}% full.`
-  if (v.slowest() > READY_LIMIT) return `An upload has waited ${v.slowest().toFixed(1)} s to be ready. ${v.backlog()} tasks waiting.`
-  if (v.wait() > WAIT_LIMIT) return `Plays take ${v.wait().toFixed(1)} s to start. Origin ${Math.round(v.originLoad() * 100)}% full.`
-  if (v.tally.played >= 40 && v.buffering() > BUFFER_LIMIT) return `${Math.round(v.buffering() * 100)} in 100 plays stalled.`
+  if (t.lost > 0) return { because: `Some uploads were lost.${t.limited ? ' Some were turned away by a rate limiter.' : ''}`, look: 'Where does an upload wait while it is being processed, and what happens if that place is full?' }
+  if (t.failed > FAIL_LIMIT) return { because: `Some plays were turned away.${t.limited ? ' Some were turned away by a rate limiter.' : ''}`, look: 'Which part fills up when plays start, and where do the videos come from?' }
+  if (v.slowest() > READY_LIMIT) return { because: 'An upload has waited too long to be ready.', look: 'How many processing tasks does each upload make, and who works through them?' }
+  if (v.wait() > WAIT_LIMIT) return { because: 'Some plays take too long to start.', look: 'Where does a play get its video from, and how far away is it?' }
+  if (v.tally.played >= 40 && v.buffering() > BUFFER_LIMIT) return { because: 'Some plays stalled in the middle.', look: 'Is the video arriving as fast as it is watched?' }
   return null
 }
 
@@ -286,14 +286,15 @@ export const FIRST_DESIGN: BuildTask = {
   watch: [{ kind: 'busy', key: 'origin', label: 'Origin busy' }],
   requirements: [watching(FIRST_SETTLED), ready, uploads],
   assemble: (placed, settings, rng) => assemble(placed, settings, { phases: FIRST_PHASES, films: [], hard: false }, rng),
-  problem(_m, raw, _settings, flow) {
+  diagnose(_m, raw, _settings, flow) {
     const v = videoOf.get(flow)
     if (!v) return null
     const l = layout(raw)
-    if (l.jam) return l.jam.why
+    if (l.jam) return { because: l.jam.why, look: ORDER_LOOK }
     return symptom(v)
   },
-  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, ['CDN', 'Upload queue']),
+  problem: (m, raw, settings, flow) => FIRST_DESIGN.diagnose!(m, raw, settings, flow)?.because ?? null,
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, ['CDN', 'Upload queue'], false),
   check(_m, _raw, _settings, flow) {
     const v = flow && videoOf.get(flow)
     if (!v || flow.tick < FIRST_SETTLED) return false
@@ -326,14 +327,15 @@ export const SCALE_UP: BuildTask = {
   watch: [{ kind: 'busy', key: 'origin', label: 'Origin busy' }],
   requirements: [watching(SCALE_SETTLED), smooth, ready, uploads],
   assemble: (placed, settings, rng) => assemble(placed, settings, { phases: SCALE_PHASES, films: FILMS, hard: true }, rng),
-  problem(_m, raw, _settings, flow) {
+  diagnose(_m, raw, _settings, flow) {
     const v = videoOf.get(flow)
     if (!v) return null
     const l = layout(raw)
-    if (l.jam) return l.jam.why
+    if (l.jam) return { because: l.jam.why, look: ORDER_LOOK }
     return symptom(v)
   },
-  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines),
+  problem: (m, raw, settings, flow) => SCALE_UP.diagnose!(m, raw, settings, flow)?.because ?? null,
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, undefined, false),
   check(_m, _raw, _settings, flow) {
     const v = flow && videoOf.get(flow)
     if (!v || flow.tick < SCALE_SETTLED) return false

@@ -1,7 +1,7 @@
 import { createElement } from 'react'
-import { hintFromReview } from '../../core/build/hint'
+import { ORDER_LOOK, hintFromReview } from '../../core/build/hint'
 import { Tag } from '../../core/iso/primitives'
-import type { BuildTask, Placement, Requirement, Settings } from '../../core/build/types'
+import type { BuildTask, Diagnosis, Placement, Requirement, Settings } from '../../core/build/types'
 import type { FlowSim } from '../../core/flow/engine'
 import type { Capstone, Intro, Review } from '../../core/capstone/types'
 import { Feed, SECOND, type Limit, type Phase } from './feed'
@@ -165,7 +165,7 @@ const fresh: Requirement = {
 const BRIEF = {
   title: 'The brief',
   lines: [
-    'A news feed shows you the latest posts from the people you follow. You open the app and it must already be there.',
+    'A social feed shows you the latest posts from the people you follow. You open the app and it must already be there.',
     'Build one. People post all day. Each reader opens a feed made of the newest posts of everyone they follow.',
     'Plan for 500 million readers who open the app 10 times a day, and 100 million posts a day. People follow about 200 accounts, and a few accounts are followed by tens of millions.',
     'Readers do not wait, and a post is not allowed to take long to arrive.',
@@ -237,14 +237,13 @@ function common(): Pick<BuildTask, 'pinned' | 'manualStart' | 'rps' | 'shot' | '
 }
 
 // What the learner sees going wrong, in numbers. It says what happened, never why.
-function symptom(f: Feed) {
-  const store = `Store ${Math.round(f.storeLoad() * 100)}% full`
+function symptom(f: Feed): Diagnosis | null {
   const t = f.tally
-  if (t.failed > FAIL_LIMIT) return `${t.failed} readers turned away so far${t.limited ? `, ${t.limited} by a rate limiter` : ''}. ${store}.`
-  if (t.lost > 0) return `${t.lost} post${t.lost > 1 ? 's' : ''} lost so far${t.limited ? `, ${t.limited} by a rate limiter` : ''}. ${f.backlog()} copies waiting.`
+  if (t.failed > FAIL_LIMIT) return { because: `Some readers were turned away.${t.limited ? ' Some were turned away by a rate limiter.' : ''}`, look: 'Which part fills up when readers arrive?' }
+  if (t.lost > 0) return { because: `Some posts were lost.${t.limited ? ' Some were turned away by a rate limiter.' : ''}`, look: 'Where does a post wait when the machine writing it is busy?' }
   const slow = Math.max(f.slowest(), f.slowest(true))
-  if (slow > FRESH_LIMIT) return `A post took ${slow.toFixed(1)} s to reach its followers. ${f.backlog()} copies waiting.`
-  if (f.wait() > WAIT_LIMIT) return `Opening the app takes ${f.wait().toFixed(1)} s. ${store}.`
+  if (slow > FRESH_LIMIT) return { because: 'A post took too long to reach its followers.', look: 'Where are the copies of a post waiting, and how many writers are there?' }
+  if (f.wait() > WAIT_LIMIT) return { because: 'Opening the app is slow.', look: 'What does the app read from on every open, and how busy is it?' }
   return null
 }
 
@@ -267,14 +266,15 @@ export const FIRST_DESIGN: BuildTask = {
   watch: [{ kind: 'busy', key: 'feed', label: 'Feed server busy' }],
   requirements: [opens(FIRST_SETTLED), posts, fresh],
   assemble: (placed, settings, rng) => assemble(placed, settings, { phases: FIRST_PHASES, stars: [] }, rng),
-  problem(_m, raw, _settings, flow) {
+  diagnose(_m, raw, _settings, flow) {
     const f = feedOf.get(flow)
     if (!f) return null
     const l = layout(raw)
-    if (l.jam) return l.jam.why
+    if (l.jam) return { because: l.jam.why, look: ORDER_LOOK }
     return symptom(f)
   },
-  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, ['Feed cache', 'Workers', 'Store']),
+  problem: (m, raw, settings, flow) => FIRST_DESIGN.diagnose!(m, raw, settings, flow)?.because ?? null,
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, ['Feed cache', 'Workers', 'Store'], false),
   check(_m, _raw, _settings, flow) {
     const f = flow && feedOf.get(flow)
     if (!f || flow.tick < FIRST_SETTLED) return false
@@ -307,14 +307,15 @@ export const SCALE_UP: BuildTask = {
   watch: [{ kind: 'busy', key: 'feed', label: 'Feed server busy' }],
   requirements: [opens(SCALE_SETTLED), posts, fresh],
   assemble: (placed, settings, rng) => assemble(placed, settings, { phases: SCALE_PHASES, stars: STARS, coldAt: COLD_AT }, rng),
-  problem(_m, raw, _settings, flow) {
+  diagnose(_m, raw, _settings, flow) {
     const f = feedOf.get(flow)
     if (!f) return null
     const l = layout(raw)
-    if (l.jam) return l.jam.why
+    if (l.jam) return { because: l.jam.why, look: ORDER_LOOK }
     return symptom(f)
   },
-  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines),
+  problem: (m, raw, settings, flow) => SCALE_UP.diagnose!(m, raw, settings, flow)?.because ?? null,
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, undefined, false),
   check(_m, _raw, _settings, flow) {
     const f = flow && feedOf.get(flow)
     if (!f || flow.tick < SCALE_SETTLED) return false
@@ -360,7 +361,7 @@ const INTRO_FIXED = [
 ]
 export const INTRO: Intro = {
   task: {
-    title: 'How a news feed works',
+    title: 'How a social feed works',
     sub: '',
     goal: '',
     win: '',
@@ -399,7 +400,7 @@ export const INTRO: Intro = {
 
 export const NEWS_FEED: Capstone = {
   id: 'news-feed',
-  title: 'News feed',
+  title: 'Social feed',
   stages: ['Requirements', 'First design', 'Where it breaks', 'Final review'],
   intro: INTRO,
   goals: ['Fast feeds', 'Fresh posts', 'No post lost', 'Survive a celebrity'],

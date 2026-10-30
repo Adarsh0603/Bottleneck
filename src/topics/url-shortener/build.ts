@@ -1,8 +1,8 @@
 import { createElement } from 'react'
-import { hintFromReview } from '../../core/build/hint'
+import { ORDER_LOOK, hintFromReview } from '../../core/build/hint'
 import { Tag } from '../../core/iso/primitives'
 import { PIECE_NAMES } from '../../core/build/types'
-import type { BuildTask, Placement, Requirement, Settings } from '../../core/build/types'
+import type { BuildTask, Diagnosis, Placement, Requirement, Settings } from '../../core/build/types'
 import type { FlowSim } from '../../core/flow/engine'
 import type { Capstone, Intro, Review } from '../../core/capstone/types'
 import { CACHE_SIZES, LIMITS, SCHEMES, SCOPES, SECOND, Shortener, type Load, type Profile } from './shortener'
@@ -284,18 +284,19 @@ export const FIRST_DESIGN: BuildTask = {
   settings: [SETTINGS[0]],
   requirements: [noDupes, redirectsWork(3), redirectsFast],
   assemble: (placed, settings, rng) => assemble(placed, settings, FIRST_PROFILE, rng),
-  problem(m, raw, settings, flow) {
+  diagnose(m, raw, settings, flow) {
     const s = shortenerOf.get(flow)
     if (!s) return null
     const { placed, apps, jam } = layout(raw)
-    if (jam) return jam.why
+    if (jam) return { because: jam.why, look: ORDER_LOOK }
     const { scheme } = chosen(settings)
-    if (s.tally.dupes > 0 && scheme === 'counter') return `${s.tally.dupes} links were given a code that was already in use. Both servers read the same shared counter, and each reads it before the other has saved the next number.`
-    if (!placed.lb && apps.length > 1) return 'All visitors land on the first server. The others get no traffic.'
-    if (s.redirectsFailed() > 3) return redirectsCause(s, m)
+    if (s.tally.dupes > 0 && scheme === 'counter') return { because: 'Some links were given a code that was already in use.', look: 'Two servers can ask for a new code at nearly the same moment. What do they agree on?' }
+    if (!placed.lb && apps.length > 1) return { because: 'All visitors land on the first server. The others get no traffic.', look: 'What sends each visitor to a server?' }
+    if (s.redirectsFailed() > 3) return redirectsCause(s)
     return slowWhy(s, m)
   },
-  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, ['New codes', 'Front door']),
+  problem: (m, raw, settings, flow) => FIRST_DESIGN.diagnose!(m, raw, settings, flow)?.because ?? null,
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, ['New codes', 'Front door'], false),
   check(_m, raw, _settings, flow) {
     const s = flow && shortenerOf.get(flow)
     const { placed, apps, jam } = layout(raw)
@@ -338,38 +339,41 @@ export const SCALE_UP: BuildTask = {
   watch: [{ kind: 'busy', key: 'db', label: 'Database busy' }],
   requirements: [redirectsWork(8), redirectsFast, noDupes, newLinks, clicksKept],
   assemble: (placed, settings, rng) => assemble(placed, settings, SCALE_PROFILE, rng),
-  problem(m, raw, settings, flow) {
+  diagnose(m, raw, settings, flow) {
     const s = shortenerOf.get(flow)
     if (!s) return null
     const t = s.tally
     const tick = flow.tick
     const { placed, apps: appList, replicas, jam } = layout(raw)
-    if (jam) return jam.why
-    const { scope, limit } = chosen(settings)
+    if (jam) return { because: jam.why, look: ORDER_LOOK }
+    const { scope } = chosen(settings)
     const apps = appList.length
     const dbBusy = m.busy.db ?? 0
+    const lostRedirects = 'Some redirects were lost.'
+    const unhelpful = 'Which piece on the board is not helping this system?'
 
-    if (t.dupes > 0) return `${t.dupes} links were given a code that was already in use. The servers hand out codes from one shared counter, and each reads it before the other has saved the next number.`
-    if (placed.gate && scope === 'all' && (t.limited.users ?? 0) > 0) return 'Visitors are being turned away. The limiter counts every request together, redirects too.'
-    if (placed.gate && scope === 'creates' && (t.limited.makers ?? 0) > 2) return `Real link makers are being turned away. The limit is ${limit} a second.`
+    if (t.dupes > 0) return { because: 'Some links were given a code that was already in use.', look: 'Two servers can ask for a new code at nearly the same moment. What do they agree on?' }
+    if (placed.gate && scope === 'all' && (t.limited.users ?? 0) > 0) return { because: 'Visitors are being turned away. The limiter counts every request together, redirects too.', look: 'Which requests does the limiter count, and which of them are the problem?' }
+    if (placed.gate && scope === 'creates' && (t.limited.makers ?? 0) > 2) return { because: 'Real link makers are being turned away by the limiter.', look: 'Compare the limit with how fast real people create links.' }
     if (s.redirectsFailed() > 8) {
-      if (!placed.cache && tick >= T(6)) return `${s.redirectsFailed()} redirects were lost. Every redirect is a database lookup, and the database can answer only about 8 a second.`
-      if (placed.cache && s.hitRate() < 0.6 && tick >= T(10)) return `${s.redirectsFailed()} redirects were lost. The cache holds ${chosen(settings).cacheSize} links and only ${Math.round(s.hitRate() * 100)}% of redirects find theirs there. The rest reach the database, which can answer only about 8 a second.`
-      if ((!placed.lb || apps < 2) && tick >= T(10)) return `${s.redirectsFailed()} redirects were lost. One app server can answer about 20 requests a second, and more than that are arriving.`
-      if (!placed.queue && dbBusy > 0.8) return `${s.redirectsFailed()} redirects were lost. Every redirect writes a click to the database before it answers, and that is more writing than the database can take.`
-      if (replicas.length === 0 && dbBusy > 0.8) return `${s.redirectsFailed()} redirects were lost. Cache misses and new links all land on one database, and it cannot keep up.`
-      return redirectsCause(s, m)
+      if (!placed.cache && tick >= T(6)) return { because: lostRedirects, look: 'How many lookups does each redirect cause, and how many can the database answer?' }
+      if (placed.cache && s.hitRate() < 0.6 && tick >= T(10)) return { because: lostRedirects, look: 'How many links does the cache hold, compared with how many are asked for?' }
+      if ((!placed.lb || apps < 2) && tick >= T(10)) return { because: lostRedirects, look: 'How many requests can one app server answer, and how many are arriving?' }
+      if (!placed.queue && dbBusy > 0.8) return { because: lostRedirects, look: 'What does each redirect write before it answers?' }
+      if (replicas.length === 0 && dbBusy > 0.8) return { because: lostRedirects, look: 'How many things read from and write to the one database?' }
+      return redirectsCause(s)
     }
     if (tick >= T(38) && (s.makersFailed() > 2 || dbBusy > 0.9)) {
-      if (!placed.gate) return `A bot is creating about 30 links a second. Every new link is a database write, so real link makers are failing (${s.makersFailed()} lost).`
-      if (scope === 'creates' && limit >= 8) return `The limiter still lets the bot create ${limit} links a second. Each one is a database write, and real link makers are failing (${s.makersFailed()} lost).`
+      if (!placed.gate) return { because: 'A bot is creating links in bulk, and real link makers are failing.', look: 'Every new link is a database write. What stands between the bot and the database?' }
+      if (scope === 'creates' && chosen(settings).limit >= 8) return { because: 'The limiter still lets the bot through, and real link makers are failing.', look: 'Compare the limit with how fast real people create links.' }
     }
-    if (!placed.queue && dbBusy > 0.9) return 'The database is overloaded. Every redirect writes a click to it before it answers.'
-    if (decoyOn(raw, 'dedupe')) return 'The dedupe store does nothing here. It blocks a message that was already sent, and nothing in this design is ever sent twice.'
-    if (decoyOn(raw, 'dead')) return 'The dead-letter queue does nothing here. It parks messages that ran out of tries, and a click just waits on the queue and is written later, so none is ever parked.'
+    if (!placed.queue && dbBusy > 0.9) return { because: 'The database is overloaded. Every redirect writes a click to it before it answers.', look: 'What does each redirect write before it answers?' }
+    if (decoyOn(raw, 'dedupe')) return { because: 'The dedupe store does nothing here. Nothing in this design is ever sent twice.', look: unhelpful }
+    if (decoyOn(raw, 'dead')) return { because: 'The dead-letter queue does nothing here. A click waits on the queue and is written later, so none is ever parked.', look: unhelpful }
     return slowWhy(s, m)
   },
-  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines),
+  problem: (m, raw, settings, flow) => SCALE_UP.diagnose!(m, raw, settings, flow)?.because ?? null,
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, undefined, false),
   check(_m, raw, _settings, flow) {
     const s = flow && shortenerOf.get(flow)
     if (!s || layout(raw).jam || flow.tick < SCALE_SETTLED) return false
@@ -378,26 +382,19 @@ export const SCALE_UP: BuildTask = {
 }
 
 // What is actually failing, read from where redirects were turned away or kept waiting.
-function redirectsCause(s: Shortener, m: { busy: Record<string, number> }) {
-  const parts: string[] = [`${s.redirectsFailed()} redirects were lost.`]
+function redirectsCause(s: Shortener): Diagnosis {
   const lost = s.lostAt()
-  if (lost) {
-    const rate = lost.key === 'db' || lost.what === 'a read replica' ? ' It can answer about 8 a second.' : lost.what === 'an app server' ? ' One app server can answer about 20 a second.' : ''
-    parts.push(`${lost.count} were turned away at ${lost.what} because its line was full.${rate}`)
-  }
-  if (s.tally.slow > 0) {
-    const [key, load] = Object.entries(m.busy).sort((a, b) => b[1] - a[1])[0] ?? []
-    parts.push(`${s.tally.slow} took over 2 seconds${key ? `, and ${s.nameOf(key)} was ${Math.round(load * 100)}% busy` : ''}.`)
-  }
-  return parts.join(' ')
+  const where = lost ? ` Some were turned away at ${lost.what} because its line was full.` : ''
+  const slow = s.tally.slow > 0 ? ' Some took over 2 seconds.' : ''
+  return { because: `Some redirects were lost.${where}${slow}`, look: 'Find the busiest part, and ask what is sending it more than it can answer.' }
 }
 
 // Redirects that work but are slow on average: the busiest part is where they wait.
-function slowWhy(s: Shortener, m: { busy: Record<string, number>; latency: Record<string, number> }) {
+function slowWhy(s: Shortener, m: { busy: Record<string, number>; latency: Record<string, number> }): Diagnosis | null {
   const ms = m.latency.users ?? 0
   if (ms < 1600) return null
-  const [key, load] = Object.entries(m.busy).sort((a, b) => b[1] - a[1])[0] ?? []
-  return `Redirects take ${(ms / 1000).toFixed(1)}s on average.${key ? ` ${s.nameOf(key)} is ${Math.round(load * 100)}% busy.` : ''}`
+  const [key] = Object.entries(m.busy).sort((a, b) => b[1] - a[1])[0] ?? []
+  return { because: `Redirects are slow.${key ? ` ${s.nameOf(key)} is the busiest part.` : ''}`, look: 'Find the busiest part, and ask what could take work off it.' }
 }
 
 const has = (placed: Placement, id: string) => !!placed[id]

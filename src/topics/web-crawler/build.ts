@@ -1,7 +1,7 @@
 import { createElement } from 'react'
-import { hintFromReview } from '../../core/build/hint'
+import { ORDER_LOOK, hintFromReview } from '../../core/build/hint'
 import { Tag } from '../../core/iso/primitives'
-import type { BuildTask, Placement, Requirement, Settings } from '../../core/build/types'
+import type { BuildTask, Diagnosis, Placement, Requirement, Settings } from '../../core/build/types'
 import type { FlowSim } from '../../core/flow/engine'
 import type { Capstone, Intro, Review } from '../../core/capstone/types'
 import { BITS, BUDGETS, Crawler, DELAYS, SECOND, Web, type WebSpec } from './crawler'
@@ -277,22 +277,22 @@ export const FIRST_DESIGN: BuildTask = {
   watch: [{ kind: 'busy', key: 'app-0', label: 'Fetcher busy' }],
   requirements: [coverage(NEED_FIRST, FIRST_SETTLED), polite, rules, once],
   assemble: (placed, settings, rng) => assemble(placed, settings, { web: SMALL }, rng),
-  problem(_m, raw, settings, flow) {
+  diagnose(_m, raw, settings, flow) {
     const c = crawlerOf.get(flow)
     if (!c) return null
     const l = layout(raw)
-    if (l.jam) return l.jam.why
-    const s = chosen(settings)
+    if (l.jam) return { because: l.jam.why, look: ORDER_LOOK }
     const t = c.tally
-    if (c.banned.size > 0) return l.polite ? `A site banned the crawler. The wait of ${s.delay / SECOND} seconds between visits to one site is too short.` : 'A site banned the crawler. One fetcher opened four pages of the same site at once, and sites do not like that.'
-    if (t.robotsBreaks > 0) return 'The crawler read a page that robots.txt forbids.'
-    if (t.refetch > 5) return 'The same pages are being downloaded again. Pages link to each other in circles, and nothing remembers which ones were seen.'
-    if (!l.frontier && c.lost() > 4) return 'Links arrive faster than the fetcher can read them, and the extra ones are thrown away.'
-    if (l.seen && c.missedByFilter() > 1) return `${c.missedByFilter()} new pages were skipped because the seen-set said “seen it”. Its switches are ${Math.round(c.seen!.fill() * 100)}% on, so it often guesses wrong.`
-    if (flow.tick >= FIRST_SETTLED && c.got() < Math.ceil(NEED_FIRST * c.wanted)) return `Only ${c.got()} of ${c.wanted} pages were downloaded.`
+    if (c.banned.size > 0) return { because: 'A site banned the crawler.', look: l.polite ? 'Compare the wait between visits to one site with how often a site tolerates a visit.' : 'How many pages of the same site does a fetcher open at once?' }
+    if (t.robotsBreaks > 0) return { because: 'The crawler read a page that robots.txt forbids.', look: 'What does the crawler check before it fetches a page?' }
+    if (t.refetch > 5) return { because: 'The same pages are being downloaded again.', look: 'Pages link to each other in circles. How does the crawler know it has been here before?' }
+    if (!l.frontier && c.lost() > 4) return { because: 'Links arrive faster than the fetcher can read them, and the extra ones are thrown away.', look: 'Where do discovered links wait for their turn?' }
+    if (l.seen && c.missedByFilter() > 1) return { because: 'Some new pages were skipped because the seen-set said “seen it”.', look: 'How does the seen-set decide, and how full is it?' }
+    if (flow.tick >= FIRST_SETTLED && c.got() < Math.ceil(NEED_FIRST * c.wanted)) return { because: 'Too few pages were downloaded.', look: 'Which part of the crawl is the slowest?' }
     return null
   },
-  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, ['Seen-set', 'Frontier', 'Manners', 'robots.txt']),
+  problem: (m, raw, settings, flow) => FIRST_DESIGN.diagnose!(m, raw, settings, flow)?.because ?? null,
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, ['Seen-set', 'Frontier', 'Manners', 'robots.txt'], false),
   check(_m, raw, settings, flow) {
     const c = flow && crawlerOf.get(flow)
     if (!c || flow.tick < FIRST_SETTLED) return false
@@ -325,38 +325,40 @@ export const SCALE_UP: BuildTask = {
   watch: [{ kind: 'busy', key: 'app-0', label: 'Fetcher busy' }],
   requirements: [coverage(NEED_SCALE, SCALE_SETTLED), polite, rules, once, noWaste, kept],
   assemble: (placed, settings, rng) => assemble(placed, settings, { web: BIG, crash: CRASH_AT }, rng),
-  problem(_m, raw, settings, flow) {
+  diagnose(_m, raw, settings, flow) {
     const c = crawlerOf.get(flow)
     if (!c) return null
     const l = layout(raw)
-    if (l.jam) return l.jam.why
+    if (l.jam) return { because: l.jam.why, look: ORDER_LOOK }
     const s = chosen(settings)
     const t = c.tally
     const tick = flow.tick
     if (c.banned.size > 0) {
-      if (!l.polite) return 'A site banned the crawler. Fetchers open several pages of one site at once.'
-      if (!l.ring && l.apps.length > 1) return 'A site banned the crawler although each fetcher waits between visits. Each timer only knows its own fetcher’s visits, and the fetchers share sites.'
-      return `A site banned the crawler. The wait of ${s.delay / SECOND} seconds between visits is too short.`
+      if (!l.polite) return { because: 'A site banned the crawler.', look: 'How many pages of one site can be open at the same time?' }
+      if (!l.ring && l.apps.length > 1) return { because: 'A site banned the crawler although each fetcher waits between visits.', look: 'Each fetcher keeps its own timer. Do the fetchers share sites?' }
+      return { because: 'A site banned the crawler.', look: 'Compare the wait between visits to one site with how often a site tolerates a visit.' }
     }
-    if (t.robotsBreaks > 0) return 'The crawler read a page that robots.txt forbids.'
-    if (t.refetch > 5) return 'The same pages are being downloaded again. Pages link in circles, and nothing remembers which were seen.'
-    if (!l.frontier && c.lost() > 4) return 'Links arrive faster than the fetchers can read them, and the extra ones are thrown away.'
-    if (t.trapFetched > TRAP_LIMIT) return 'The crawler is lost in an endless calendar: every page links to three newer ones.'
-    if (l.seen && c.missedByFilter() > 3) return `${c.missedByFilter()} new pages were skipped because the seen-set said “seen it”. Its switches are ${Math.round(c.seen!.fill() * 100)}% on.`
+    if (t.robotsBreaks > 0) return { because: 'The crawler read a page that robots.txt forbids.', look: 'What does the crawler check before it fetches a page?' }
+    if (t.refetch > 5) return { because: 'The same pages are being downloaded again.', look: 'Pages link to each other in circles. How does the crawler know it has been here before?' }
+    if (!l.frontier && c.lost() > 4) return { because: 'Links arrive faster than the fetchers can read them, and the extra ones are thrown away.', look: 'Where do discovered links wait for their turn?' }
+    if (t.trapFetched > TRAP_LIMIT) return { because: 'The crawler is lost in an endless calendar.', look: 'Every page links to three newer ones. What limits how deep a crawl goes?' }
+    if (l.seen && c.missedByFilter() > 3) return { because: 'Some new pages were skipped because the seen-set said “seen it”.', look: 'How does the seen-set decide, and how full is it?' }
     if (tick >= CRASH_AT + T(4) && c.lost() > 4) {
-      if (l.frontier && !s.keep) return 'A fetcher died holding addresses it had been handed. The frontier forgot them the moment it handed them out.'
-      return `${c.lost()} addresses were thrown away and never read.`
+      if (l.frontier && !s.keep) return { because: 'A fetcher died holding addresses it had been handed, and they were forgotten.', look: 'What is kept of an address once it has been handed to a fetcher?' }
+      return { because: 'Some addresses were thrown away and never read.', look: 'Where do addresses wait, and what is lost when something dies?' }
     }
-    if (l.frontier && s.budget < 40 && tick >= T(30)) return `A site with 40 real pages is cut off at ${s.budget}.`
-    if (l.cache) return 'A cache keeps the answer to a request that comes again. Every page is downloaded once, so nothing is asked twice.'
+    if (l.frontier && s.budget < 40 && tick >= T(30)) return { because: 'A site with many real pages is cut off.', look: 'What limits how many pages are taken from one site?' }
+    if (l.cache) return { because: 'A cache keeps the answer to a request that comes again. Every page is downloaded once, so nothing is asked twice.', look: 'Which piece on the board is not helping this system?' }
     if (tick >= SCALE_SETTLED && c.got() < Math.ceil(NEED_SCALE * c.wanted)) {
-      if (l.apps.length < 3) return `Only ${c.got()} of ${c.wanted} pages in time. One fetcher reads about 3 pages a second.`
-      if (s.delay > 20) return `Only ${c.got()} of ${c.wanted} pages in time. Waiting ${s.delay / SECOND} seconds between visits to one site is too slow.`
-      return `Only ${c.got()} of ${c.wanted} pages in time.`
+      const because = 'Too few pages were downloaded in time.'
+      if (l.apps.length < 3) return { because, look: 'How many pages can one fetcher read in a second, and how many are needed?' }
+      if (s.delay > 20) return { because, look: 'Compare the wait between visits to one site with the time allowed.' }
+      return { because, look: 'Which part of the crawl is the slowest?' }
     }
     return null
   },
-  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines),
+  problem: (m, raw, settings, flow) => SCALE_UP.diagnose!(m, raw, settings, flow)?.because ?? null,
+  hint: (_m, raw, settings) => hintFromReview(review(raw, settings).lines, undefined, false),
   check(_m, raw, _settings, flow) {
     const c = flow && crawlerOf.get(flow)
     if (!c || flow.tick < SCALE_SETTLED) return false

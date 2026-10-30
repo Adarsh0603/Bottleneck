@@ -1,3 +1,4 @@
+import { TICKS_PER_SECOND } from '../../core/flow/time'
 // Where things stand on the floor:
 //
 //                     ┌─▶ Stock
@@ -14,7 +15,7 @@ export type Place = 'coord' | Part
 export const PARTS: Part[] = ['stock', 'pay', 'ship']
 export const PART_NAME: Record<Part, string> = { stock: 'Stock', pay: 'Payment', ship: 'Shipping' }
 
-export const TICKS_PER_SECOND = 20
+export { TICKS_PER_SECOND }
 export const MS_PER_TICK = 1000 / TICKS_PER_SECOND
 
 export const SPOT: Record<Place, { x: number; z: number }> = {
