@@ -354,10 +354,9 @@ export const FIRST_DESIGN: BuildTask = {
   goalShort: 'Fast timelines · fresh tweets',
   win: 'Put a timeline server on the readers’ side, a worker on the writers’ side and a store shard. Write each tweet into its followers’ timelines when it is sent, so opening the app is one lookup. A queue holds tweets in a burst, and a cache holds the timelines.',
   lesson: {
-    without: `Without it, every open would look up each of the ${FOLLOWED.small} accounts a reader follows, and the store would drown whenever many readers opened the app together.`,
-    choice: 'Write each tweet into its followers’ timelines when it is sent, so opening the app is one lookup.',
-    cost: 'The price: a tweet now costs one write per follower, and the last follower gets it a moment after the first.',
-    next: `This holds for ordinary accounts. Next comes a celebrity with ${spoken(REAL_FOLLOWERS.star)} followers.`,
+    without: `Without it, every open looks up all ${FOLLOWED.small} accounts a reader follows, and the store drowns.`,
+    choice: 'Write each tweet into its followers’ timelines when it is sent, so an open is one lookup.',
+    cost: 'The price: one write per follower, and the last follower gets it a moment late.',
   },
   holdSeconds: 4,
   testSeconds: 36,
@@ -374,7 +373,7 @@ export const FIRST_DESIGN: BuildTask = {
     const f = timelineOf.get(flow)
     if (!f) return null
     const t = f.tally
-    return `A busy hour, handled: ${t.opened.toLocaleString()} timelines opened in ${f.wait().toFixed(2)} s on average, and ${t.delivered.toLocaleString()} tweets written into their followers’ timelines, the slowest in ${f.worst.tweet.toFixed(1)} s. Writing a timeline when a tweet is sent made every open one lookup.`
+    return `${t.opened.toLocaleString()} timelines opened in ${f.wait().toFixed(1)} s. ${t.delivered.toLocaleString()} tweets delivered, the slowest in ${f.worst.tweet.toFixed(1)} s.`
   },
   requirements: [opens(FIRST_SETTLED), tweets, fresh],
   assemble: (placed, settings, rng) => assemble(placed, settings, { phases: FIRST_PHASES, stars: [] }, rng),
@@ -423,9 +422,9 @@ export const SCALE_UP: BuildTask = {
   goalShort: 'Survive the whole day',
   win: `Fill the ${Object.keys(POS).length} pads with a queue, ${NEED_CACHES} caches, a timeline server, ${NEED_WORKERS} workers and ${NEED_SHARDS} shards. Look up only the celebrity (a line between ${spoken(LINE_FROM)} and ${spoken(LINE_TO)} followers), keep only ids in the timelines of about ${LENGTH} tweets, spread them over ${NEED_CACHES} caches, and rebuild each lost timeline once, however many readers ask.`,
   lesson: {
-    without: `Without the look-up line, one celebrity tweet is about ${spoken(REAL_FOLLOWERS.star)} writes in one go, and every timeline behind it arrives late. Without ids, a delete must find and rewrite every copy.`,
-    choice: 'Write ordinary accounts into timelines, look only the celebrity up when a timeline opens, and keep only ids in the timelines.',
-    cost: 'The price: opening a timeline now merges two sources, and each open reads the store once more for the celebrity.',
+    without: `Without a look-up line, one celebrity tweet is ${spoken(REAL_FOLLOWERS.star)} writes at once. Without ids, a delete rewrites every copy.`,
+    choice: 'Write ordinary accounts, look the celebrity up on open, and keep only ids in timelines.',
+    cost: 'The price: each open merges two sources and reads the store once more.',
   },
   holdSeconds: 4,
   testSeconds: 68,
@@ -461,7 +460,7 @@ export const SCALE_UP: BuildTask = {
     if (!f) return null
     const t = f.tally
     const cached = t.opened ? Math.round((t.hits / t.opened) * 100) : 0
-    return `You carried a whole day: ${t.opened.toLocaleString()} timelines opened, ${cached}% straight from a cache, and ${t.delivered.toLocaleString()} tweets and ${t.gone.toLocaleString()} deletes reached every follower, none lost. The celebrity’s tweet took ${f.worst.star.toFixed(1)} s to reach its ${spoken(REAL_FOLLOWERS.star)} followers, the slowest delete ${f.worst.delete.toFixed(1)} s, and a cache machine restarted empty with ${t.failed} readers given up on.`
+    return `${t.opened.toLocaleString()} timelines opened, ${cached}% from a cache. The celebrity’s tweet took ${f.worst.star.toFixed(1)} s, the slowest delete ${f.worst.delete.toFixed(1)} s, none lost.`
   },
   check(_m, _raw, _settings, flow) {
     const f = flow && timelineOf.get(flow)

@@ -75,6 +75,9 @@ import { REFERENCE as KEY_VALUE_STORE_REFERENCE } from './key-value-store/refere
 import RideSharingPlay from './ride-sharing/Play'
 import { RIDE_SHARING } from './ride-sharing/build'
 import { REFERENCE as RIDE_SHARING_REFERENCE } from './ride-sharing/reference'
+import YoutubePlay from './youtube/Play'
+import { YOUTUBE } from './youtube/build'
+import { REFERENCE as YOUTUBE_REFERENCE } from './youtube/reference'
 import TwitterTimelinePlay from './twitter-timeline/Play'
 import { TWITTER_TIMELINE } from './twitter-timeline/build'
 import { REFERENCE as TWITTER_TIMELINE_REFERENCE } from './twitter-timeline/reference'
@@ -447,6 +450,16 @@ export const TOPICS: TopicEntry[] = [
     challenges: ['0:0', '1:0', '2:0'],
     Play: TwitterTimelinePlay,
     reference: TWITTER_TIMELINE_REFERENCE,
+  },
+  {
+    id: 'youtube',
+    title: 'YouTube',
+    track: 'capstones',
+    pitch: 'Upload, transcode and stream to a billion hours a day.',
+    chapters: [...YOUTUBE.stages],
+    challenges: ['0:0', '1:0', '2:0'],
+    Play: YoutubePlay,
+    reference: YOUTUBE_REFERENCE,
   },
 ]
 

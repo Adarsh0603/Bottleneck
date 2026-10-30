@@ -1,5 +1,5 @@
 import { createElement } from 'react'
-import { ORDER_LOOK, hintFromReview } from '../../core/build/hint'
+import { hintFromReview } from '../../core/build/hint'
 import { Tag } from '../../core/iso/primitives'
 import type { BuildTask, Diagnosis, Placement, Requirement, Settings } from '../../core/build/types'
 import type { FlowSim } from '../../core/flow/engine'
@@ -295,7 +295,7 @@ export const SCALE_UP: BuildTask = {
   sub: 'People who are away, a flaky network, a crash and a huge group. Watch the numbers, then tune it.',
   goal: 'Get through the whole day: everyone connected, no message lost, repeated or out of order.',
   goalShort: 'Survive the whole day',
-  win: 'Three gateways, so two can hold everyone after a crash. A topic, an inbox queue and a dedupe store. Number the messages in each chat, store a group message once, and let phones retry after a growing wait.',
+  win: 'Three gateways, so two can hold everyone after a crash. A topic, an inbox queue and a dedupe store. Numbered messages, one stored copy per group message, and retries that back off.',
   holdSeconds: 4,
   testSeconds: 66,
   pads: ALL_SPOTS.map(spot),

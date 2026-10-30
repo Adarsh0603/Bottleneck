@@ -312,7 +312,7 @@ export const SCALE_UP: BuildTask = {
   sub: 'A node joins, one crashes, the network splits, one key goes hot and a clock runs fast. Watch the numbers, then tune it.',
   goal: 'Get through the whole day: answer everything, never return an old value, and end with all copies agreeing.',
   goalShort: 'Survive the whole day',
-  win: 'Three copies of every key, and a quorum of two for reads and for writes, so every read meets the latest write. A stand-in for a node that is down, and fixes on read. Many small ring slices, a version number that counts up, and a cache for the hot key.',
+  win: 'Three copies of every key with quorums of two, so a read meets the latest write. Stand-ins for a down node, fixes on read, small ring slices, a version counter and a hot-key cache.',
   holdSeconds: 4,
   testSeconds: 90,
   pads: ALL_SPOTS.map(spot),

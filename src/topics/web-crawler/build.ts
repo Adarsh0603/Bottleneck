@@ -1,7 +1,7 @@
 import { createElement } from 'react'
 import { ORDER_LOOK, hintFromReview } from '../../core/build/hint'
 import { Tag } from '../../core/iso/primitives'
-import type { BuildTask, Diagnosis, Placement, Requirement, Settings } from '../../core/build/types'
+import type { BuildTask, Placement, Requirement, Settings } from '../../core/build/types'
 import type { FlowSim } from '../../core/flow/engine'
 import type { Capstone, Intro, Review } from '../../core/capstone/types'
 import { BITS, BUDGETS, Crawler, DELAYS, SECOND, Web, type WebSpec } from './crawler'
@@ -277,7 +277,7 @@ export const FIRST_DESIGN: BuildTask = {
   watch: [{ kind: 'busy', key: 'app-0', label: 'Fetcher busy' }],
   requirements: [coverage(NEED_FIRST, FIRST_SETTLED), polite, rules, once],
   assemble: (placed, settings, rng) => assemble(placed, settings, { web: SMALL }, rng),
-  diagnose(_m, raw, settings, flow) {
+  diagnose(_m, raw, _settings, flow) {
     const c = crawlerOf.get(flow)
     if (!c) return null
     const l = layout(raw)
