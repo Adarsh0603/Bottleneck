@@ -1,4 +1,6 @@
 import { askConfirm } from "../ConfirmDialog";
+import { markSeen, useSeenTips } from "../tips";
+import Tip from "../../home/Tip";
 import {
   useEffect,
   useRef,
@@ -150,6 +152,7 @@ function Builder({
   const inset = useBottomInset<HTMLDivElement, HTMLDivElement>(side);
   const lastChapter = index === chapters.length - 1;
 
+  const seenTips = useSeenTips();
   const [settings, setSettings] = useState<Settings>(() => ({
     ...Object.fromEntries((task.settings ?? []).map((s) => [s.id, s.initial])),
     ...start.settings,
@@ -208,12 +211,14 @@ function Builder({
         ? "remove"
         : "place",
     );
+    if (Object.keys(next).length > Object.keys(current).length) markSeen("pieces");
     placedRef.current = next;
     setPlaced(next);
     restart(next, settingsRef.current);
     saveBuild(saveKey, { placed: next, settings: settingsRef.current });
   };
   const changeSetting = (id: string, value: number) => {
+    markSeen("tune");
     const next = { ...settingsRef.current, [id]: value };
     const wasRunning = running;
     settingsRef.current = next;
@@ -446,6 +451,14 @@ function Builder({
       Object.values(placed).includes(s.when) ||
       task.fixed.some((f) => f.kind === s.when),
   );
+  // A first-time visitor is walked through the board: place a piece, test it, then tune it.
+  const piecesTip = !seenTips.includes("pieces") && Object.keys(placed).length === 0;
+  const startTip = task.manualStart && !solved && !running && !seenTips.includes("start") && Object.keys(placed).length > 0;
+  const tuneTip =
+    shownSettings.length > 0 &&
+    !seenTips.includes("tune") &&
+    seenTips.includes("pieces") &&
+    (seenTips.includes("start") || !task.manualStart);
   const settingStepper = (s: (typeof shownSettings)[number]) =>
     s.slider ? (
       <Slider
@@ -544,6 +557,12 @@ function Builder({
   };
   const startLabel = running ? "Stop and edit" : failure ? "Try again" : "Start requests";
   const startButton = task.manualStart && !solved && (
+    <span className="relative inline-flex">
+    {startTip && (
+      <span className="pointer-events-none absolute bottom-full right-0 z-30 mb-2">
+        <Tip nudge={false}>Now test it</Tip>
+      </span>
+    )}
     <Tooltip text={startLabel} className="inline-flex">
     <button
       onClick={
@@ -554,16 +573,20 @@ function Builder({
                 restart(placedRef.current, settingsRef.current);
                 setRunning(true);
               }
-            : () => setRunning(true)
+            : () => {
+                markSeen("start");
+                setRunning(true);
+              }
       }
       aria-label={startLabel}
-      className={`${transportBtn} ${running ? "" : "bg-fg text-bg hover:bg-fg hover:opacity-85"}`}
+      className={`${transportBtn} ${running ? "" : "bg-fg text-bg hover:bg-fg hover:opacity-85"} ${startTip ? "tip-ring" : ""}`}
     >
       <svg {...svg}>
         {running ? <rect x="5" y="5" width="10" height="10" rx="1.5" /> : <path d="M6 4l10 6-10 6z" />}
       </svg>
     </button>
     </Tooltip>
+    </span>
   );
   const resetButton = (
     <Tooltip text="Reset build" className="inline-flex">
@@ -1028,18 +1051,20 @@ function Builder({
           {/* Desktop: the side panel is the inventory and the settings. */}
           <aside className="absolute inset-y-0 right-0 z-20 flex w-88 flex-col gap-5 overflow-y-auto border-l border-line bg-bg p-4">
             <section>
-              <div className="font-mono text-xs uppercase tracking-widest text-muted">
+              <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-muted">
                 Pieces
+                {piecesTip && <Tip>Drag one onto the board</Tip>}
               </div>
               <div className="mt-2 grid grid-cols-2 gap-2">
                 {toolboxButtons}
               </div>
             </section>
-            {[...new Set(shownSettings.map((s) => s.when))].map((when) => (
+            {[...new Set(shownSettings.map((s) => s.when))].map((when, i) => (
               <section key={when}>
                 <div className="flex items-center gap-2 font-mono text-xs uppercase tracking-widest text-muted">
                   <PieceIcon kind={when} size={22} />
                   {nameOf(when)}
+                  {i === 0 && tuneTip && <Tip>Tune it</Tip>}
                 </div>
                 <div className="mt-2 space-y-2">
                   {shownSettings
@@ -1113,6 +1138,11 @@ function Builder({
                 {hint}
               </p>
 
+              {!playing && !browse && (piecesTip || tuneTip) && (
+                <div className="mt-2">
+                  <Tip>{piecesTip ? "Drag a piece onto the board" : "Tune it: change a setting"}</Tip>
+                </div>
+              )}
               {!playing && !browse && settingChips}
               {!playing && !browse && settingPopover}
 
