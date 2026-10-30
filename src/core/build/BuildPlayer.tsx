@@ -306,6 +306,8 @@ function Builder({
   const shownDiag = failure?.diag;
   // On a small screen the goal and title can be folded away to show more floor.
   const focus = compact && !detailsOpen && !solved;
+  // After "Keep looking" on a solved build the panel folds down to a toggle row.
+  const browse = compact && solved && !victoryOpen && !detailsOpen;
   // On a phone a started run clears the panel down to the goal and the
   // transport row; stopping or failing brings everything back, goal folded.
   const playing = compact && !!task.manualStart && running && !failure && !solved;
@@ -839,6 +841,7 @@ function Builder({
                   as="div"
                   key={p.from}
                   text={p.name}
+                  tap
                   className={`min-w-0 overflow-hidden ${i === shownPhase ? (failure ? "font-medium text-danger" : "font-medium") : "opacity-50"}`}
                   style={{ flex: to - p.from }}
                 >
@@ -1100,22 +1103,22 @@ function Builder({
           <div className="mx-auto flex max-w-5xl flex-col gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-5">
             <div className="pointer-events-auto min-w-0">
               {!playing && problemCard}
-              {!victoryOpen && !(focus && goalHidden) && goalCard}
+              {!victoryOpen && !browse && !(focus && goalHidden) && goalCard}
               <h2
-                className={`font-semibold tracking-tight ${focus || short || playing ? "hidden" : ""} text-xl sm:text-2xl`}
+                className={`font-semibold tracking-tight ${focus || browse || short || playing ? "hidden" : ""} text-xl sm:text-2xl`}
               >
                 {task.title}
               </h2>
-              <p className={`mt-1 text-sm text-muted ${focus || short || playing ? "hidden" : ""}`}>
+              <p className={`mt-1 text-sm text-muted ${focus || browse || short || playing ? "hidden" : ""}`}>
                 {hint}
               </p>
 
-              {!playing && settingChips}
-              {!playing && settingPopover}
+              {!playing && !browse && settingChips}
+              {!playing && !browse && settingPopover}
 
               {/* The toolbox. touch-none so a finger drag moves the piece
                   instead of scrolling the page. */}
-              {rail && !playing && (
+              {rail && !playing && !browse && (
                 <>
                   <div className="no-scrollbar -mx-3 mt-3 flex gap-2 overflow-x-auto px-3">
                     {toolboxButtons}
@@ -1128,8 +1131,8 @@ function Builder({
                 </>
               )}
               <div className="mt-3 flex flex-wrap gap-2">
-                {!rail && !playing && toolboxButtons}
-                {compact && !solved && (
+                {!rail && !playing && !browse && toolboxButtons}
+                {compact && (!solved || !victoryOpen) && (
                   <button
                     onClick={() => {
                       if (focus && goalHidden) setDetailsOpen(true);
@@ -1139,7 +1142,7 @@ function Builder({
                     aria-expanded={detailsOpen}
                     className="rounded-xl border border-line bg-bg/90 px-3 py-1.5 text-sm backdrop-blur transition hover:border-fg"
                   >
-                    {detailsOpen ? "Hide goal ▾" : "Goal ▴"}
+                    {solved ? (detailsOpen ? "Hide panel ▾" : "Panel ▴") : detailsOpen ? "Hide goal ▾" : "Goal ▴"}
                   </button>
                 )}
                 {!playing && situationButton}

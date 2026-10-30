@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ElementType, type
 import { createPortal } from 'react-dom'
 
 const DELAY = 300 // ms the pointer rests on something before its tooltip shows
+const TAP_SHOW = 2500 // ms a tapped tooltip stays up
 const EDGE = 8 // px kept clear of the screen edge
 const HALF = 110 // half the widest a tooltip gets, for keeping it on screen
 
@@ -19,12 +20,14 @@ export default function Tooltip({
   as: Tag = 'span',
   className,
   style,
+  tap,
 }: {
   text?: string
   children: ReactNode
   as?: ElementType
   className?: string
   style?: CSSProperties
+  tap?: boolean // a touch shows it for a moment, for text that is cut short and has no hover
 }) {
   const [spot, setSpot] = useState<Spot | null>(null)
   const box = useRef<HTMLElement>(null)
@@ -65,8 +68,13 @@ export default function Tooltip({
       className={className}
       style={style}
       onPointerEnter={(e: PointerEvent) => e.pointerType === 'mouse' && show(DELAY)}
-      onPointerLeave={hide}
-      onPointerDown={hide}
+      onPointerLeave={(e: PointerEvent) => (tap && e.pointerType !== 'mouse' ? undefined : hide())}
+      onPointerDown={(e: PointerEvent) => {
+        if (tap && e.pointerType !== 'mouse') {
+          show(0)
+          window.setTimeout(() => setSpot(null), TAP_SHOW)
+        } else hide()
+      }}
       onFocus={(e: FocusEvent) => (e.target as HTMLElement).matches(':focus-visible') && show(0)}
       onBlur={hide}
     >
