@@ -261,7 +261,7 @@ function RealmName({ tier, name, at, anchor = 'start', ls }: { tier: string; nam
 // chosen castle changes, not on every frame of a fly-in or a drag.
 // `ls` grows the writing on a small screen, where the map is shrunk to a fraction of its size.
 // `names` shows every castle's name (the chosen one always shows); `realms` shows the realm titles.
-const Scene = memo(function Scene({ states, selected, ls, names, realms, phone, onOpen, onBack }: { states: Record<string, ProjectState>; selected: string; ls: number; names: boolean; realms: boolean; phone: boolean; onOpen: (p: Project) => void; onBack: () => void }) {
+const Scene = memo(function Scene({ states, selected, ls, names, realms, phone, startHere, onOpen, onBack }: { states: Record<string, ProjectState>; selected: string; ls: number; names: boolean; realms: boolean; phone: boolean; startHere: boolean; onOpen: (p: Project) => void; onBack: () => void }) {
   // The road joins the mainland only; the AI isles float apart.
   const road = PROJECTS.filter((p) => p.tier < 4)
   const litUntil = road.findIndex((p) => states[p.id] !== 'done')
@@ -343,6 +343,23 @@ const Scene = memo(function Scene({ states, selected, ls, names, realms, phone, 
           )
         })}
 
+        {/* A first visit: a bobbing tag over the first castle, until the learner opens any castle. */}
+        {startHere && (() => {
+          const p = PROJECTS[0]
+          const tipY = p.y - castleHeight(p) * (CAPITALS[p.id] ?? 1) - 30
+          const w = 96 * ls
+          const h = 25 * ls
+          return (
+            <g pointerEvents="none" className="start-bob">
+              <path d={`M${p.x - 6 * ls} ${tipY - 1} L${p.x} ${tipY + 7 * ls} L${p.x + 6 * ls} ${tipY - 1} Z`} fill="var(--danger)" />
+              <rect x={p.x - w / 2} y={tipY - h} width={w} height={h} rx={h / 2} fill="var(--danger)" />
+              <text x={p.x} y={tipY - h / 2} textAnchor="middle" dominantBaseline="central" className="font-mono" fill="#fff" fontSize={12.5 * ls} fontWeight={700} letterSpacing="0.06em">
+                START HERE
+              </text>
+            </g>
+          )
+        })()}
+
         {/* Names sit above the castles so they stay readable. */}
         {realms && (
           <>
@@ -379,10 +396,13 @@ export default function RealmMap({
   states,
   selected,
   onSelect,
+  fresh = false,
 }: {
   states: Record<string, ProjectState>
   selected: string
   onSelect: (id: string) => void
+  // A first visit, with no progress yet: the first castle gets a "Start here" tag.
+  fresh?: boolean
 }) {
 
   // The map opens whole. Tapping a castle flies in on it and opens its card.
@@ -398,6 +418,7 @@ export default function RealmMap({
     return compact && sel ? { z: COMPACT_FAR, cx: 0, cy: sel.y - 40 } : FIT
   })
   const [opened, setOpened] = useState<string | null>(null)
+  const [touched, setTouched] = useState(false)
   const [moving, setMoving] = useState(false)
   const timer = useRef(0)
   const reduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -416,6 +437,7 @@ export default function RealmMap({
   }
   useEffect(() => () => clearTimeout(timer.current), [])
   const openCastle = (p: Project) => {
+    setTouched(true)
     onSelect(p.id)
     setOpened(null)
     // Bring the whole map box into the page's view, under the sticky header, so the card is not cut off by the screen.
@@ -575,7 +597,7 @@ export default function RealmMap({
           if (shown.z > limits.minZ && !(e.target as Element).closest('[role="button"], foreignObject')) showAll()
         }}
         role="group" aria-label="Map of the system design projects: a hill for each realm, from the Starter shire to the Expert kingdoms, joined by one road, with the AI isles floating apart.">
-        <Scene states={states} selected={selected} ls={ls} names={near} realms={!compact || !near} phone={compact} onOpen={open} onBack={back} />
+        <Scene states={states} selected={selected} ls={ls} names={near} realms={!compact || !near} phone={compact} startHere={fresh && !touched} onOpen={open} onBack={back} />
 
         {/* The chosen project, over its castle. Last, so nothing draws on top of it. */}
         {(() => {

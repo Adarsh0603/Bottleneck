@@ -156,11 +156,17 @@ body {
   animation: boat-rock 4s ease-in-out infinite;
 }
 .realm-moving .realm-pulse { animation-play-state: paused; }
+@keyframes start-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+.start-bob { animation: start-bob 1.3s ease-in-out infinite; }
+.realm-moving .start-bob { animation-play-state: paused; }
 @keyframes realm-pulse {
   0%, 100% { opacity: 0.35; transform: scale(1); }
   50% { opacity: 1; transform: scale(1.18); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .realm-pulse, .sea-drift { animation: none; }
+  .realm-pulse, .sea-drift, .start-bob { animation: none; }
   .sea-boat { display: none; }
 }

@@ -124,6 +124,7 @@ export default function Home() {
             states={states}
             selected={project.id}
             onSelect={setPicked}
+            fresh={Object.keys(progress).length === 0}
           />
         </div>
       </div>
