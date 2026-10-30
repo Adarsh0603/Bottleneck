@@ -1,5 +1,8 @@
 import type { ComponentType } from 'react'
 import type { Level, Reference } from '../core/types'
+import { CHAPTERS as ADAPTIVE_STREAMING_CHAPTERS } from './adaptive-streaming/chapters'
+import AdaptiveStreamingPlay from './adaptive-streaming/Play'
+import { REFERENCE as ADAPTIVE_STREAMING_REFERENCE } from './adaptive-streaming/reference'
 import { CHAPTERS as AUTOSCALING_CHAPTERS } from './autoscaling/chapters'
 import AutoscalingPlay from './autoscaling/Play'
 import { REFERENCE as AUTOSCALING_REFERENCE } from './autoscaling/reference'
@@ -288,6 +291,17 @@ export const TOPICS: TopicEntry[] = [
     challenges: challengeIds(REAL_TIME_CHAPTERS),
     Play: RealTimePlay,
     reference: REAL_TIME_REFERENCE,
+  },
+  {
+    id: 'adaptive-streaming',
+    title: 'Adaptive streaming',
+    short: 'Streaming',
+    track: 'async',
+    pitch: 'Play video on any connection, without the spinner.',
+    chapters: ADAPTIVE_STREAMING_CHAPTERS.map((c) => c.title),
+    challenges: challengeIds(ADAPTIVE_STREAMING_CHAPTERS),
+    Play: AdaptiveStreamingPlay,
+    reference: ADAPTIVE_STREAMING_REFERENCE,
   },
 
   {

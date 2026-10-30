@@ -43,6 +43,7 @@ const THUMBS: Record<string, Spot[]> = {
   search: [["database", -1.1, 0], ["cache", 1.1, 0]],
   availability: [["balancer", 0, -0.6], ["server", -1.2, 0.7], ["replica", 1.2, 0.7]],
   "real-time": [["topic", 0, 0]],
+  "adaptive-streaming": [["server", -1.2, 0], ["cache", 1.1, 0]],
   "fan-out": [["topic", 0, -0.6], ["queue", -1.2, 0.7], ["queue", 1.2, 0.7]],
   observability: [["stream", 0, 0]],
   consistency: [["replica", -1.2, 0], ["database", 1.2, 0]],
