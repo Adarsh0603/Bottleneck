@@ -185,7 +185,7 @@ function Estimate({ capstone, onStep, onSolved, next, onReplay }: CapstoneProps 
         <div className="flex items-center justify-between gap-2">
           <Label>Back of the envelope · {Math.min(q + 1, questions.length)} of {questions.length}</Label>
           {onReplay && (
-            <button onClick={onReplay} className="h-7 rounded-full border border-line px-3 text-xs transition hover:bg-line/40">
+            <button onClick={onReplay} className="h-7 shrink-0 whitespace-nowrap rounded-full border border-line px-3 text-xs transition hover:bg-line/40">
               ↺ Replay intro
             </button>
           )}
